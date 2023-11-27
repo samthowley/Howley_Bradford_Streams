@@ -1,0 +1,315 @@
+#packages#####
+library(ggpubr)
+library(tidyverse)
+library(readxl)
+library(writexl)
+library(epitools)
+library(openxlsx)
+library(gridExtra)
+library(cowplot)
+library(readxl)
+library(weathermetrics)
+library(measurements)
+library(dataRetrieval)
+library('StreamMetabolism')
+library("hydroTSM")
+library(rnoaa)
+library(corrplot)
+library("broom")
+library(car)
+library(imputeTS)
+library(ggExtra)
+library("devtools")
+library(lubridate)
+
+
+samplingperiod <- read_csv("samplingperiod.csv")
+samplingperiod$Date <- mdy_hm(samplingperiod$Date)
+
+###DO#######
+file.names <- list.files(path="HOBO Excels/7/DO", pattern=".csv", full.names=TRUE)
+
+DO_7_all <- data.frame()
+for(fil in file.names){
+  DO7 <- read_csv(fil,
+                #col_types = c("skip","date", "numeric", "numeric"),
+                skip= 1)
+  DO7<-DO7[,c(2,3,4)]
+  colnames(DO7)[1] <- "Date"
+  colnames(DO7)[2] <- "DO"
+  colnames(DO7)[3] <- "Temp"
+  DO7$Date <- mdy_hms(DO7$Date)
+  DO_7_all <- rbind(DO_7_all, DO7)
+}
+
+DO_7_all$DO[DO_7_all$DO<0] <- 0.01
+DO_7_all<- filter(DO_7_all, DO<7)
+S7<-left_join(samplingperiod, DO_7_all, by='Date')
+
+ggplot(DO_7_all, aes(x=Date))+
+  geom_line(aes(y=DO, color="DO"), size=0.8)
+###SpC#####
+
+file.names <- list.files(path="HOBO Excels/7/SpC", pattern=".csv", full.names=TRUE)
+
+SpC_7_all <- data.frame()
+for(fil in file.names){
+  SpC7 <- read_csv(fil,
+                   #col_types = c("skip","date", "numeric", "numeric"),
+                   skip= 1)
+  SpC7<-SpC7[,c(2,3)]
+  colnames(SpC7)[1] <- "Date"
+  colnames(SpC7)[2] <- "SpC"
+  SpC7$Date <- mdy_hms(SpC7$Date)
+  SpC_7_all <- rbind(SpC_7_all, SpC7)
+}
+
+
+SpC_7_all<- filter(SpC_7_all, SpC>50 & SpC<400)
+S7<-left_join(S7, SpC_7_all, by='Date')
+ggplot(SpC_7_all, aes(x=Date))+
+  geom_line(aes(y=SpC, color="SpC"), size=0.8)
+
+####pH#####
+file.names <- list.files(path="HOBO Excels/7/pH", pattern=".xlsx", full.names=TRUE)
+
+pH_7_all <- data.frame()
+for(fil in file.names){
+  pH7 <- read_xlsx(fil)
+  pH7<-pH7[,c(2,5)]
+  colnames(pH7)[1] <- "Date"
+  colnames(pH7)[2] <- "pH"
+  #pH7$Date <- mdy_hms(pH7$Date)
+  pH_7_all <- rbind(pH_7_all, pH7)
+}
+
+
+#pH_7_all<- filter(pH_7_all, pH<6.9)
+S7<-left_join(S7, pH_7_all, by='Date')
+ggplot(pH_7_all, aes(x=Date))+
+  geom_line(aes(y=pH, color="pH"), size=0.8)
+
+####Lily Box#######
+file.names <- list.files(path="Lily Box/csv/7", pattern=".csv", full.names=TRUE)
+
+LB_7FDOM_csv <- data.frame()
+for(fil in file.names){
+  LB7 <- read_csv(fil,
+                  col_types = cols("Date" = col_datetime(format = "%m/%d/%Y %H:%M"),
+                                   "CO2" = col_number()))
+  LB7<-LB7[,c(1,4)]
+  colnames(LB7)[2] <- "FDOM"
+  LB7<-filter(LB7,FDOM>3.5)
+  LB_7FDOM_csv <- rbind(LB_7FDOM_csv, LB7) }
+
+
+file.names <- list.files(path="Lily Box/dat/7", pattern=".dat", full.names=TRUE)
+
+LB_7FDOM_dat <- data.frame()
+for(fil in file.names){
+  LB7 <- read_csv(fil, skip= 3)
+  LB7<-LB7[,c(1,6)]
+
+  colnames(LB7)[1] <- "Date"
+  colnames(LB7)[2] <- "FDOM"
+  LB7<-filter(LB7,FDOM>3.5)
+
+  LB_7FDOM_dat <- rbind(LB_7FDOM_dat, LB7)}
+
+LB7_FDOM<-rbind(LB_7FDOM_csv, LB_7FDOM_dat)
+
+
+
+
+file.names <- list.files(path="Lily Box/csv/7", pattern=".csv", full.names=TRUE)
+
+LB_7CO2_csv <- data.frame()
+for(fil in file.names){
+  LB7 <- read_csv(fil,
+                  col_types = cols("Date" = col_datetime(format = "%m/%d/%Y %H:%M"),
+                                   "CO2" = col_number()))
+  LB7<-LB7[,c(1,5)]
+  colnames(LB7)[3] <- "CO2"
+  LB7$CO2<-LB7$CO2+222
+  LB7<-filter(LB7, CO2> 500)
+  LB_7CO2_csv <- rbind(LB_7CO2_csv, LB7) }
+
+ggplot(LB_7CO2_csv, aes(x=Date))+
+  geom_line(aes(y=CO2), size=0.8)
+
+file.names <- list.files(path="Lily Box/dat/7", pattern=".dat", full.names=TRUE)
+
+LB_7CO2_dat <- data.frame()
+for(fil in file.names){
+  LB7 <- read_csv(fil, skip= 5)
+  LB7<-LB7[,c(1,4)]
+
+  colnames(LB7)[1] <- "Date"
+  colnames(LB7)[2] <- "CO2"
+  LB7$CO2<-LB7$CO2+222
+  LB7<-filter(LB7, CO2> 500)
+  LB_7CO2_dat <- rbind(LB_7CO2_dat, LB7)}
+
+ggplot(LB_7CO2_dat, aes(x=Date))+
+  geom_line(aes(y=CO2), size=0.8)
+
+LB7_CO2<-rbind(LB_7CO2_csv,LB_7CO2_dat)
+
+S7<-left_join(S7, LB7_FDOM, by='Date')
+S7<-left_join(S7, LB7_CO2, by='Date')
+
+ggplot(S7, aes(x=Date))+
+  geom_line(aes(y=CO2), size=0.8)
+
+S7<- S7 %>%
+  mutate(Day= day(Date),
+         Mon= month(Date),
+         Year= year(Date))
+
+###Stage#####
+
+h7 <- read_excel("//ad.ufl.edu/ifas/SFRC/Groups/Hydrology/Bradford_Forest_Project/Streams/Stream_H20_level/Calculated_Stage/Stream #7.xlsx",
+                       skip = 1)
+x<-c("Water Depth (m)","Flow (L/s)","Year","Mon","Day" )
+h7<-h7[,x]
+S7<- left_join(S7, h7, by= c("Year","Mon","Day"))
+S7<-rename(S7, "Stage"="Water Depth (m)",
+           "Q"="Flow (L/s)")
+S7<-filter(S7, Q>5)
+S7 <- S7[!duplicated(S7[c('Date')]),]
+S7$Site<-'7'
+write_xlsx(S7, "//ad.ufl.edu/ifas/SFRC/Groups/Hydrology/Bradford_Forest_Project/Masterfiles_latest/Stream Chemistry/7.xlsx")
+
+#####Check and organize######
+
+(a<-ggplot(S7, aes(x=Date))+
+    geom_line(aes(y=CO2, color="CO2"), size=0.8)+
+    ylab(expression(CO[2]~ppm))+
+    scale_color_manual(values='orange')+
+    theme(axis.text.x = element_text(size = 15, angle=0),
+          axis.text.y = element_text(size = 15, angle=0),
+          axis.title.y =element_text(size = 15),
+          axis.title.x =element_blank(),
+          axis.title.y.right = element_text(),
+          plot.title = element_text(size = 15, angle=0),
+          legend.text=element_text(size=12),
+          legend.title=element_text(size=12),
+          legend.key.size = unit(0.5, "cm"),
+          legend.position = 'none',
+          panel.background = element_rect(fill = 'white'),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())+
+    guides(color=guide_legend(title="")))
+
+(b<-ggplot(S7, aes(x=Date))+
+    geom_line(aes(y=DO, color="DO"), size=0.8)+
+    ylab('DO mg/L')+
+    scale_color_manual(values='blue')+
+    geom_hline(yintercept = 7.0)+
+    theme(axis.text.x = element_text(size = 15, angle=0),
+          axis.text.y = element_text(size = 15, angle=0),
+          axis.title.y =element_text(size = 15),
+          axis.title.x =element_blank(),
+          axis.title.y.right = element_text(),
+          plot.title = element_text(size = 15, angle=0),
+          legend.text=element_text(size=12),
+          legend.title=element_text(size=12),
+          legend.key.size = unit(0.5, "cm"),
+          legend.position = 'none',
+          panel.background = element_rect(fill = 'white'),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())+
+    guides(color=guide_legend(title="")))
+
+(c<-ggplot(S7, aes(x=Date))+
+    geom_line(aes(y=SpC, color="SpC"), size=0.8)+
+    scale_color_manual(values='red')+
+    ylab('Conductivity')+
+    theme(axis.text.x = element_text(size = 15, angle=0),
+          axis.text.y = element_text(size = 15, angle=0),
+          axis.title.y =element_text(size = 15),
+          axis.title.x =element_blank(),
+          axis.title.y.right = element_text(),
+          plot.title = element_text(size = 15, angle=0),
+          legend.text=element_text(size=12),
+          legend.title=element_text(size=12),
+          legend.key.size = unit(0.5, "cm"),
+          legend.position = 'none',
+          panel.background = element_rect(fill = 'white'),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())+
+    guides(color=guide_legend(title="")))
+
+(d<-ggplot(S7, aes(x=Date))+
+  geom_line(aes(y=FDOM, color="FDOM"), size=0.8)+
+  scale_color_manual(values='purple')+
+  theme(axis.text.x = element_text(size = 15, angle=0),
+        axis.text.y = element_text(size = 15, angle=0),
+        axis.title.y =element_text(size = 15),
+        axis.title.x =element_blank(),
+        axis.title.y.right = element_text(),
+        plot.title = element_text(size = 15, angle=0),
+        legend.text=element_text(size=12),
+        legend.title=element_text(size=12),
+        legend.key.size = unit(0.5, "cm"),
+        legend.position = 'none',
+        panel.background = element_rect(fill = 'white'),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())+
+  guides(color=guide_legend(title="")))
+
+
+(e<-ggplot(S7, aes(x=Date))+
+    geom_line(aes(y=pH, color="pH"),  size=0.8)+
+    scale_color_manual(values='pink')+
+    theme(axis.text.x = element_text(size = 15, angle=0),
+          axis.text.y = element_text(size = 15, angle=0),
+          axis.title.y =element_text(size = 15),
+          axis.title.x =element_blank(),
+          axis.title.y.right = element_text(),
+          plot.title = element_text(size = 15, angle=0),
+          legend.text=element_text(size=12),
+          legend.title=element_text(size=12),
+          legend.key.size = unit(0.5, "cm"),
+          legend.position = 'none',
+          panel.background = element_rect(fill = 'white'),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())+
+    guides(color=guide_legend(title="")))
+
+(f<-ggplot(S7, aes(x=Date))+
+    geom_line(aes(y=Stage),  size=0.8)+
+    scale_color_manual(values='black')+
+    theme(axis.text.x = element_text(size = 15, angle=0),
+          axis.text.y = element_text(size = 15, angle=0),
+          axis.title.y =element_text(size = 15),
+          axis.title.x =element_blank(),
+          axis.title.y.right = element_text(),
+          plot.title = element_text(size = 15, angle=0),
+          legend.text=element_text(size=12),
+          legend.title=element_text(size=12),
+          legend.key.size = unit(0.5, "cm"),
+          legend.position = 'none',
+          panel.background = element_rect(fill = 'white'),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())+
+    guides(color=guide_legend(title="")))
+
+(f<-ggplot(S7, aes(x=Date))+
+    geom_line(aes(y=Q),  size=0.8)+
+    scale_color_manual(values='black')+
+    theme(axis.text.x = element_text(size = 15, angle=0),
+          axis.text.y = element_text(size = 15, angle=0),
+          axis.title.y =element_text(size = 15),
+          axis.title.x =element_blank(),
+          axis.title.y.right = element_text(),
+          plot.title = element_text(size = 15, angle=0),
+          legend.text=element_text(size=12),
+          legend.title=element_text(size=12),
+          legend.key.size = unit(0.5, "cm"),
+          legend.position = 'none',
+          panel.background = element_rect(fill = 'white'),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())+
+    guides(color=guide_legend(title="")))
+
