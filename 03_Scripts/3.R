@@ -3,27 +3,16 @@ library(ggpubr)
 library(tidyverse)
 library(readxl)
 library(writexl)
-library(epitools)
 library(openxlsx)
-library(gridExtra)
-library(cowplot)
 library(readxl)
-library(weathermetrics)
-library(measurements)
-library(dataRetrieval)
-library('StreamMetabolism')
-library("hydroTSM")
-library(rnoaa)
 library(corrplot)
 library("broom")
 library(car)
 library(imputeTS)
 library(ggExtra)
-library("devtools")
 library(lubridate)
 
-####setwd#######
-setwd("//ad.ufl.edu/ifas/SFRC/Groups/Hydrology/Bradford_Forest_Project/Streams/Stream_chemistry")
+setwd('01_Raw_data')
 samplingperiod <- read_csv("samplingperiod.csv")
 samplingperiod$Date <- mdy_hm(samplingperiod$Date)
 
@@ -51,11 +40,11 @@ ggplot(DO_3_all, aes(x=Date))+
   geom_line(aes(y=DO, color="DO"), size=0.8)+
   geom_hline(yintercept = 7)
 
-write_xlsx(DO_3_all, "//ad.ufl.edu/ifas/SFRC/Groups/Hydrology/Bradford_Forest_Project/Streams/Stream_chemistry/Format/3/DO.xlsx")
+write_xlsx(DO_3_all, "02_Clean_data/3/DO.xlsx")
 
 ###SpC#####
 
-file.names <- list.files(path="HOBO Excels/3/SpC", pattern=".csv", full.names=TRUE)
+file.names <- list.files(path="01_Raw_data/HOBO Excels/3/SpC", pattern=".csv", full.names=TRUE)
 
 SpC_3_all <- data.frame()
 for(fil in file.names){
@@ -74,10 +63,10 @@ S3<-left_join(S3, SpC_3_all, by='Date')
 ggplot(SpC_3_all, aes(x=Date))+
   geom_line(aes(y=SpC, color="SpC"), size=0.8)
 
-write_xlsx(SpC_3_all, "//ad.ufl.edu/ifas/SFRC/Groups/Hydrology/Bradford_Forest_Project/Streams/Stream_chemistry/Format/3/SpC.xlsx")
+write_xlsx(SpC_3_all, "02_Clean_data/3/SpC.xlsx")
 
 ####pH#####
-file.names <- list.files(path="HOBO Excels/3/pH", pattern=".xlsx", full.names=TRUE)
+file.names <- list.files(path="RawHOBO Excels/3/pH", pattern=".xlsx", full.names=TRUE)
 
 pH_3_all <- data.frame()
 for(fil in file.names){
@@ -100,8 +89,8 @@ file.names <- list.files(path="Lily Box/csv/3", pattern=".csv", full.names=TRUE)
 
 LB_3FDOM_csv <- data.frame()
 for(fil in file.names){
-  LB3 <- read_csv(fil, 
-                  col_types = cols("Date" = col_datetime(format = "%m/%d/%Y %H:%M"), 
+  LB3 <- read_csv(fil,
+                  col_types = cols("Date" = col_datetime(format = "%m/%d/%Y %H:%M"),
                                    "CO2" = col_number()))
   LB3<-LB3[,c(1,4)]
   colnames(LB3)[2] <- "FDOM"
@@ -132,8 +121,8 @@ file.names <- list.files(path="Lily Box/csv/3", pattern=".csv", full.names=TRUE)
 
 LB_3CO2_csv <- data.frame()
 for(fil in file.names){
-  LB3 <- read_csv(fil, 
-                  col_types = cols("Date" = col_datetime(format = "%m/%d/%Y %H:%M"), 
+  LB3 <- read_csv(fil,
+                  col_types = cols("Date" = col_datetime(format = "%m/%d/%Y %H:%M"),
                                    "CO2" = col_number()))
   LB3<-LB3[,c(1,5)]
   colnames(LB3)[3] <- "CO2"
@@ -145,7 +134,7 @@ LB_3CO2_dat <- data.frame()
 for(fil in file.names){
   LB3 <- read_csv(fil, skip= 3)
   LB3<-LB3[,c(1,5)]
-  
+
   colnames(LB3)[1] <- "Date"
   colnames(LB3)[2] <- "CO2"
   LB_3CO2_dat <- rbind(LB_3CO2_dat, LB3)}
@@ -176,7 +165,7 @@ S3<- S3 %>%
 
 ###Stage#####
 
-h3 <- read_excel("//ad.ufl.edu/ifas/SFRC/Groups/Hydrology/Bradford_Forest_Project/Streams/Stream_H20_level/Calculated_Stage/Stream #3.xlsx", 
+h3 <- read_excel("//ad.ufl.edu/ifas/SFRC/Groups/Hydrology/Bradford_Forest_Project/Streams/Stream_H20_level/Calculated_Stage/Stream #3.xlsx",
                        skip = 1)
 x<-c("Water Depth (m)","Flow (L/s)","Year","Mon","Day" )
 h3<-h3[,x]
