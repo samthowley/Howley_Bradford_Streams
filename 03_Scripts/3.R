@@ -12,12 +12,11 @@ library(imputeTS)
 library(ggExtra)
 library(lubridate)
 
-setwd('01_Raw_data')
 samplingperiod <- read_csv("samplingperiod.csv")
 samplingperiod$Date <- mdy_hm(samplingperiod$Date)
 
 ###DO#######
-file.names <- list.files(path="HOBO Excels/3/DO", pattern=".csv", full.names=TRUE)
+file.names <- list.files(path="01_Raw_data/HOBO Excels/3/DO", pattern=".csv", full.names=TRUE)
 
 DO_3_all <- data.frame()
 for(fil in file.names){
@@ -66,7 +65,7 @@ ggplot(SpC_3_all, aes(x=Date))+
 write_xlsx(SpC_3_all, "02_Clean_data/3/SpC.xlsx")
 
 ####pH#####
-file.names <- list.files(path="RawHOBO Excels/3/pH", pattern=".xlsx", full.names=TRUE)
+file.names <- list.files(path="01_Raw_data/HOBO Excels/3/pH", pattern=".xlsx", full.names=TRUE)
 
 pH_3_all <- data.frame()
 for(fil in file.names){
@@ -82,10 +81,10 @@ S3<-left_join(S3, pH_3_all, by='Date')
 ggplot(pH_3_all, aes(x=Date))+
   geom_line(aes(y=pH, color="pH"), size=0.8)
 
-write_xlsx(pH_3_all, "//ad.ufl.edu/ifas/SFRC/Groups/Hydrology/Bradford_Forest_Project/Streams/Stream_chemistry/Format/3/pH.xlsx")
+write_xlsx(pH_3_all, "02_Clean_data/3/pH.xlsx")
 
 ####Lily Box#######
-file.names <- list.files(path="Lily Box/csv/3", pattern=".csv", full.names=TRUE)
+file.names <- list.files(path="01_Raw_data/Lily Box/csv/3", pattern=".csv", full.names=TRUE)
 
 LB_3FDOM_csv <- data.frame()
 for(fil in file.names){
@@ -99,7 +98,7 @@ for(fil in file.names){
 ggplot(LB_3FDOM_csv, aes(x=Date))+
   geom_line(aes(y=FDOM), size=0.8)
 
-file.names <- list.files(path="Lily Box/dat/3", pattern=".dat", full.names=TRUE)
+file.names <- list.files(path="01_Raw_data/Lily Box/dat/3", pattern=".dat", full.names=TRUE)
 
 LB_3FDOM_dat <- data.frame()
 for(fil in file.names){
@@ -114,10 +113,10 @@ ggplot(LB_3FDOM_dat, aes(x=Date))+
 
 LB3_FDOM<-rbind(LB_3FDOM_csv, LB_3FDOM_dat)
 LB3_FDOM<-filter(LB3_FDOM, FDOM>1)
-write_xlsx(LB3_FDOM, "//ad.ufl.edu/ifas/SFRC/Groups/Hydrology/Bradford_Forest_Project/Streams/Stream_chemistry/Format/3/FDOM.xlsx")
+write_xlsx(LB3_FDOM, "02_Clean_data/3/FDOM.xlsx")
 
 
-file.names <- list.files(path="Lily Box/csv/3", pattern=".csv", full.names=TRUE)
+file.names <- list.files(path="01_Raw_data/Lily Box/csv/3", pattern=".csv", full.names=TRUE)
 
 LB_3CO2_csv <- data.frame()
 for(fil in file.names){
@@ -128,7 +127,7 @@ for(fil in file.names){
   colnames(LB3)[3] <- "CO2"
   LB_3CO2_csv <- rbind(LB_3CO2_csv, LB3) }
 
-file.names <- list.files(path="Lily Box/dat/3", pattern=".dat", full.names=TRUE)
+file.names <- list.files(path="01_Raw_data/Lily Box/dat/3", pattern=".dat", full.names=TRUE)
 
 LB_3CO2_dat <- data.frame()
 for(fil in file.names){
@@ -142,7 +141,7 @@ for(fil in file.names){
 
 LB3_CO2<-rbind(LB_3CO2_csv,LB_3CO2_dat)
 LB3_CO2<-filter(LB3_CO2, CO2>500)
-write_xlsx(LB3_CO2, "//ad.ufl.edu/ifas/SFRC/Groups/Hydrology/Bradford_Forest_Project/Streams/Stream_chemistry/Format/3/CO2.xlsx")
+write_xlsx(LB3_CO2, "02_Clean_data/3/CO2.xlsx")
 
 ggplot(LB3_CO2, aes(x=Date))+
   geom_line(aes(y=CO2), size=0.8)
@@ -165,7 +164,7 @@ S3<- S3 %>%
 
 ###Stage#####
 
-h3 <- read_excel("//ad.ufl.edu/ifas/SFRC/Groups/Hydrology/Bradford_Forest_Project/Streams/Stream_H20_level/Calculated_Stage/Stream #3.xlsx",
+h3 <- read_excel("02_Clean_data/Calculated_Stage/Stream #3.xlsx",
                        skip = 1)
 x<-c("Water Depth (m)","Flow (L/s)","Year","Mon","Day" )
 h3<-h3[,x]
@@ -177,25 +176,25 @@ S3 <- S3[!duplicated(S3[c('Date')]),]
 S3$Site<-"3"
 S3<-left_join(samplingperiod, S3)
 #####Check and organize######
-
+theme_sam<-theme_minimal()+theme(axis.text.x = element_text(size = 15, angle=0),
+              axis.text.y = element_text(size = 15, angle=0),
+              axis.title.y =element_text(size = 15),
+              axis.title.x =element_blank(),
+              axis.title.y.right = element_text(),
+              plot.title = element_text(size = 15, angle=0),
+              legend.text=element_text(size=12),
+              legend.title=element_text(size=12),
+              legend.key.size = unit(0.5, "cm"),
+              legend.position = 'none',
+              panel.background = element_rect(fill = 'white'),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank())
 
 (g<-ggplot(S3, aes(x=Date))+
    geom_line(aes(y=Stage*1000, colour="stage"),  size=0.8)+
    geom_line(aes(y=Q, colour="Q"),  size=0.8)+
    geom_hline(yintercept = 15)+
-   theme(axis.text.x = element_text(size = 15, angle=0),
-         axis.text.y = element_text(size = 15, angle=0),
-         axis.title.y =element_text(size = 15),
-         axis.title.x =element_blank(),
-         axis.title.y.right = element_text(),
-         plot.title = element_text(size = 15, angle=0),
-         legend.text=element_text(size=12),
-         legend.title=element_text(size=12),
-         legend.key.size = unit(0.5, "cm"),
-         legend.position = 'none',
-         panel.background = element_rect(fill = 'white'),
-         panel.grid.major = element_blank(),
-         panel.grid.minor = element_blank())+
+   theme_sam+
    guides(color=guide_legend(title="")))
 
 
@@ -203,38 +202,14 @@ S3<-left_join(samplingperiod, S3)
     geom_line(aes(y=CO2, color="CO2"), size=0.8)+
     ylab(expression(CO[2]~ppm))+
     scale_color_manual(values='orange')+
-    theme(axis.text.x = element_text(size = 15, angle=0),
-          axis.text.y = element_text(size = 15, angle=0),
-          axis.title.y =element_text(size = 15),
-          axis.title.x =element_blank(),
-          axis.title.y.right = element_text(),
-          plot.title = element_text(size = 15, angle=0),
-          legend.text=element_text(size=12),
-          legend.title=element_text(size=12),
-          legend.key.size = unit(0.5, "cm"),
-          legend.position = 'none',
-          panel.background = element_rect(fill = 'white'),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank())+
+    theme_sam+
     guides(color=guide_legend(title="")))
 
 (b<-ggplot(S3, aes(x=Date))+
     geom_line(aes(y=DO, color="DO"), size=0.8)+
     ylab('DO mg/L')+
     scale_color_manual(values='blue')+
-    theme(axis.text.x = element_text(size = 15, angle=0),
-          axis.text.y = element_text(size = 15, angle=0),
-          axis.title.y =element_text(size = 15),
-          axis.title.x =element_blank(),
-          axis.title.y.right = element_text(),
-          plot.title = element_text(size = 15, angle=0),
-          legend.text=element_text(size=12),
-          legend.title=element_text(size=12),
-          legend.key.size = unit(0.5, "cm"),
-          legend.position = 'none',
-          panel.background = element_rect(fill = 'white'),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank())+
+    theme_sam+
     guides(color=guide_legend(title="")))
 
 (c<-ggplot(S3, aes(x=Date))+
@@ -242,61 +217,20 @@ S3<-left_join(samplingperiod, S3)
     scale_color_manual(values='red')+
     ylab('Conductivity')+
     geom_hline(yintercept = 50)+
-    theme(axis.text.x = element_text(size = 15, angle=0),
-          axis.text.y = element_text(size = 15, angle=0),
-          axis.title.y =element_text(size = 15),
-          axis.title.x =element_blank(),
-          axis.title.y.right = element_text(),
-          plot.title = element_text(size = 15, angle=0),
-          legend.text=element_text(size=12),
-          legend.title=element_text(size=12),
-          legend.key.size = unit(0.5, "cm"),
-          legend.position = 'none',
-          panel.background = element_rect(fill = 'white'),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank())+
+    theme_sam+
     guides(color=guide_legend(title="")))
 
 (d<-ggplot(S3, aes(x=Date))+
   geom_line(aes(y=FDOM, color="FDOM"), size=0.8)+
   scale_color_manual(values='purple')+
-  theme(axis.text.x = element_text(size = 15, angle=0),
-        axis.text.y = element_text(size = 15, angle=0),
-        axis.title.y =element_text(size = 15),
-        axis.title.x =element_blank(),
-        axis.title.y.right = element_text(),
-        plot.title = element_text(size = 15, angle=0),
-        legend.text=element_text(size=12),
-        legend.title=element_text(size=12),
-        legend.key.size = unit(0.5, "cm"),
-        legend.position = 'none',
-        panel.background = element_rect(fill = 'white'),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank())+
-  guides(color=guide_legend(title="")))
+    theme_sam+
+    guides(color=guide_legend(title="")))
 
 
 (e<-ggplot(S3, aes(x=Date))+
     geom_line(aes(y=pH, color="pH"),  size=0.8)+
     scale_color_manual(values='pink')+
-    theme(axis.text.x = element_text(size = 15, angle=0),
-          axis.text.y = element_text(size = 15, angle=0),
-          axis.title.y =element_text(size = 15),
-          axis.title.x =element_blank(),
-          axis.title.y.right = element_text(),
-          plot.title = element_text(size = 15, angle=0),
-          legend.text=element_text(size=12),
-          legend.title=element_text(size=12),
-          legend.key.size = unit(0.5, "cm"),
-          legend.position = 'none',
-          panel.background = element_rect(fill = 'white'),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank())+
+    theme_sam+
     guides(color=guide_legend(title="")))
 
-
-
-
-
-plot_grid(b,g,c, ncol=1, align = 'v')
-write_xlsx(S3, "//ad.ufl.edu/ifas/SFRC/Groups/Hydrology/Bradford_Forest_Project/Masterfiles_latest/Stream Chemistry/3.xlsx")
+write_xlsx(S3, "02_Clean_data/3.xlsx")
