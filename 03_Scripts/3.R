@@ -171,7 +171,7 @@ h3<-h3[,x]
 S3<- left_join(S3, h3, by= c("Year","Mon","Day"))
 S3<-rename(S3, "Stage"="Water Depth (m)",
            "Q"="Flow (L/s)")
-S3<-filter(S3, Q>15)
+S3<-filter(S3, Q>0)
 S3 <- S3[!duplicated(S3[c('Date')]),]
 S3$Site<-"3"
 S3<-left_join(samplingperiod, S3)

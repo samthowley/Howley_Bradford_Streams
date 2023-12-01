@@ -173,7 +173,7 @@ h7<-h7[,x]
 S7<- left_join(S7, h7, by= c("Year","Mon","Day"))
 S7<-rename(S7, "Stage"="Water Depth (m)",
            "Q"="Flow (L/s)")
-S7<-filter(S7, Q>5)
+S7<-filter(S7, Q>0)
 S7 <- S7[!duplicated(S7[c('Date')]),]
 S7$Site<-'7'
 write_xlsx(S7, "02_Clean_data/7.xlsx")

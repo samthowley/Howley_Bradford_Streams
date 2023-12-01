@@ -176,7 +176,7 @@ h5a<-h5a[,x]
 S5a<- left_join(S5a, h5a, by= c("Year","Mon","Day"))
 S5a<-rename(S5a, "Stage"="Water Depth (m)",
            "Q"="Flow (L/s)")
-S5a<-filter(S5a, Q>5)
+S5a<-filter(S5a, Q>0)
 S5a <- S5a[!duplicated(S5a[c('Date')]),]
 S5a$Site<-'5a'
 S5a<-left_join(samplingperiod,S5a)

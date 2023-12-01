@@ -178,7 +178,7 @@ h6<-h6[,x]
 S6<- left_join(S6, h6, by= c("Year","Mon","Day"))
 S6<-rename(S6, "Stage"="Water Depth (m)",
             "Q"="Flow (L/s)")
-S6<-filter(S6, Q>5)
+S6<-filter(S6, Q>0)
 S6$Site<-"6"
 S6<-left_join(samplingperiod,S6)
 

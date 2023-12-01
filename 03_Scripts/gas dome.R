@@ -5,6 +5,7 @@ library(readxl)
 library(writexl)
 library(openxlsx)
 library(lubridate)
+library(weathermetrics)
 
 
 
@@ -23,22 +24,33 @@ k600_sheet1<- vector("numeric")
 stage_sheet1 <- vector("numeric")
 date_sheet1 <-as.Date(character(0))
 
-stream <- read_excel("02_Clean_data/3.xlsx")
-stream$CO2<-stream$CO2*6 #sensor multiplier
-stream<-stream %>%  rename("CO2_enviro"='CO2')%>% mutate(day=day(Date), hour=hour(Date))
-stream<-stream[,-1]
+stream <- read_excel("02_Clean_data/7.xlsx",
+                     col_types = c("date", "numeric", "numeric",
+                                   "numeric", "numeric", "numeric",
+                                   "numeric", "numeric", "numeric",
+                                   "numeric", "numeric", "numeric",
+                                   "text"))
+stream<-stream %>%  rename("CO2_enviro"='CO2')%>% mutate(hour=hour(Date), day=day(Date))
+y<-c("CO2_enviro",'Temp','Stage',"day","hour")
+stream<-stream[,y]
 
-file.names <- list.files(path="01_Raw_data/GD/negative", pattern="xlsx", full.names=TRUE)
+#file.names <- list.files(path="01_Raw_data/GD/negative", pattern="xlsx", full.names=TRUE)
+gas <- read_csv("01_Raw_data/GD/positive/7/GB_09132023.csv",
+                col_types = cols(Date = col_datetime(format = "%m/%d/%Y %H:%M")))#test out. create test dataframe called gas
 
-#test out. create test dataframe called gas
+
+
+
+
 GasDome <- function(gas,stream) {
 
   gas<-gas[,x]
   gas$CO2<-gas$CO2*6
-  gas<-gas %>% mutate(day=day(Date), hour=hour(Date))
-  gas<-left_join(gas, stream,by=c('day', 'hour'))
+  gas<-gas %>% mutate(day=day(Date), hour=hour(Date)
+                      )
+  gas<-left_join(gas, stream,by=c('hour', 'day'))
   gas <- gas[!duplicated(gas[c('Date')]),]
-  day <- as.Date(gas$Date)
+  day <- as.Date(gas$Date)[1]
 
   mouthTemp_F<-mean(gas$Temp, na.rm=T)
   mouthTemp_C<-fahrenheit.to.celsius(mouthTemp_F)
@@ -47,13 +59,13 @@ GasDome <- function(gas,stream) {
   SchmidtCO2hi<-1742-91.24*mouthTemp_C+2.208*mouthTemp_C^2-0.0219*mouthTemp_C^3
 
   pCO2_water<-	mean(gas$CO2_enviro, na.rm=T)/1000000
-  depth<-mean(gas$stage, na.rm=T)
+  depth<-mean(gas$Stage, na.rm=T)[1]
 
   (m<-lm(CO2~Date, data = gas))
   cf <- coef(m)
   (slope <- cf[2])
   deltaCO2_atm<- ((slope)*2/1000000) #change in CO2 during float
-  pCO2_air<-max(gas$CO2)/1000000
+  pCO2_air<-max(gas$CO2, na.rm=T)/1000000
 
   n<-(deltaCO2_atm*domeVol_L/R/mouthTemp_K)
   FCO2<-n/domeFoot_m2*60
@@ -79,9 +91,9 @@ for(i in file.names){
 
   gas<-read_excel(i, sheet="3")
   site<-GasDome(gas, stream)
-  date_sheet1[i]<-gas$day[1]
-  stage_sheet1[i] <- depth
-  k600_sheet1[i] <- k600_1d
+  date_sheet1<-output[1]
+  stage_sheet1 <- output[2]
+  k600_sheet1 <- output[3]
 
   }
 
