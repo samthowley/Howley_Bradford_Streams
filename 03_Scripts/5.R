@@ -1,16 +1,12 @@
 #packages#####
-library(ggpubr)
 library(tidyverse)
-library(readxl)
 library(writexl)
 library(openxlsx)
 library(readxl)
-library(corrplot)
-library("broom")
-library(car)
-library(imputeTS)
-library(ggExtra)
 library(lubridate)
+
+samplingperiod <- read_csv("samplingperiod.csv")
+samplingperiod$Date <- mdy_hm(samplingperiod$Date)
 
 ###setwd######
 samplingperiod <- read_csv("samplingperiod.csv")
@@ -165,5 +161,6 @@ S5<-filter(S5, Q>0) #remove hours with ditch water
 S5 <- S5[!duplicated(S5[c('Date')]),]
 S5$Site<-"5"
 S5<-left_join(samplingperiod,S5)
+
 write_xlsx(S5, "02_Clean_data/5.xlsx")
 

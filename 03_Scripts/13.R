@@ -1,15 +1,8 @@
 #packages#####
-library(ggpubr)
 library(tidyverse)
-library(readxl)
 library(writexl)
 library(openxlsx)
 library(readxl)
-library(corrplot)
-library("broom")
-library(car)
-library(imputeTS)
-library(ggExtra)
 library(lubridate)
 
 samplingperiod <- read_csv("samplingperiod.csv")
@@ -20,9 +13,7 @@ file.names <- list.files(path="01_Raw_data/HOBO Excels/13/DO", pattern=".csv", f
 
 DO_13_all <- data.frame()
 for(fil in file.names){
-  DO13 <- read_csv(fil,
-                #col_types = c("skip","date", "numeric", "numeric"),
-                skip= 1)
+  DO13 <- read_csv(fil,skip= 1)
   DO13<-DO13[,c(2,3,4)]
   colnames(DO13)[1] <- "Date"
   colnames(DO13)[2] <- "DO"
@@ -31,12 +22,12 @@ for(fil in file.names){
   DO_13_all <- rbind(DO_13_all, DO13)
 }
 
-DO_13_all$DO[DO_13_all$DO<0] <- 0.01
-DO_13_all<- filter(DO_13_all, DO<6.5)
+DO_13_all$DO[DO_13_all$DO<0] <- 0.01 #remove erroneous data
+DO_13_all<- filter(DO_13_all, DO<6.5) #remove hours out of water
 S13<-left_join(samplingperiod, DO_13_all, by='Date')
 
 ggplot(DO_13_all, aes(x=Date))+
-  geom_line(aes(y=DO, color="DO"), size=0.8)
+  geom_line(aes(y=DO, color="DO"), size=0.8) #check
 
 write_xlsx(DO_13_all, "02_Clean_data/13/DO.xlsx")
 
@@ -46,9 +37,7 @@ file.names <- list.files(path="01_Raw_data/HOBO Excels/13/SpC", pattern=".csv", 
 
 SpC_13_all <- data.frame()
 for(fil in file.names){
-  SpC13 <- read_csv(fil,
-                   #col_types = c("skip","date", "numeric", "numeric"),
-                   skip= 1)
+  SpC13 <- read_csv(fil,skip= 1)
   SpC13<-SpC13[,c(2,3)]
   colnames(SpC13)[1] <- "Date"
   colnames(SpC13)[2] <- "SpC"
@@ -57,10 +46,10 @@ for(fil in file.names){
 }
 
 
-SpC_13_all<- filter(SpC_13_all, SpC> 50 & SpC<600)
+SpC_13_all<- filter(SpC_13_all, SpC> 50 & SpC<600) #remove hours out water and erroneous data
 S13<-left_join(S13, SpC_13_all, by='Date')
 ggplot(SpC_13_all, aes(x=Date))+
-  geom_line(aes(y=SpC, color="SpC"), size=0.8)
+  geom_line(aes(y=SpC, color="SpC"), size=0.8) #check
 
 write_xlsx(SpC_13_all, "02_Clean_data/13/DO.xlsx")
 
@@ -73,15 +62,14 @@ for(fil in file.names){
   pH13<-pH13[,c(2,5)]
   colnames(pH13)[1] <- "Date"
   colnames(pH13)[2] <- "pH"
-  #pH13$Date <- mdy_hms(pH13$Date)
   pH_13_all <- rbind(pH_13_all, pH13)
 }
 
 
-pH_13_all<- filter(pH_13_all, pH<7.5 & pH>4)
+pH_13_all<- filter(pH_13_all, pH<7.5 & pH>4) #remove hours out water and erroneous data
 S13<-left_join(S13, pH_13_all, by='Date')
 ggplot(pH_13_all, aes(x=Date))+
-  geom_line(aes(y=pH, color="pH"), size=0.8)
+  geom_line(aes(y=pH, color="pH"), size=0.8) #check
 
 write_xlsx(pH_13_all, "02_Clean_data/13/pH.xlsx")
 
@@ -95,11 +83,8 @@ for(fil in file.names){
                                    "CO2" = col_number()))
   LB13<-LB13[,c(1,4)]
   colnames(LB13)[2] <- "FDOM"
-  #LB13<-filter(LB13,FDOM>5)
+  LB13<-filter(LB13,FDOM>5)#remove hours out water
   LB_13FDOM_csv <- rbind(LB_13FDOM_csv, LB13) }
-
-ggplot(LB_13FDOM_csv, aes(x=Date))+
-  geom_line(aes(y=FDOM), size=0.8)
 
 file.names <- list.files(path="01_Raw_data/Lily Box/dat/13", pattern=".dat", full.names=TRUE)
 
@@ -107,16 +92,15 @@ LB_13FDOM_dat <- data.frame()
 for(fil in file.names){
   LB13 <- read_csv(fil, skip= 3)
   LB13<-LB13[,c(1,6)]
-
   colnames(LB13)[1] <- "Date"
   colnames(LB13)[2] <- "FDOM"
-  #LB13<-filter(LB13,FDOM>5)
-
+  LB13<-filter(LB13,FDOM>5) #remove hours out water
   LB_13FDOM_dat <- rbind(LB_13FDOM_dat, LB13)}
 
-ggplot(LB_13FDOM_dat, aes(x=Date))+ geom_line(aes(y=FDOM), size=0.8) #check
-
 LB13_FDOM<-rbind(LB_13FDOM_csv, LB_13FDOM_dat)
+
+ggplot(LB13_FDOM, aes(x=Date))+ geom_line(aes(y=FDOM), size=0.8) #check
+
 
 write_xlsx(LB13_FDOM, "02_Clean_data/13/FDOM.xlsx")
 
@@ -130,12 +114,7 @@ for(fil in file.names){
                                    "CO2" = col_number()))
   LB13<-LB13[,c(1,5)]
   colnames(LB13)[3] <- "CO2"
-  #LB13$CO2<-LB13$CO2-290
   LB_13CO2_csv <- rbind(LB_13CO2_csv, LB13) }
-
-ggplot(LB_13CO2_csv, aes(x=Date))+
-  geom_line(aes(y=CO2), size=0.8)
-
 
 file.names <- list.files(path="01_Raw_data/Lily Box/dat/13", pattern=".dat", full.names=TRUE)
 
@@ -143,30 +122,29 @@ LB_13CO2_dat <- data.frame()
 for(fil in file.names){
   LB13 <- read_csv(fil, skip= 5)
   LB13<-LB13[,c(1,4)]
-
   colnames(LB13)[1] <- "Date"
   colnames(LB13)[2] <- "CO2"
-  #LB13$CO2<-LB13$CO2-290
-  LB13<-filter(LB13, CO2> 500)
+  LB13<-filter(LB13, CO2> 500) #remove hours out of water
   LB_13CO2_dat <- rbind(LB_13CO2_dat, LB13)}
 
-ggplot(LB_13CO2_dat, aes(x=Date))+
-  geom_line(aes(y=CO2), size=0.8)
-
 LB13_CO2<-rbind(LB_13CO2_csv,LB_13CO2_dat)
+
+ggplot(LB13_CO2, aes(x=Date))+
+  geom_line(aes(y=CO2), size=0.8) #check
+
 write_xlsx(LB13_CO2, "02_Clean_data/13/CO2.xlsx")
 
 
 S13<-left_join(S13, LB13_FDOM, by='Date')
 S13<-left_join(S13, LB13_CO2, by='Date')
 
+###Stage#####
 S13<- S13 %>%
   mutate(Day= day(Date),
          Mon= month(Date),
          Year= year(Date))
 S13 <- S13[!duplicated(S13[c('Date')]),]
 
-###Stage#####
 
 h13 <- read_excel("02_Clean_data/Calculated_Stage/Stream #13.xlsx",
                  skip = 1)
@@ -177,61 +155,6 @@ S13<-rename(S13, "Stage"="Water Depth (m)",
            "Q"="Flow (L/s)")
 S13 <- S13[!duplicated(S13[c('Date')]),]
 S13$Site<-'13'
-S13<-filter(S13, Q>0)
+S13<-filter(S13, Q>0) #check
 write_xlsx(S13, "02_Clean_data/13.xlsx")
-
-#####Check and organize######
-theme_sam<-theme_minimal()+theme(axis.text.x = element_text(size = 15, angle=0),
-                                 axis.text.y = element_text(size = 15, angle=0),
-                                 axis.title.y =element_text(size = 15),
-                                 axis.title.x =element_blank(),
-                                 axis.title.y.right = element_text(),
-                                 plot.title = element_text(size = 15, angle=0),
-                                 legend.text=element_text(size=12),
-                                 legend.title=element_text(size=12),
-                                 legend.key.size = unit(0.5, "cm"),
-                                 legend.position = 'none',
-                                 panel.background = element_rect(fill = 'white'),
-                                 panel.grid.major = element_blank(),
-                                 panel.grid.minor = element_blank())
-
-
-(a<-ggplot(S13, aes(x=Date))+
-    geom_line(aes(y=CO2, color="CO2"), size=0.8)+
-    ylab(expression(CO[2]~ppm))+
-    scale_color_manual(values='orange')+theme_sam+
-    guides(color=guide_legend(title="")))
-
-(b<-ggplot(S13, aes(x=Date))+
-    geom_line(aes(y=DO, color="DO"), size=0.8)+
-    ylab('DO mg/L')+
-    scale_color_manual(values='blue')+theme_sam+
-    guides(color=guide_legend(title="")))
-
-(c<-ggplot(S13, aes(x=Date))+
-    geom_line(aes(y=SpC, color="SpC"), size=0.8)+
-    scale_color_manual(values='red')+
-    ylab('Conductivity')+theme_sam+
-    guides(color=guide_legend(title="")))
-
-(d<-ggplot(S13, aes(x=Date))+
-  geom_line(aes(y=FDOM, color="FDOM"), size=0.8)+
-  scale_color_manual(values='purple')+theme_sam+
-  guides(color=guide_legend(title="")))
-
-
-(e<-ggplot(S13, aes(x=Date))+
-    geom_line(aes(y=pH, color="pH"),  size=0.8)+
-    scale_color_manual(values='pink')+theme_sam+
-    guides(color=guide_legend(title="")))
-
-(f<-ggplot(S13, aes(x=Date))+
-    geom_line(aes(y=Stage),  size=0.8)+
-    scale_color_manual(values='black')+theme_sam+
-    guides(color=guide_legend(title="")))
-
-(f<-ggplot(S13, aes(x=Date))+
-    geom_line(aes(y=Q),  size=0.8)+
-    scale_color_manual(values='black')+theme_sam+
-    guides(color=guide_legend(title="")))
 

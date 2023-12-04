@@ -1,15 +1,8 @@
 #packages#####
-library(ggpubr)
 library(tidyverse)
-library(readxl)
 library(writexl)
 library(openxlsx)
 library(readxl)
-library(corrplot)
-library("broom")
-library(car)
-library(imputeTS)
-library(ggExtra)
 library(lubridate)
 
 samplingperiod <- read_csv("samplingperiod.csv")
@@ -154,6 +147,8 @@ S3<- left_join(S3, h3, by= c("Year","Mon","Day"))
 S3<-rename(S3, "Stage"="Water Depth (m)",
            "Q"="Flow (L/s)")
 S3<-filter(S3, Q>0) #remove ditch water
-S3 <- S3[!duplicated(S3[c('Date')]),]
 S3$Site<-"3"
 S3<-left_join(samplingperiod, S3)
+
+S3 <- S3[!duplicated(S3[c('Date')]),]
+write_xlsx(S3, "02_Clean_data/3.xlsx")
