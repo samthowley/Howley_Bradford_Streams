@@ -20,9 +20,7 @@ file.names <- list.files(path="01_Raw_data/HOBO Excels/3/DO", pattern=".csv", fu
 
 DO_3_all <- data.frame()
 for(fil in file.names){
-  DO3 <- read_csv(fil,
-                #col_types = c("skip","date", "numeric", "numeric"),
-                skip= 1)
+  DO3 <- read_csv(fil,skip= 1)
   DO3<-DO3[,c(2,3,4)]
   colnames(DO3)[1] <- "Date"
   colnames(DO3)[2] <- "DO"
@@ -32,12 +30,11 @@ for(fil in file.names){
   DO_3_all <- DO_3_all[!duplicated(DO_3_all[c('Date')]),]
 }
 
-DO_3_all$DO[DO_3_all$DO<0] <- NA
+DO_3_all$DO[DO_3_all$DO<0] <- NA #remove erroneous data
+DO_3_all<-filter(DO_3_all, DO< 6.8) #remove days out of the water
 S3<-left_join(samplingperiod, DO_3_all, by='Date')
 
-ggplot(DO_3_all, aes(x=Date))+
-  geom_line(aes(y=DO, color="DO"), size=0.8)+
-  geom_hline(yintercept = 7)
+ggplot(DO_3_all, aes(x=Date))+geom_line(aes(y=DO, color="DO"), size=0.8)#check
 
 write_xlsx(DO_3_all, "02_Clean_data/3/DO.xlsx")
 
@@ -47,9 +44,7 @@ file.names <- list.files(path="01_Raw_data/HOBO Excels/3/SpC", pattern=".csv", f
 
 SpC_3_all <- data.frame()
 for(fil in file.names){
-  SpC3 <- read_csv(fil,
-                   #col_types = c("skip","date", "numeric", "numeric"),
-                   skip= 1)
+  SpC3 <- read_csv(fil, skip= 1)
   SpC3<-SpC3[,c(2,3)]
   colnames(SpC3)[1] <- "Date"
   colnames(SpC3)[2] <- "SpC"
@@ -57,10 +52,10 @@ for(fil in file.names){
   SpC_3_all <- rbind(SpC_3_all, SpC3)
 }
 
-SpC_3_all<-filter(SpC_3_all, SpC>50)
+SpC_3_all<-filter(SpC_3_all, SpC>50)#remove hours out of water
 S3<-left_join(S3, SpC_3_all, by='Date')
-ggplot(SpC_3_all, aes(x=Date))+
-  geom_line(aes(y=SpC, color="SpC"), size=0.8)
+
+ggplot(SpC_3_all, aes(x=Date))+geom_line(aes(y=SpC, color="SpC"), size=0.8) #check
 
 write_xlsx(SpC_3_all, "02_Clean_data/3/SpC.xlsx")
 
@@ -76,10 +71,10 @@ for(fil in file.names){
   pH_3_all <- rbind(pH_3_all, pH3)
 }
 
-pH_3_all<-filter(pH_3_all, pH<6.2)
+pH_3_all<-filter(pH_3_all, pH<6.2) #remove hours out of water
 S3<-left_join(S3, pH_3_all, by='Date')
-ggplot(pH_3_all, aes(x=Date))+
-  geom_line(aes(y=pH, color="pH"), size=0.8)
+
+ggplot(pH_3_all, aes(x=Date))+geom_line(aes(y=pH, color="pH"), size=0.8)
 
 write_xlsx(pH_3_all, "02_Clean_data/3/pH.xlsx")
 
@@ -95,8 +90,7 @@ for(fil in file.names){
   colnames(LB3)[2] <- "FDOM"
   LB_3FDOM_csv <- rbind(LB_3FDOM_csv, LB3) }
 
-ggplot(LB_3FDOM_csv, aes(x=Date))+
-  geom_line(aes(y=FDOM), size=0.8)
+ggplot(LB_3FDOM_csv, aes(x=Date))+geom_line(aes(y=FDOM), size=0.8) #check
 
 file.names <- list.files(path="01_Raw_data/Lily Box/dat/3", pattern=".dat", full.names=TRUE)
 
@@ -108,13 +102,11 @@ for(fil in file.names){
   colnames(LB3)[2] <- "FDOM"
   LB_3FDOM_dat <- rbind(LB_3FDOM_dat, LB3)}
 
-ggplot(LB_3FDOM_dat, aes(x=Date))+
-  geom_line(aes(y=FDOM), size=0.8)
+ggplot(LB_3FDOM_dat, aes(x=Date))+geom_line(aes(y=FDOM), size=0.8) #check
 
 LB3_FDOM<-rbind(LB_3FDOM_csv, LB_3FDOM_dat)
-LB3_FDOM<-filter(LB3_FDOM, FDOM>1)
+LB3_FDOM<-filter(LB3_FDOM, FDOM>1) #remove hours out of water
 write_xlsx(LB3_FDOM, "02_Clean_data/3/FDOM.xlsx")
-
 
 file.names <- list.files(path="01_Raw_data/Lily Box/csv/3", pattern=".csv", full.names=TRUE)
 
@@ -140,29 +132,19 @@ for(fil in file.names){
 
 
 LB3_CO2<-rbind(LB_3CO2_csv,LB_3CO2_dat)
-LB3_CO2<-filter(LB3_CO2, CO2>500)
+LB3_CO2<-filter(LB3_CO2, CO2>500) #remove hours out of water
 write_xlsx(LB3_CO2, "02_Clean_data/3/CO2.xlsx")
 
-ggplot(LB3_CO2, aes(x=Date))+
-  geom_line(aes(y=CO2), size=0.8)
-
+ggplot(LB3_CO2, aes(x=Date))+geom_line(aes(y=CO2), size=0.8) #check
 
 S3<-left_join(S3, LB3_FDOM, by='Date')
 S3<-left_join(S3, LB3_CO2, by='Date')
 
-
-ggplot(S3, aes(x=Date))+
-  geom_line(aes(y=FDOM), size=0.8)+
-  geom_line(aes(y=CO2), size=0.8)
-
-
-
+###Stage#####
 S3<- S3 %>%
   mutate(Day= day(Date),
          Mon= month(Date),
          Year= year(Date))
-
-###Stage#####
 
 h3 <- read_excel("02_Clean_data/Calculated_Stage/Stream #3.xlsx",
                        skip = 1)
@@ -171,66 +153,7 @@ h3<-h3[,x]
 S3<- left_join(S3, h3, by= c("Year","Mon","Day"))
 S3<-rename(S3, "Stage"="Water Depth (m)",
            "Q"="Flow (L/s)")
-S3<-filter(S3, Q>0)
+S3<-filter(S3, Q>0) #remove ditch water
 S3 <- S3[!duplicated(S3[c('Date')]),]
 S3$Site<-"3"
 S3<-left_join(samplingperiod, S3)
-#####Check and organize######
-theme_sam<-theme_minimal()+theme(axis.text.x = element_text(size = 15, angle=0),
-              axis.text.y = element_text(size = 15, angle=0),
-              axis.title.y =element_text(size = 15),
-              axis.title.x =element_blank(),
-              axis.title.y.right = element_text(),
-              plot.title = element_text(size = 15, angle=0),
-              legend.text=element_text(size=12),
-              legend.title=element_text(size=12),
-              legend.key.size = unit(0.5, "cm"),
-              legend.position = 'none',
-              panel.background = element_rect(fill = 'white'),
-              panel.grid.major = element_blank(),
-              panel.grid.minor = element_blank())
-
-(g<-ggplot(S3, aes(x=Date))+
-   geom_line(aes(y=Stage*1000, colour="stage"),  size=0.8)+
-   geom_line(aes(y=Q, colour="Q"),  size=0.8)+
-   geom_hline(yintercept = 15)+
-   theme_sam+
-   guides(color=guide_legend(title="")))
-
-
-(a<-ggplot(S3, aes(x=Date))+
-    geom_line(aes(y=CO2, color="CO2"), size=0.8)+
-    ylab(expression(CO[2]~ppm))+
-    scale_color_manual(values='orange')+
-    theme_sam+
-    guides(color=guide_legend(title="")))
-
-(b<-ggplot(S3, aes(x=Date))+
-    geom_line(aes(y=DO, color="DO"), size=0.8)+
-    ylab('DO mg/L')+
-    scale_color_manual(values='blue')+
-    theme_sam+
-    guides(color=guide_legend(title="")))
-
-(c<-ggplot(S3, aes(x=Date))+
-    geom_line(aes(y=SpC, color="SpC"), size=0.8)+
-    scale_color_manual(values='red')+
-    ylab('Conductivity')+
-    geom_hline(yintercept = 50)+
-    theme_sam+
-    guides(color=guide_legend(title="")))
-
-(d<-ggplot(S3, aes(x=Date))+
-  geom_line(aes(y=FDOM, color="FDOM"), size=0.8)+
-  scale_color_manual(values='purple')+
-    theme_sam+
-    guides(color=guide_legend(title="")))
-
-
-(e<-ggplot(S3, aes(x=Date))+
-    geom_line(aes(y=pH, color="pH"),  size=0.8)+
-    scale_color_manual(values='pink')+
-    theme_sam+
-    guides(color=guide_legend(title="")))
-
-write_xlsx(S3, "02_Clean_data/3.xlsx")
