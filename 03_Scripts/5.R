@@ -157,7 +157,7 @@ h5<-h5[,x]
 S5<- left_join(S5, h5, by= c("Year","Mon","Day"))
 S5<-rename(S5, "Stage"="Water Depth (m)",
            "Q"="Flow (L/s)")
-S5<-filter(S5, Q>0) #remove hours with ditch water
+#S5<-filter(S5, Q>0) #remove hours with ditch water
 S5 <- S5[!duplicated(S5[c('Date')]),]
 S5$Site<-"5"
 S5<-left_join(samplingperiod,S5)

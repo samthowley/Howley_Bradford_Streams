@@ -15,7 +15,7 @@ samplingperiod$Date <- mdy_hm(samplingperiod$Date)
 ###DO#######
 file.names <- list.files(path="01_Raw_data/HOBO Excels/5a/DO", pattern=".csv", full.names=TRUE)
 
-DO_5a_all <- data.frame()
+DO_5a <- data.frame()
 for(fil in file.names){
   DO5a <- read_csv(fil,skip= 1)
   DO5a<-DO5a[,c(2,3,4)]
@@ -23,9 +23,23 @@ for(fil in file.names){
   colnames(DO5a)[2] <- "DO"
   colnames(DO5a)[3] <- "Temp"
   DO5a$Date <- mdy_hms(DO5a$Date)
-  DO_5a_all <- rbind(DO_5a_all, DO5a)
+  DO_5a<- rbind(DO_5a, DO5a)
 }
 
+file.names <- list.files(path="01_Raw_data/MiniDot/5a", pattern=".TXT", full.names=TRUE)
+
+MiniDot_5a <- data.frame()
+for(fil in file.names){
+  DO5a <- read_csv(fil,skip= 8)
+  DO5a<-DO5a[,c(3,6,5)]
+  colnames(DO5a)[1] <- "Date"
+  colnames(DO5a)[2] <- "DO"
+  colnames(DO5a)[3] <- "Temp"
+  MiniDot_5a <- rbind(MiniDot_5a, DO5a)
+}
+
+
+DO_5a_all<-rbind(DO_5a,MiniDot_5a)
 DO_5a_all$DO[DO_5a_all$DO<0] <- NA
 DO_5a_all<- filter(DO_5a_all, DO<7.4)#remove hours out of water
 S5a<-left_join(samplingperiod, DO_5a_all, by='Date')
@@ -153,7 +167,7 @@ h5a<-h5a[,x]
 S5a<- left_join(S5a, h5a, by= c("Year","Mon","Day"))
 S5a<-rename(S5a, "Stage"="Water Depth (m)",
            "Q"="Flow (L/s)")
-S5a<-filter(S5a, Q>0) #remove ditch water
+#S5a<-filter(S5a, Q>0) #remove ditch water
 S5a$Site<-'5a'
 S5a<-left_join(samplingperiod,S5a)
 

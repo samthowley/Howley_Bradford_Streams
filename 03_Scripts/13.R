@@ -155,6 +155,6 @@ S13<-rename(S13, "Stage"="Water Depth (m)",
            "Q"="Flow (L/s)")
 S13 <- S13[!duplicated(S13[c('Date')]),]
 S13$Site<-'13'
-S13<-filter(S13, Q>0) #check
+#S13<-filter(S13, Q>0) #check
 write_xlsx(S13, "02_Clean_data/13.xlsx")
 

@@ -11,7 +11,7 @@ samplingperiod$Date <- mdy_hm(samplingperiod$Date)
 ###DO#######
 file.names <- list.files(path="01_Raw_data/HOBO Excels/6/DO", pattern=".csv", full.names=TRUE)
 
-DO_6_all <- data.frame()
+DO_6 <- data.frame()
 for(fil in file.names){
   DO6 <- read_csv(fil,skip= 1)
   colnames(DO6)[2] <- "Date"
@@ -19,10 +19,25 @@ for(fil in file.names){
   colnames(DO6)[4] <- "Temp"
   DO6$Date <- mdy_hms(DO6$Date)
   DO6<-DO6[,-c(1)]
-  DO_6_all <- rbind(DO_6_all, DO6)
+  DO_6 <- rbind(DO_6, DO6)
 }
 
 
+file.names <- list.files(path="01_Raw_data/MiniDot/6", pattern=".TXT", full.names=TRUE)
+
+MiniDot_6 <- data.frame()
+for(fil in file.names){
+  DO6 <- read_csv(fil,skip= 8)
+  DO6<-DO6[,c(3,6,5)]
+  colnames(DO6)[1] <- "Date"
+  colnames(DO6)[2] <- "DO"
+  colnames(DO6)[3] <- "Temp"
+  #DO6$Date <- mdy_hms(DO6$Date)
+  MiniDot_6 <- rbind(MiniDot_6, DO6)
+}
+
+
+DO_6_all<-rbind(DO_6,MiniDot_6)
 DO_6_all$DO[DO_6_all$DO<0] <- 0.01 #remove erroneous data
 DO_6_all<-filter(DO_6_all, DO<6) #remove hours out of water
 ggplot(DO_6_all, aes(x=Date))+geom_line(aes(y=DO, color="DO"), size=0.8) #check

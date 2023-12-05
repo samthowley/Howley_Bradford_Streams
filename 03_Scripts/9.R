@@ -151,7 +151,7 @@ h9<-h9[,x]
 S9<- left_join(S9, h9, by= c("Year","Mon","Day"))
 S9<-rename(S9, "Stage"="Water Depth (m)",
            "Q"="Flow (L/s)")
-S9<-filter(S9, Q>0) #remove ditch water
+#S9<-filter(S9, Q>0) #remove ditch water
 S9 <- S9[!duplicated(S9[c('Date')]),]
 S9$Site<-"9"
 

@@ -1,3 +1,5 @@
+rm(list=ls())
+
 #packages#####
 library(tidyverse)
 library(writexl)
@@ -23,11 +25,15 @@ for(fil in file.names){
   DO_3_all <- DO_3_all[!duplicated(DO_3_all[c('Date')]),]
 }
 
-DO_3_all$DO[DO_3_all$DO<0] <- NA #remove erroneous data
-DO_3_all<-filter(DO_3_all, DO< 6.8) #remove days out of the water
-S3<-left_join(samplingperiod, DO_3_all, by='Date')
+#remove erroneous data
+#remove days out of the water
+for(i in 1:nrow(DO_3_all)){
+  if(DO_3_all$DO[i]<=0 | DO_3_all$DO[i]>=6.8) { DO_3_all$DO[i]<- NA}
+  else {DO_3_all$DO[i]<- DO_3_all$DO[i]-0 }}
+DO_3_all<-filter(DO_3_all, Temp>0)
 
-ggplot(DO_3_all, aes(x=Date))+geom_line(aes(y=DO, color="DO"), size=0.8)#check
+S3<-left_join(samplingperiod, DO_3_all, by='Date')
+ggplot(DO_3_all, aes(x=Date))+geom_line(aes(y=Temp, color="DO"), size=0.8)#check
 
 write_xlsx(DO_3_all, "02_Clean_data/3/DO.xlsx")
 
@@ -146,7 +152,7 @@ h3<-h3[,x]
 S3<- left_join(S3, h3, by= c("Year","Mon","Day"))
 S3<-rename(S3, "Stage"="Water Depth (m)",
            "Q"="Flow (L/s)")
-S3<-filter(S3, Q>0) #remove ditch water
+#S3<-filter(S3, Q>0) #remove ditch water
 S3$Site<-"3"
 S3<-left_join(samplingperiod, S3)
 

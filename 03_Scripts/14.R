@@ -160,7 +160,7 @@ h14<-h14[,x]
 S14<- left_join(S14, h14, by= c("Year","Mon","Day"))
 S14<-rename(S14, "Stage"="Water Depth (m)",
            "Q"="Flow (L/s)")
-S14<-filter(S14, Q>0) #remove ditch water
+#S14<-filter(S14, Q>0) #remove ditch water
 S14 <- S14[!duplicated(S14[c('Date')]),]
 S14$Site<-"14"
 write_xlsx(S14, "02_Clean_data/14.xlsx")

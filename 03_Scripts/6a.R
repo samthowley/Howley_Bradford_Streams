@@ -9,7 +9,7 @@ samplingperiod <- read_csv("samplingperiod.csv")
 samplingperiod$Date <- mdy_hm(samplingperiod$Date)
 
 ###DO#######
-file.names <- list.files(path="HOBO Excels/6a/DO", pattern=".csv", full.names=TRUE)
+file.names <- list.files(path="01_Raw_data/Hobo Excels/6a/DO", pattern=".csv", full.names=TRUE)
 
 DO_6a_all <- data.frame()
 for(fil in file.names){
@@ -29,7 +29,7 @@ S6a<-left_join(samplingperiod, DO_6a_all, by='Date')
 ggplot(DO_6a_all, aes(x=Date))+geom_line(aes(y=DO, color="DO"), size=0.8) #check
 ###SpC#####
 
-file.names <- list.files(path="HOBO Excels/6a/SpC", pattern=".csv", full.names=TRUE)
+file.names <- list.files(path="01_Raw_data/HOBO Excels/6a/SpC", pattern=".csv", full.names=TRUE)
 
 SpC_6a_all <- data.frame()
 for(fil in file.names){
@@ -47,7 +47,7 @@ S6a<-left_join(S6a, SpC_6a_all, by='Date')
 ggplot(SpC_6a_all, aes(x=Date))+geom_line(aes(y=SpC, color="SpC"), size=0.8) #check
 
 ####pH#####
-file.names <- list.files(path="HOBO Excels/6a/pH", pattern=".xlsx", full.names=TRUE)
+file.names <- list.files(path="01_Raw_data/HOBO Excels/6a/pH", pattern=".xlsx", full.names=TRUE)
 
 pH_6a_all <- data.frame()
 for(fil in file.names){
@@ -64,7 +64,7 @@ S6a<-left_join(S6a, pH_6a_all, by='Date')
 ggplot(pH_6a_all, aes(x=Date))+geom_line(aes(y=pH, color="pH"), size=0.8)#checl
 
 ####Lily Box#######
-file.names <- list.files(path="Lily Box/csv/6a", pattern=".csv", full.names=TRUE)
+file.names <- list.files(path="01_Raw_data/Lily Box/csv/6a", pattern=".csv", full.names=TRUE)
 
 LB_6aFDOM_csv <- data.frame()
 for(fil in file.names){
@@ -77,7 +77,7 @@ for(fil in file.names){
   LB_6aFDOM_csv <- rbind(LB_6aFDOM_csv, LB6a) }
 
 
-file.names <- list.files(path="Lily Box/dat/6a", pattern=".dat", full.names=TRUE)
+file.names <- list.files(path="01_Raw_data/Lily Box/dat/6a", pattern=".dat", full.names=TRUE)
 
 LB_6aFDOM_dat <- data.frame()
 for(fil in file.names){
@@ -94,7 +94,7 @@ ggplot(LB6a_FDOM, aes(x=Date))+geom_line(aes(y=FDOM), size=0.8) #checl
 
 
 
-file.names <- list.files(path="Lily Box/csv/6a", pattern=".csv", full.names=TRUE)
+file.names <- list.files(path="01_Raw_data/Lily Box/csv/6a", pattern=".csv", full.names=TRUE)
 
 LB_6aCO2_csv <- data.frame()
 for(fil in file.names){
@@ -107,7 +107,7 @@ for(fil in file.names){
   LB_6aCO2_csv <- rbind(LB_6aCO2_csv, LB6a) }
 
 
-file.names <- list.files(path="Lily Box/dat/6a", pattern=".dat", full.names=TRUE)
+file.names <- list.files(path="01_Raw_data/Lily Box/dat/6a", pattern=".dat", full.names=TRUE)
 
 LB_6aCO2_dat <- data.frame()
 for(fil in file.names){
@@ -132,14 +132,13 @@ S6a<- S6a %>%
          Mon= month(Date),
          Year= year(Date))
 
-h6a <- read_excel("//ad.ufl.edu/ifas/SFRC/Groups/Hydrology/Bradford_Forest_Project/Streams/Stream_H20_level/Calculated_Stage/Stream #6a.xlsx",
-                       skip = 1)
+h6a <- read_excel("02_Clean_data/Calculated_Stage/Stream #6a.xlsx",skip = 1)
 x<-c("Water Depth (m)","Flow (L/s)","Year","Mon","Day" )
 h6a<-h6a[,x]
 S6a<- left_join(S6a, h6a, by= c("Year","Mon","Day"))
 S6a<-rename(S6a, "Stage"="Water Depth (m)",
            "Q"="Flow (L/s)")
-S6a<-filter(S6a, Q>0) #remove ditch water
+#S6a<-filter(S6a, Q>0) #remove ditch water
 S6a <- S6a[!duplicated(S6a[c('Date')]),]
 S6a$Site<-'6a'
 write_xlsx(S6a, "//ad.ufl.edu/ifas/SFRC/Groups/Hydrology/Bradford_Forest_Project/Masterfiles_latest/Stream Chemistry/6a.xlsx")
