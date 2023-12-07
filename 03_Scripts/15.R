@@ -23,8 +23,12 @@ for(fil in file.names){
   DO_15_all <- rbind(DO_15_all, DO15)
 }
 
-DO_15_all$DO[DO_15_all$DO<0] <- 0.01 #remove erroneous data
-DO_15_all<- filter(DO_15_all, DO<6.5) #remove hours out of the water
+#remove erroneous data
+#remove hours out of the water
+for(i in 1:nrow(DO_15_all)){
+  if(DO_15_all$DO[i]<=0 | DO_15_all$DO[i]>=6.5) { DO_15_all$DO[i]<- NA}
+  else {DO_15_all$DO[i]<- DO_15_all$DO[i]-0 }}
+
 S15<-left_join(samplingperiod, DO_15_all, by='Date')
 
 ggplot(DO_15_all, aes(x=Date))+

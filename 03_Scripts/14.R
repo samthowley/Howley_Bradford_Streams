@@ -22,8 +22,12 @@ for(fil in file.names){
   DO_14_all <- rbind(DO_14_all, DO14)
 }
 
-DO_14_all$DO[DO_14_all$DO<0] <- 0.01 #remove erroneous
-DO_14_all<- filter(DO_14_all, DO<7.5) #remove hours out of water
+#remove erroneous
+#remove hours out of water
+for(i in 1:nrow(DO_14_all)){
+  if(DO_14_all$DO[i]<=0 | DO_14_all$DO[i]>=7.5) { DO_14_all$DO[i]<- NA}
+  else {DO_14_all$DO[i]<- DO_14_all$DO[i]-0 }}
+
 S14<-left_join(samplingperiod, DO_14_all, by='Date')
 
 ggplot(DO_14_all, aes(x=Date))+

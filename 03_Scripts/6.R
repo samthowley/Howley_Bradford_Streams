@@ -40,7 +40,11 @@ for(fil in file.names){
 DO_6_all<-rbind(DO_6,MiniDot_6)
 DO_6_all$DO[DO_6_all$DO<0] <- 0.01 #remove erroneous data
 DO_6_all<-filter(DO_6_all, DO<6) #remove hours out of water
+
 ggplot(DO_6_all, aes(x=Date))+geom_line(aes(y=DO, color="DO"), size=0.8) #check
+for(i in 1:nrow(DO_6_all)){
+  if(DO_6_all$DO[i]<=0 | DO_6_all$DO[i]>=7.4) { DO_6_all$DO[i]<- NA}
+  else {DO_6_all$DO[i]<- DO_6_all$DO[i]-0 }}
 
 S6<-left_join(samplingperiod, DO_6_all, by='Date')
 

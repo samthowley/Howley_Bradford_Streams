@@ -8,10 +8,6 @@ library(lubridate)
 samplingperiod <- read_csv("samplingperiod.csv")
 samplingperiod$Date <- mdy_hm(samplingperiod$Date)
 
-#####setwd####
-samplingperiod <- read_csv("samplingperiod.csv")
-samplingperiod$Date <- mdy_hm(samplingperiod$Date)
-
 ###DO#######
 file.names <- list.files(path="01_Raw_data/HOBO Excels/5a/DO", pattern=".csv", full.names=TRUE)
 
@@ -40,8 +36,10 @@ for(fil in file.names){
 
 
 DO_5a_all<-rbind(DO_5a,MiniDot_5a)
-DO_5a_all$DO[DO_5a_all$DO<0] <- NA
-DO_5a_all<- filter(DO_5a_all, DO<7.4)#remove hours out of water
+for(i in 1:nrow(DO_5a_all)){
+  if(DO_5a_all$DO[i]<=0 | DO_5a_all$DO[i]>=7.4) { DO_5a_all$DO[i]<- NA}
+  else {DO_5a_all$DO[i]<- DO_5a_all$DO[i]-0 }}
+DO_5a_all<-filter(DO_5a_all, Temp>0)
 S5a<-left_join(samplingperiod, DO_5a_all, by='Date')
 
 ggplot(DO_5a_all, aes(x=Date))+geom_line(aes(y=DO, color="DO"), size=0.8)#check

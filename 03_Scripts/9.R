@@ -22,8 +22,11 @@ for(fil in file.names){
   DO_9_all <- rbind(DO_9_all, DO9)
 }
 
-DO_9_all$DO[DO_9_all$DO<0] <- 0.01 #remove erroneous data
-DO_9_all<- filter(DO_9_all, DO<6.5) #remove hours out of water
+#remove erroneous data
+#remove hours out of the water
+for(i in 1:nrow(DO_9_all)){
+  if(DO_9_all$DO[i]<=0 | DO_9_all$DO[i]>=6.5) { DO_9_all$DO[i]<- NA}
+  else {DO_9_all$DO[i]<- DO_9_all$DO[i]-0 }}
 
 ggplot(DO_9_all, aes(x=Date))+geom_line(aes(y=DO, color="DO"), size=0.8)#check
 S9<-left_join(samplingperiod, DO_9_all, by='Date')

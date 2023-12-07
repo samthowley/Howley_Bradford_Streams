@@ -22,11 +22,18 @@ for(fil in file.names){
   DO_6a_all <- rbind(DO_6a_all, DO6a)
 }
 
-DO_6a_all$DO[DO_6a_all$DO<0] <- 0.01 #remove erroneous data
-DO_6a_all<- filter(DO_6a_all, DO<6) #remove hours our of water
+#remove erroneous data
+#remove hours out of the water
+for(i in 1:nrow(DO_6a_all)){
+  if(DO_6a_all$DO[i]<=0 | DO_6a_all$DO[i]>=6) { DO_6a_all$DO[i]<- NA}
+  else {DO_6a_all$DO[i]<- DO_6a_all$DO[i]-0 }}
+
 S6a<-left_join(samplingperiod, DO_6a_all, by='Date')
 
 ggplot(DO_6a_all, aes(x=Date))+geom_line(aes(y=DO, color="DO"), size=0.8) #check
+
+write_xlsx(DO_6a_all, "02_Clean_data/6a/DO.xlsx")
+
 ###SpC#####
 
 file.names <- list.files(path="01_Raw_data/HOBO Excels/6a/SpC", pattern=".csv", full.names=TRUE)
@@ -46,6 +53,8 @@ SpC_6a_all<- filter(SpC_6a_all, SpC>50 &SpC<300)#remove hours our of water and e
 S6a<-left_join(S6a, SpC_6a_all, by='Date')
 ggplot(SpC_6a_all, aes(x=Date))+geom_line(aes(y=SpC, color="SpC"), size=0.8) #check
 
+write_xlsx(DO_6a_all, "02_Clean_data/6a/DO.xlsx")
+
 ####pH#####
 file.names <- list.files(path="01_Raw_data/HOBO Excels/6a/pH", pattern=".xlsx", full.names=TRUE)
 
@@ -59,9 +68,11 @@ for(fil in file.names){
 }
 
 
-pH_6a_all<- filter(pH_6a_all, pH<6.9) #remove hours our of water
+pH_6a_all<- filter(pH_6a_all, pH<6.6a) #remove hours our of water
 S6a<-left_join(S6a, pH_6a_all, by='Date')
 ggplot(pH_6a_all, aes(x=Date))+geom_line(aes(y=pH, color="pH"), size=0.8)#checl
+
+write_xlsx(DO_6a_all, "02_Clean_data/6a/DO.xlsx")
 
 ####Lily Box#######
 file.names <- list.files(path="01_Raw_data/Lily Box/csv/6a", pattern=".csv", full.names=TRUE)
@@ -92,6 +103,7 @@ LB6a_FDOM<-rbind(LB_6aFDOM_csv, LB_6aFDOM_dat)
 
 ggplot(LB6a_FDOM, aes(x=Date))+geom_line(aes(y=FDOM), size=0.8) #checl
 
+write_xlsx(DO_6a_all, "02_Clean_data/6a/DO.xlsx")
 
 
 file.names <- list.files(path="01_Raw_data/Lily Box/csv/6a", pattern=".csv", full.names=TRUE)
@@ -120,7 +132,10 @@ for(fil in file.names){
 
 LB6_CO2<-rbind(LB_6aCO2_csv,LB_6aCO2_dat)
 
-ggplot(LB6_CO2, aes(x=Date))+geom_line(aes(y=CO2), size=0.8) #checl
+ggplot(LB6_CO2, aes(x=Date))+geom_line(aes(y=CO2), size=0.8) #check
+
+write_xlsx(DO_6a_all, "02_Clean_data/6a/DO.xlsx")
+
 
 S6a<-left_join(S6a, LB6a_FDOM, by='Date')
 S6a<-left_join(S6a, LB6_CO2, by='Date')
@@ -141,5 +156,5 @@ S6a<-rename(S6a, "Stage"="Water Depth (m)",
 #S6a<-filter(S6a, Q>0) #remove ditch water
 S6a <- S6a[!duplicated(S6a[c('Date')]),]
 S6a$Site<-'6a'
-write_xlsx(S6a, "//ad.ufl.edu/ifas/SFRC/Groups/Hydrology/Bradford_Forest_Project/Masterfiles_latest/Stream Chemistry/6a.xlsx")
+write_xlsx(S6a, "02_Clean_data/6a.xlsx")
 

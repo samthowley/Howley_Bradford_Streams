@@ -13,7 +13,6 @@ library(weathermetrics)
 library('StreamMetabolism')
 
 
-
 bayes_name <- mm_name(type='bayes', pool_K600='normal', err_obs_iid=TRUE, err_proc_iid=TRUE)
 
 bayes_specs <- specs(bayes_name, K600_daily_meanlog_meanlog=0.1, K600_daily_meanlog_sdlog=0.001, GPP_daily_lower=0,
@@ -37,7 +36,7 @@ metabolism <- function(site) {
   site<-site[,y]
   mm <- metab(bayes_specs, data=site)
   prediction2 <- mm@fit$daily %>% select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean)
-  return(site)
+  return(prediction2)
 }
 
 file.names <- list.files(path="02_Clean_data",pattern="xlsx", full.names=TRUE)

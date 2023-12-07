@@ -21,9 +21,11 @@ for(fil in file.names){
   DO7$Date <- mdy_hms(DO7$Date)
   DO_7_all <- rbind(DO_7_all, DO7)
 }
-
-DO_7_all$DO[DO_7_all$DO<0] <- 0.01 #remove erroneous data
-DO_7_all<- filter(DO_7_all, DO<7) #remove hours out of water
+#remove erroneous data
+#remove hours out of the water
+for(i in 1:nrow(DO_7_all)){
+  if(DO_7_all$DO[i]<=0 | DO_7_all$DO[i]>=7) { DO_7_all$DO[i]<- NA}
+  else {DO_7_all$DO[i]<- DO_7_all$DO[i]-0 }}
 S7<-left_join(samplingperiod, DO_7_all, by='Date')
 
 ggplot(DO_7_all, aes(x=Date))+geom_line(aes(y=DO, color="DO"), size=0.8) #check
