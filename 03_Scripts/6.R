@@ -48,7 +48,7 @@ for(i in 1:nrow(DO_6_all)){
 
 S6<-left_join(samplingperiod, DO_6_all, by='Date')
 
-write_xlsx(DO_6_all, "02_Clean_data/6/DO.xlsx")
+write_csv(DO_6_all, "02_Clean_data/6/DO.csv")
 
 ###SpC#####
 
@@ -71,7 +71,7 @@ ggplot(SpC_6_all, aes(x=Date))+geom_line(aes(y=SpC, color="SpC"), size=0.8) #che
 
 S6<-left_join(S6, SpC_6_all, by='Date')
 
-write_xlsx(SpC_6_all, "02_Clean_data/6/SpC.xlsx")
+write_csv(SpC_6_all, "02_Clean_data/6/SpC.csv")
 
 ####pH#####
 file.names <- list.files(path="01_Raw_data/HOBO Excels/6/pH", pattern=".xlsx", full.names=TRUE)
@@ -89,7 +89,7 @@ for(fil in file.names){
 pH_6_all<- filter(pH_6_all, pH>-1) #remove erroneous data
 S6<-left_join(S6, pH_6_all, by='Date')
 ggplot(pH6, aes(x=Date))+geom_line(aes(y=pH, color="pH"), size=0.8) #check
-write_xlsx(pH_6_all, "02_Clean_data/6/pH.xlsx")
+write_csv(pH_6_all, "02_Clean_data/6/pH.csv")
 
 ####Lily Box#######
 file.names <- list.files(path="01_Raw_data/Lily Box/csv/6", pattern=".csv", full.names=TRUE)
@@ -120,7 +120,7 @@ LB6_FDOM<-rbind(LB_6FDOM_csv, LB_6FDOM_dat)
 
 ggplot(LB6_FDOM, aes(x=Date))+geom_line(aes(y=FDOM), size=0.8) #check
 
-write_xlsx(LB6_FDOM, "02_Clean_data/6/FDOM.xlsx")
+write_csv(LB6_FDOM, "02_Clean_data/6/FDOM.csv")
 
 
 
@@ -152,7 +152,7 @@ LB6_CO2<-rbind(LB_6CO2_csv,LB_6CO2_dat)
 ggplot(LB_6CO2, aes(x=Date))+geom_line(aes(y=CO2), size=0.8)
 
 
-write_xlsx(LB6_CO2, "02_Clean_data/6/CO2.xlsx")
+write_csv(LB6_CO2, "02_Clean_data/6/CO2.csv")
 
 S6<-left_join(S6, LB6_FDOM, by='Date')
 S6<-left_join(S6, LB6_CO2, by='Date')
@@ -177,6 +177,6 @@ S6$Site<-"6"
 S6<-left_join(samplingperiod,S6)
 S6 <- S6[!duplicated(S6[c('Date')]),]
 
-write_xlsx(S6, "02_Clean_data/6.xlsx")
+write_csv(S6, "02_Clean_data/6.csv")
 
 

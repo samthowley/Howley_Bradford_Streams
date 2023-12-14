@@ -30,7 +30,7 @@ S7<-left_join(samplingperiod, DO_7_all, by='Date')
 
 ggplot(DO_7_all, aes(x=Date))+geom_line(aes(y=DO, color="DO"), size=0.8) #check
 
-write_xlsx(DO_7_all, "02_Clean_data/7/DO.xlsx")
+write_csv(DO_7_all, "02_Clean_data/7/DO.csv")
 
 ###SpC#####
 
@@ -51,7 +51,7 @@ SpC_7_all<- filter(SpC_7_all, SpC>50 & SpC<400) #remove hours out of water and e
 S7<-left_join(S7, SpC_7_all, by='Date')
 ggplot(SpC_7_all, aes(x=Date))+geom_line(aes(y=SpC, color="SpC"), size=0.8) #check
 
-write_xlsx(SpC_7_all, "02_Clean_data/7/SpC.xlsx")
+write_csv(SpC_7_all, "02_Clean_data/7/SpC.csv")
 
 ####pH#####
 file.names <- list.files(path="01_Raw_data/HOBO Excels/7/pH", pattern=".xlsx", full.names=TRUE)
@@ -71,7 +71,7 @@ S7<-left_join(S7, pH_7_all, by='Date')
 
 ggplot(pH_7_all, aes(x=Date))+geom_line(aes(y=pH, color="pH"), size=0.8) #check
 
-write_xlsx(pH_7_all, "02_Clean_data/7/pH.xlsx")
+write_csv(pH_7_all, "02_Clean_data/7/pH.csv")
 
 ####Lily Box#######
 file.names <- list.files(path="01_Raw_data/Lily Box/csv/7", pattern=".csv", full.names=TRUE)
@@ -100,7 +100,7 @@ for(fil in file.names){
 
 LB7_FDOM<-rbind(LB_7FDOM_csv, LB_7FDOM_dat)
 
-write_xlsx(LB7_FDOM, "02_Clean_data/7/FDOM.xlsx")
+write_csv(LB7_FDOM, "02_Clean_data/7/FDOM.csv")
 
 
 
@@ -136,7 +136,7 @@ LB7_CO2<-rbind(LB_7CO2_csv,LB_7CO2_dat)
 
 ggplot(LB7_CO2, aes(x=Date))+geom_line(aes(y=CO2), size=0.8) #check
 
-write_xlsx(LB7_CO2, "02_Clean_data/7/CO2.xlsx")
+write_csv(LB7_CO2, "02_Clean_data/7/CO2.csv")
 
 S7<-left_join(S7, LB7_FDOM, by='Date')
 S7<-left_join(S7, LB7_CO2, by='Date')
@@ -161,5 +161,5 @@ S7<-rename(S7, "Stage"="Water Depth (m)",
 #S7<-filter(S7, Q>0) #remove ditch water
 S7 <- S7[!duplicated(S7[c('Date')]),]
 S7$Site<-'7'
-write_xlsx(S7, "02_Clean_data/7.xlsx")
+write_csv(S7, "02_Clean_data/7.csv")
 

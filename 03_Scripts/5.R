@@ -35,7 +35,7 @@ S5<-left_join(samplingperiod, DO_5_all, by='Date')
 ggplot(DO_5_all, aes(x=Date))+
   geom_line(aes(y=Temp, color="DO"), size=0.8) #check
 
-write_xlsx(DO_5_all, "02_Clean_data/5/DO.xlsx")
+write_csv(DO_5_all, "02_Clean_data/5/DO.csv")
 
 ###SpC#####
 
@@ -58,7 +58,7 @@ S5<-left_join(S5, SpC_5_all, by='Date')
 
 ggplot(SpC_5_all, aes(x=Date))+geom_line(aes(y=SpC, color="SpC"), size=0.8) #check
 
-write_xlsx(SpC_5_all, "02_Clean_data/5/SpC.xlsx")
+write_csv(SpC_5_all, "02_Clean_data/5/SpC.csv")
 
 ####pH#####
 file.names <- list.files(path="01_Raw_data/HOBO Excels/5/pH", pattern=".xlsx", full.names=TRUE)
@@ -77,7 +77,7 @@ pH_5_all<- filter(pH_5_all, pH>3.5) #remove hours out of water
 S5<-left_join(S5, pH_5_all, by='Date')
 ggplot(pH_5_all, aes(x=Date))+geom_line(aes(y=pH, color="pH"), size=0.8) #check
 
-write_xlsx(pH_5_all, "02_Clean_data/5/pH.xlsx")
+write_csv(pH_5_all, "02_Clean_data/5/pH.csv")
 
 ####Lily Box#######
 file.names <- list.files(path="01_Raw_data/Lily Box/csv/5", pattern=".csv", full.names=TRUE)
@@ -110,7 +110,7 @@ for(fil in file.names){
 ggplot(LB_5FDOM_dat, aes(x=Date))+geom_line(aes(y=FDOM), size=0.8) #check
 
 LB5_FDOM<-rbind(LB_5FDOM_csv, LB_5FDOM_dat)
-write_xlsx(LB5_FDOM, "02_Clean_data/5/FDOM.xlsx")
+write_csv(LB5_FDOM, "02_Clean_data/5/FDOM.csv")
 
 file.names <- list.files(path="01_Raw_data/Lily Box/csv/5", pattern=".csv", full.names=TRUE)
 
@@ -140,7 +140,7 @@ for(fil in file.names){
 ggplot(LB_5CO2_dat, aes(x=Date))+geom_line(aes(y=CO2), size=0.8) #check
 
 LB5_CO2<-rbind(LB_5CO2_csv,LB_5CO2_dat)
-write_xlsx(LB5_CO2, "02_Clean_data/5/CO2.xlsx")
+write_csv(LB5_CO2, "02_Clean_data/5/CO2.csv")
 
 S5<-left_join(S5, LB5_FDOM, by='Date')
 S5<-left_join(S5, LB5_CO2, by='Date')
@@ -163,5 +163,5 @@ S5 <- S5[!duplicated(S5[c('Date')]),]
 S5$Site<-"5"
 S5<-left_join(samplingperiod,S5)
 
-write_xlsx(S5, "02_Clean_data/5.xlsx")
+write_csv(S5, "02_Clean_data/5.csv")
 

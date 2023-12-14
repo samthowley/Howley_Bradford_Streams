@@ -34,7 +34,7 @@ S15<-left_join(samplingperiod, DO_15_all, by='Date')
 ggplot(DO_15_all, aes(x=Date))+
   geom_line(aes(y=DO, color="DO"), size=0.8) #check
 
-write_xlsx(DO_15_all, "02_Clean_data/15/DO.xlsx")
+write_csv(DO_15_all, "02_Clean_data/15/DO.csv")
 
 ###SpC#####
 
@@ -55,7 +55,7 @@ SpC_15_all<- filter(SpC_15_all, SpC>50 & SpC<300) #remove hours out of the water
 S15<-left_join(S15, SpC_15_all, by='Date')
 ggplot(SpC_15_all, aes(x=Date))+geom_line(aes(y=SpC, color="SpC"), size=0.8) #check
 
-write_xlsx(SpC_15_all, "02_Clean_data/15/SpC.xlsx")
+write_csv(SpC_15_all, "02_Clean_data/15/SpC.csv")
 
 ####pH#####
 file.names <- list.files(path="01_Raw_data/HOBO Excels/15/pH", pattern=".xlsx", full.names=TRUE)
@@ -75,7 +75,7 @@ S15<-left_join(S15, pH_15_all, by='Date')
 ggplot(pH_15_all, aes(x=Date))+
   geom_line(aes(y=pH, color="pH"), size=0.8) #check
 
-write_xlsx(pH_15_all, "02_Clean_data/15/pH.xlsx")
+write_csv(pH_15_all, "02_Clean_data/15/pH.csv")
 
 
 ####Lily Box#######
@@ -123,7 +123,7 @@ LB15<-rbind(LB_15FDOM_csv, LB_15FDOM_dat)
 ggplot(LB15, aes(x=Date))+
   geom_line(aes(y=FDOM), size=0.8)#check
 
-write_xlsx(LB15, "02_Clean_data/15/FDOM.xlsx")
+write_csv(LB15, "02_Clean_data/15/FDOM.csv")
 
 S15<-left_join(S15, LB15, by='Date')
 S15$CO2<-NA #allows 02_Clean_data to be called in by a loop
@@ -145,5 +145,5 @@ S15<-rename(S15, "Stage"="Water Depth (m)",
 #S15<-filter(S15, Q>0) #remove ditch water
 S15 <- S15[!duplicated(S15[c('Date')]),]
 S15$Site<-'15'
-write_xlsx(S15, "02_Clean_data/15.xlsx")
+write_csv(S15, "02_Clean_data/15.csv")
 

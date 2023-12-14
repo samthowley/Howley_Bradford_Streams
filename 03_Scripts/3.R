@@ -7,7 +7,7 @@ library(openxlsx)
 library(readxl)
 library(lubridate)
 
-samplingperiod <- read_csv("samplingperiod.csv")
+samplingperiod <- read_csv("02_Clean_data/samplingperiod.csv") #days logged by sensors
 samplingperiod$Date <- mdy_hm(samplingperiod$Date)
 
 ###DO#######
@@ -35,7 +35,7 @@ DO_3_all<-filter(DO_3_all, Temp>0)
 S3<-left_join(samplingperiod, DO_3_all, by='Date')
 ggplot(DO_3_all, aes(x=Date))+geom_line(aes(y=Temp, color="DO"), size=0.8)#check
 
-write_xlsx(DO_3_all, "02_Clean_data/3/DO.xlsx")
+write_csv(DO_3_all, "02_Clean_data/3/DO.csv")
 
 ###SpC#####
 
@@ -56,7 +56,7 @@ S3<-left_join(S3, SpC_3_all, by='Date')
 
 ggplot(SpC_3_all, aes(x=Date))+geom_line(aes(y=SpC, color="SpC"), size=0.8) #check
 
-write_xlsx(SpC_3_all, "02_Clean_data/3/SpC.xlsx")
+write_csv(SpC_3_all, "02_Clean_data/3/SpC.csv")
 
 ####pH#####
 file.names <- list.files(path="01_Raw_data/HOBO Excels/3/pH", pattern=".xlsx", full.names=TRUE)
@@ -75,7 +75,7 @@ S3<-left_join(S3, pH_3_all, by='Date')
 
 ggplot(pH_3_all, aes(x=Date))+geom_line(aes(y=pH, color="pH"), size=0.8)
 
-write_xlsx(pH_3_all, "02_Clean_data/3/pH.xlsx")
+write_csv(pH_3_all, "02_Clean_data/3/pH.csv")
 
 ####Lily Box#######
 file.names <- list.files(path="01_Raw_data/Lily Box/csv/3", pattern=".csv", full.names=TRUE)
@@ -105,7 +105,7 @@ ggplot(LB_3FDOM_dat, aes(x=Date))+geom_line(aes(y=FDOM), size=0.8) #check
 
 LB3_FDOM<-rbind(LB_3FDOM_csv, LB_3FDOM_dat)
 LB3_FDOM<-filter(LB3_FDOM, FDOM>1) #remove hours out of water
-write_xlsx(LB3_FDOM, "02_Clean_data/3/FDOM.xlsx")
+write_csv(LB3_FDOM, "02_Clean_data/3/FDOM.csv")
 
 file.names <- list.files(path="01_Raw_data/Lily Box/csv/3", pattern=".csv", full.names=TRUE)
 
@@ -132,7 +132,7 @@ for(fil in file.names){
 
 LB3_CO2<-rbind(LB_3CO2_csv,LB_3CO2_dat)
 LB3_CO2<-filter(LB3_CO2, CO2>500) #remove hours out of water
-write_xlsx(LB3_CO2, "02_Clean_data/3/CO2.xlsx")
+write_csv(LB3_CO2, "02_Clean_data/3/CO2.csv")
 
 ggplot(LB3_CO2, aes(x=Date))+geom_line(aes(y=CO2), size=0.8) #check
 
@@ -157,5 +157,5 @@ S3$Site<-"3"
 S3<-left_join(samplingperiod, S3)
 
 S3 <- S3[!duplicated(S3[c('Date')]),]
-write_xlsx(S3, "02_Clean_data/3.xlsx")
+write_csv(S3, "02_Clean_data/3.csv")
 

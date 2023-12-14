@@ -41,7 +41,7 @@ metabolism <- function(site) {
 
 file.names <- list.files(path="02_Clean_data",pattern="xlsx", full.names=TRUE)
 
-destination_folder <- "04_Output"
+destination_folder <- "04_Output/Metabolism"
 
 lapply(file.names, function(x) {
   t <- read_excel(x)
