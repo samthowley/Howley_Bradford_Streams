@@ -11,22 +11,25 @@ library(lubridate)
 library(streamMetabolizer)
 library(weathermetrics)
 library('StreamMetabolism')
+#######
 
+samplingperiod <- read_csv("samplingperiod.csv",col_types = cols(Date = col_datetime(format = "%m/%d/%Y %H:%M")))
 
 bayes_name <- mm_name(type='bayes', pool_K600='normal', err_obs_iid=TRUE, err_proc_iid=TRUE)
 
 bayes_specs <- specs(bayes_name, K600_daily_meanlog_meanlog=0.1, K600_daily_meanlog_sdlog=0.001, GPP_daily_lower=0,
                      burnin_steps=1000, saved_steps=1000)
 
+# site <- read_csv("01_Raw_data/For StreamMetabolizer/3",
+#              col_types = cols(...1 = col_skip()))
 metabolism <- function(site) {
-  samplingperiod <- read_csv("samplingperiod.csv", col_types = cols(Date = col_datetime(format = "%m/%d/%Y %H:%M")))
   site<-left_join(samplingperiod,site)
   site$Mouth_Temp_C<- fahrenheit.to.celsius(site$Temp)
-  x<-c("Date","DO","Stage","Mouth_Temp_C")
+  x<-c("Date","DO","depth","Mouth_Temp_C")
   site<-site[,x]
+  site <- na.omit(site)
 
   site<-rename(site,'DO.obs'='DO',
-               'depth'='Stage',
                'temp.water'='Mouth_Temp_C')
   site$DO.sat<-Cs(site$temp.water)
   site$solar.time <-as.POSIXct(site$Date, format="%Y-%m-%d %H:%M:%S", tz="UTC")
@@ -39,12 +42,16 @@ metabolism <- function(site) {
   return(prediction2)
 }
 
-file.names <- list.files(path="02_Clean_data",pattern="xlsx", full.names=TRUE)
+master <- read_csv("02_Clean_data/master.csv")
+split<-master %>% split(master$ID)
+input<-"01_Raw_data/For StreamMetabolizer"
+for(i in names(split)){
+  write.csv(split[[i]],file.path(input,i))}
 
-destination_folder <- "04_Output/Metabolism"
-
+out<-"04_Output/Metabolism"
+file.names <- list.files(path="01_Raw_data/For StreamMetabolizer", full.names=TRUE)
 lapply(file.names, function(x) {
-  t <- read_excel(x)
+  t <- read_csv(x, col_types = cols(...1 = col_skip()))
   out <- metabolism(t) # apply function
   write_xlsx(out, paste0(destination_folder,"/", basename(x)))
 })
