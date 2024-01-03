@@ -509,7 +509,7 @@ write_csv(master, "02_Clean_data/master.csv")
 detach("package:plyr", unload = TRUE)
 
 ###check#####
-ggplot(master, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=5)
+ggplot(master, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=5)
 
 ggplot(CO2, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=5)
 
