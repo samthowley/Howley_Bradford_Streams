@@ -11,6 +11,7 @@ library(readxl)
 library(measurements)
 library(weathermetrics)
 library(data.table)
+site<- master_chem %>% filter(ID=="3")
 
 prelim <- function(site) {
   (site$Mouth_Temp_C<- fahrenheit.to.celsius(site$Temp))
@@ -22,6 +23,10 @@ prelim <- function(site) {
   site$mouthTemp_K<-site$Mouth_Temp_C+273.15
   site$exp<-2400*((1/site$mouthTemp_K)-(1/298.15))
   site$KH<-0.034*2.178^(site$exp)#mol/L/atm
+
+  site <- site[complete.cases(site[ , c('DO', 'CO2')]), ]
+  site <- site[complete.cases(site[ , c('DO', 'CO2')]), ]
+  site <- site[!duplicated(site[c('Date')]),]
 
   site$CO2_atm<-site$CO2/1000000
   site$CO2_mol<-site$CO2_atm*site$KH
@@ -125,16 +130,71 @@ compile <- function(ellipse,site_mol) {
 master_chem<- read_csv("02_Clean_data/master.csv")
 
 ###s3######
-s3<- master_chem %>% filter(ID=="5")
-
+s3<- master_chem %>% filter(ID=="3")
 s3_mol<-prelim(s3)
 s3_ellipse<-VachonEllipse(s3_mol)
-
 s3<-compile(s3_ellipse,s3_mol)
 s3$ID<-'s3'
 
-master<-rbind(s3, LF, GB, OS, ID)
-write_csv(master, "02_Clean_data/master_CO2-O2.csv")
+s5<- master_chem %>% filter(ID=="5")
+s5_mol<-prelim(s5)
+s5_ellipse<-VachonEllipse(s5_mol)
+s5<-compile(s5_ellipse,s5_mol)
+s5$ID<-'s5'
+
+s5a<- master_chem %>% filter(ID=="5a")
+s5a_mol<-prelim(s5a)
+s5a_ellipse<-VachonEllipse(s5a_mol)
+s5a<-compile(s5a_ellipse,s5a_mol)
+s5a$ID<-'s5a'
+
+s6<- master_chem %>% filter(ID=="6")
+s6_mol<-prelim(s6)
+s6_ellipse<-VachonEllipse(s6_mol)
+s6<-compile(s6_ellipse,s6_mol)
+s6$ID<-'s6'
+
+s6a<- master_chem %>% filter(ID=="6a")
+s6a_mol<-prelim(s6a)
+s6a_ellipse<-VachonEllipse(s6a_mol)
+s6a<-compile(s6a_ellipse,s6a_mol)
+s6a$ID<-'s6a'
+
+s7<- master_chem %>% filter(ID=="7")
+s7_mol<-prelim(s7)
+s7_ellipse<-VachonEllipse(s7_mol)
+s7<-compile(s7_ellipse,s7_mol)
+s7$ID<-'s7'
+
+s9<- master_chem %>% filter(ID=="9")
+s9_mol<-prelim(s9)
+s9_ellipse<-VachonEllipse(s9_mol)
+s9<-compile(s9_ellipse,s9_mol)
+s9$ID<-'s9'
+
+s13<- master_chem %>% filter(ID=="13")
+s13_mol<-prelim(s13)
+s13_ellipse<-VachonEllipse(s13_mol)
+s13<-compile(s13_ellipse,s13_mol)
+s13$ID<-'s13'
+
+s14<- master_chem %>% filter(ID=="14")
+s14_mol<-prelim(s14)
+s14_ellipse<-VachonEllipse(s14_mol)
+s14<-compile(s14_ellipse,s14_mol)
+s14$ID<-'s14'
+
+s15<- master_chem %>% filter(ID=="15")
+s15_mol<-prelim(s15)
+s15_ellipse<-VachonEllipse(s15_mol)
+s15<-compile(s15_ellipse,s15_mol)
+s15$ID<-'s15'
+
+
+
+
+master<-rbind(s6 ,s6a , s7 , s9 ,s13,s14)
+write_csv(master, "04_Output/master_paired.csv")
 
 ggplot(master, aes(CO2_mmol_L, O2_mmol_L)) + geom_point() +
   facet_wrap(~ ID, ncol=2)

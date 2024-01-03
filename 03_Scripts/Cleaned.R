@@ -1,7 +1,6 @@
 #packages#####
 library(tidyverse)
 library(writexl)
-library(openxlsx)
 library(readxl)
 library(lubridate)
 
@@ -76,14 +75,18 @@ file.names <- list.files(path="01_Raw_data/HOBO Excels/3/DO", pattern=".csv", fu
 DO_3_all<-data.frame()
 for(fil in file.names){DO<-clean_DO(fil)
 DO_3_all<-rbind(DO_3_all, DO)
-DO_3_all <- DO_3_all[!duplicated(DO_3_all[c('Date')]),]}
+DO_3_all <- DO_3_all[!duplicated(DO_3_all[c('Date')]),]
+DO_3_all[order(as.Date(DO_3_all$date, format="%Y-%m-%d %H:%M:%S")),]
+}
 DO_3_all$ID<-"3"
 
 file.names <- list.files(path="01_Raw_data/HOBO Excels/5/DO", pattern=".csv", full.names=TRUE)
 DO_5_all<-data.frame()
 for(fil in file.names){DO<-clean_DO(fil)
 DO_5_all<-rbind(DO_5_all, DO)
-DO_5_all <- DO_5_all[!duplicated(DO_5_all[c('Date')]),]}
+DO_5_all <- DO_5_all[!duplicated(DO_5_all[c('Date')]),]
+DO_5_all[order(as.Date(DO_5_all$date, format="%Y-%m-%d %H:%M:%S")),]
+}
 DO_5_all$ID<-"5"
 
 DO_5a_all<-data.frame()
@@ -91,7 +94,9 @@ file.names <- list.files(path="01_Raw_data/MiniDot/5a", pattern=".TXT", full.nam
 for(fil in file.names){
   DO_5a<-MiniDot_DO(fil)
   DO_5a_all<-rbind(DO_5a_all, DO_5a)
-  DO_5a_all <- DO_5a_all[!duplicated(DO_5a_all[c('Date')]),]}
+  DO_5a_all <- DO_5a_all[!duplicated(DO_5a_all[c('Date')]),]
+  DO_5a_all[order(as.Date(DO_5a_all$date, format="%Y-%m-%d %H:%M:%S")),]
+  }
 DO_5a_all$ID<-"5a"
 
 DO_6_all<-data.frame()
@@ -99,49 +104,63 @@ file.names <- list.files(path="01_Raw_data/MiniDot/6", pattern=".TXT", full.name
 for(fil in file.names){
   DO_6<-MiniDot_DO(fil)
   DO_6_all<-rbind(DO_6_all, DO_6)
-  DO_6_all <- DO_6_all[!duplicated(DO_6_all[c('Date')]),]}
+  DO_6_all <- DO_6_all[!duplicated(DO_6_all[c('Date')]),]
+  DO_6_all[order(as.Date(DO_6_all$date, format="%Y-%m-%d %H:%M:%S")),]
+  }
 DO_6_all$ID<-"6"
 
 file.names <- list.files(path="01_Raw_data/HOBO Excels/6a/DO", pattern=".csv", full.names=TRUE)
 DO_6a_all<-data.frame()
 for(fil in file.names){DO<-clean_DO(fil)
 DO_6a_all<-rbind(DO_6a_all, DO)
-DO_6a_all <- DO_6a_all[!duplicated(DO_6a_all[c('Date')]),]}
+DO_6a_all <- DO_6a_all[!duplicated(DO_6a_all[c('Date')]),]
+DO_6a_all[order(as.Date(DO_6a_all$date, format="%Y-%m-%d %H:%M:%S")),]
+}
 DO_6a_all$ID<-"6a"
 
 file.names <- list.files(path="01_Raw_data/HOBO Excels/7/DO", pattern=".csv", full.names=TRUE)
 DO_7_all<-data.frame()
 for(fil in file.names){DO<-clean_DO(fil)
 DO_7_all<-rbind(DO_7_all, DO)
-DO_7_all <- DO_7_all[!duplicated(DO_7_all[c('Date')]),]}
+DO_7_all <- DO_7_all[!duplicated(DO_7_all[c('Date')]),]
+DO_7_all[order(as.Date(DO_7_all$date, format="%Y-%m-%d %H:%M:%S")),]
+}
 DO_7_all$ID<-"7"
 
 file.names <- list.files(path="01_Raw_data/HOBO Excels/9/DO", pattern=".csv", full.names=TRUE)
 DO_9_all<-data.frame()
 for(fil in file.names){DO<-clean_DO(fil)
 DO_9_all<-rbind(DO_9_all, DO)
-DO_9_all <- DO_9_all[!duplicated(DO_9_all[c('Date')]),]}
+DO_9_all <- DO_9_all[!duplicated(DO_9_all[c('Date')]),]
+DO_9_all[order(as.Date(DO_9_all$date, format="%Y-%m-%d %H:%M:%S")),]
+}
 DO_9_all$ID<-"9"
 
 file.names <- list.files(path="01_Raw_data/HOBO Excels/13/DO", pattern=".csv", full.names=TRUE)
 DO_13_all<-data.frame()
 for(fil in file.names){DO<-clean_DO(fil)
 DO_13_all<-rbind(DO_13_all, DO)
-DO_13_all <- DO_13_all[!duplicated(DO_13_all[c('Date')]),]}
+DO_13_all <- DO_13_all[!duplicated(DO_13_all[c('Date')]),]
+DO_13_all[order(as.Date(DO_13_all$date, format="%Y-%m-%d %H:%M:%S")),]
+}
 DO_13_all$ID<-"13"
 
 file.names <- list.files(path="01_Raw_data/HOBO Excels/14/DO", pattern=".csv", full.names=TRUE)
 DO_14_all<-data.frame()
 for(fil in file.names){DO<-clean_DO(fil)
 DO_14_all<-rbind(DO_14_all, DO)
-DO_14_all <- DO_14_all[!duplicated(DO_14_all[c('Date')]),]}
+DO_14_all <- DO_14_all[!duplicated(DO_14_all[c('Date')]),]
+DO_14_all[order(as.Date(DO_14_all$date, format="%Y-%m-%d %H:%M:%S")),]
+}
 DO_14_all$ID<-"14"
 
 file.names <- list.files(path="01_Raw_data/HOBO Excels/15/DO", pattern=".csv", full.names=TRUE)
 DO_15_all<-data.frame()
 for(fil in file.names){DO<-clean_DO(fil)
 DO_15_all<-rbind(DO_15_all, DO)
-DO_15_all <- DO_15_all[!duplicated(DO_15_all[c('Date')]),]}
+DO_15_all <- DO_15_all[!duplicated(DO_15_all[c('Date')]),]
+DO_15_all[order(as.Date(DO_15_all$date, format="%Y-%m-%d %H:%M:%S")),]
+}
 DO_15_all$ID<-"15"
 
 
@@ -503,7 +522,7 @@ data <- lapply(file.names,function(x) {read_csv(x)})
 library(plyr)
 
 master<-join_all(data, by=c('Date','ID'), type='left')
-master<-master %>%  mutate(min = minute(Date)) %>% filter(min==0) %>% filter(Date> "2022-01-01")
+master<-master %>%  mutate(min = minute(Date)) %>% filter(min==0) %>% filter(Date> "2022-11-16")
 
 write_csv(master, "02_Clean_data/master.csv")
 detach("package:plyr", unload = TRUE)
@@ -511,5 +530,5 @@ detach("package:plyr", unload = TRUE)
 ###check#####
 ggplot(master, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=5)
 
-ggplot(CO2, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=5)
+ggplot(master, aes(discharge, DO)) + geom_point() + facet_wrap(~ ID, ncol=5)
 

@@ -14,15 +14,10 @@ library('StreamMetabolism')
 #######
 
 samplingperiod <- read_csv("samplingperiod.csv",col_types = cols(Date = col_datetime(format = "%m/%d/%Y %H:%M")))
-samplingperiod<-filter(samplingperiod, Date>as.Date('2022-11-15 24:00:00'))
 bayes_name <- mm_name(type='bayes', pool_K600='normal', err_obs_iid=TRUE, err_proc_iid=TRUE)
 
 bayes_specs <- specs(bayes_name, K600_daily_meanlog_meanlog=0.1, K600_daily_meanlog_sdlog=0.001, GPP_daily_lower=0,
                      burnin_steps=1000, saved_steps=1000)
-
-# site <- read_csv("01_Raw_data/For StreamMetabolizer/3",
-#              col_types = cols(...1 = col_skip()))
-site<-filter(master, ID=='3')
 
 metabolism <- function(site) {
 
@@ -50,13 +45,15 @@ input<-"01_Raw_data/For StreamMetabolizer"
 for(i in names(split)){
   write.csv(split[[i]],file.path(input,i))}
 
-out<-"04_Output/Metabolism"
+master<-data.frame()
 file.names <- list.files(path="01_Raw_data/For StreamMetabolizer", full.names=TRUE)
 lapply(file.names, function(x) {
   t <- read_csv(x, col_types = cols(...1 = col_skip()))
-  out <- metabolism(t) # apply function
-  write_xlsx(out, paste0(destination_folder,"/", basename(x)))
+  k <- metabolism(t) # apply function
+  master<-rbind(master, k)
 })
+write_csv(master, "04_Output/master_metabolism.csv")
+
 
 ###3#####
 s3<-filter(master, ID=='3')
@@ -100,7 +97,7 @@ s5a_ouput<-metabolism(s5a)
 s5a_ouput$ID<-'5a'
 
 master<-rbind(s3_ouput, s5_ouput, s5a_ouput, s6_ouput,s6a_ouput, s7_ouput, s9_ouput,
-              s5a_ouput)
+              s13_ouput,  s14_ouput,s15_ouput)
 
 write_csv(master, "04_Output/master_metabolism.csv")
 
