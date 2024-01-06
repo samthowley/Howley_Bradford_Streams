@@ -516,7 +516,7 @@ write_csv(h, "02_Clean_data/Chem/h_cleaned.csv")
 
 ####Compile####
 file.names <- list.files(path="02_Clean_data/Chem", pattern=".csv", full.names=TRUE)
-file.names<-file.names[c(3,2,1,4,5)]
+file.names<-file.names[c(2,3,1,4,5)]
 
 data <- lapply(file.names,function(x) {read_csv(x)})
 library(plyr)
@@ -528,7 +528,7 @@ write_csv(master, "02_Clean_data/master.csv")
 detach("package:plyr", unload = TRUE)
 
 ###check#####
-ggplot(master, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=5)
+ggplot(master, aes(Date, h)) + geom_line() + facet_wrap(~ ID, ncol=5)
 
 ggplot(master, aes(discharge, DO)) + geom_point() + facet_wrap(~ ID, ncol=5)
 
