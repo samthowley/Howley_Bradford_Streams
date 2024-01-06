@@ -4,7 +4,8 @@ library(writexl)
 library(readxl)
 library(lubridate)
 
-
+samplingperiod <- read_csv("samplingperiod.csv",
+                           col_types = cols(Date = col_datetime(format = "%m/%d/%Y %H:%M")))
 clean_DO <- function(fil) {
   DO <- read_csv(fil,skip= 1)
   DO<-DO[,c(2,3,4)]
@@ -14,18 +15,18 @@ clean_DO <- function(fil) {
   DO$Date <- mdy_hms(DO$Date)
   DO<-DO %>% mutate(min=minute(Date)) %>% filter(min==0) %>% filter(DO>0)
   DO<-DO[,-4]
-  for(i in 1:nrow(DO)){if(DO$DO[i]<=0 | DO$DO[i]>=6.8) { DO$DO[i]<- NA}
-    else {DO$DO[i]<- DO$DO[i]-0 }} #remove hours out of the water and erraneous days
-  return(DO)} #function for cleaning data
+  # for(i in 1:nrow(DO)){if(DO$DO[i]<=0 | DO$DO[i]>=6.8) { DO$DO[i]<- NA}
+  #   else {DO$DO[i]<- DO$DO[i]-0 }} #remove hours out of the water and erraneous days
+  return(DO)}
 MiniDot_DO<-function(fil){
   DO <- read_csv(fil,skip= 8)
   DO<-DO[,c(3,6,5)]
   colnames(DO)[1] <- "Date"
   colnames(DO)[2] <- "DO"
   colnames(DO)[3] <- "Temp"
-  for(i in 1:nrow(DO)){
-  if(DO$DO[i]<=0 | DO$DO[i]>=7.4) { DO$DO[i]<- NA}
-  else {DO$DO[i]<- DO$DO[i]-0 }}
+  # for(i in 1:nrow(DO)){
+  # if(DO$DO[i]<=0 | DO$DO[i]>=7.4) { DO$DO[i]<- NA}
+  # else {DO$DO[i]<- DO$DO[i]-0 }}
   return(DO)}
 clean_SpC <- function(fil) {
   SpC <- read_csv(fil, skip= 1)
@@ -33,16 +34,15 @@ clean_SpC <- function(fil) {
   colnames(SpC)[1] <- "Date"
   colnames(SpC)[2] <- "SpC"
   SpC$Date <- mdy_hms(SpC$Date)
-  SpC<-filter(SpC, SpC>50)#remove hours out of water
+  #SpC<-filter(SpC, SpC>50)#remove hours out of water
   return(SpC)
 }
 clean_pH <- function(fil) {
-  pH_all<-data.frame()
   pH <- read_xlsx(fil)
   pH<-pH[,c(2,5)]
   colnames(pH)[1] <- "Date"
   colnames(pH)[2] <- "pH"
-  pH<-filter(pH, pH<6.2) #remove hours out of water
+  #pH<-filter(pH, pH<6.2) #remove hours out of water
   return(pH)}
 clean_CO2_csv<-function(fil){
   LB <- read_csv(fil,
@@ -50,14 +50,14 @@ clean_CO2_csv<-function(fil){
                                   "CO2" = col_number()))
   LB<-LB[,c(1,5)]
   colnames(LB)[3] <- "CO2"
-  LB<-filter(LB, CO2>500& CO2<15000) #remove hours out of water and erroneous readings
+  LB<-filter(LB, CO2>500& CO2<15000)
   return(LB)}
 clean_CO2_dat<-function(fil){
   LB <- read_csv(fil, skip= 3)
   LB<-LB[,c(1,4)]
   colnames(LB)[1] <- "Date"
   colnames(LB)[2] <- "CO2"
-  LB<-filter(LB, CO2>500& CO2<15000) #remove hours out of water and erroneous readings
+  LB<-filter(LB, CO2>500& CO2<15000)
   return(LB)}
 clean_h<-function(h){
   x<-c("Date Time, GMT-04:00","Water Depth (m)","Flow (L/S)")
@@ -528,7 +528,7 @@ write_csv(master, "02_Clean_data/master.csv")
 detach("package:plyr", unload = TRUE)
 
 ###check#####
-ggplot(master, aes(Date, h)) + geom_line() + facet_wrap(~ ID, ncol=5)
+ggplot(DO, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=5)
 
-ggplot(master, aes(discharge, DO)) + geom_point() + facet_wrap(~ ID, ncol=5)
+ggplot(master, aes(Date, DO)) + geom_point() + facet_wrap(~ ID, ncol=5)
 
