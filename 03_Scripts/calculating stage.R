@@ -169,9 +169,11 @@ master <- master %>%
     ID== '6a' & Date>='2021-04-06' & Date<'2022-11-15'~ 103))
 ###########
 
-master$depth<-(master$sensor_depth-(master$PL -master$PG))/100
+master$depth<-master$sensor_depth-(master$PL-master$PG)/100
 master$flow<-433.35*(master$depth^2.5421)
-ggplot(master, aes(Date, flow)) + geom_line() + facet_wrap(~ ID, ncol=5)
+master<-master[,c(1,4,7,11)]
+
+ggplot(master, aes(Date, depth)) + geom_line() + facet_wrap(~ ID, ncol=5)
 
 write_csv(master, "02_Clean_data/Chem/depth.csv")
 
@@ -198,37 +200,30 @@ DG1<-clean_DG(DG)
 ggplot(DG1, aes(Date, LowSpC)) + geom_line()
 
 write_csv(DG1, '01_Raw_data/DilutionGage/15/03132023.csv')
-#####calc Q########
-
-DG_notes <- read_xlsx(
-  "01_Raw_data/DilutionGage/Streams_dilution_gauging.xlsx")
-DG_notes<-DG_notes[,c(1:3,6)]
-DG_notes<-DG_notes %>% rename('ID'='Site', 'day'='Date', 'm_recovered'='NaCl_g',
-                              'L'='Reach_m')
-
-file.names <- list.files(path="01_Raw_data/DilutionGage/15", pattern=".csv", full.names=TRUE)
-DG15<-data.frame()
-for(fil in file.names){
-  DG<-read_csv(fil)
-  DG$day <- as.Date(DG$Date)
-  DG15<-rbind(DG15, DG)}
-DG15$ID<-'15'
-DG15<-left_join(DG15, DG_notes, by=c('ID', 'day'))
-
-DG15$SpC_cor<-DG15$FullSpC-mean(DG15$FullSpC, na.rm = T)
-DG15$NaCl<-DG15$SpC_cor*0.51
-DG15$sec <-seq(0, by = 5, length.out = nrow(DG15))
-DG15$tC<-DG15$sec*DG15$NaCl
+####extract DG####
 
 
-shift <- function(x, n){
-  c(x[-(seq(n))], rep(NA, n))
+extractDG <- function(site) {
+  site<-site[,c(2, 10, 11, 12)]
+  Date<-site[2,1]
+  Q<-site$...11[11]
+  Date<-as.Date(site$Timestamp)[1]
+return(list(Date, Q))
 }
-DG15$NaCl_shifted <- shift(DG15$NaCl, 1)
 
 
-DG15$TotMass<-DG15$NaCl
-DG15$TotMass[1]<-DG15$NaCl[1]
+file.names <- list.files(path="01_Raw_data/Dilution_gaging_calculated/15", pattern=".xlsx", full.names=TRUE)
+for(i in file.names){
+  s15<-read_xlsx(i)
+  output<-extractDG(s15)
+  Q[i] <- output[2]
+  Date[i]<-output[1]
+}
 
-
-DG15<-DG15 %>% mutate(test = NaCl + lag(TotMass, default = first(TotMass), order_by = Date))
+file.names <- list.files(path="01_Raw_data/Dilution_gaging_calculated/14", pattern=".xlsx", full.names=TRUE)
+for(i in file.names){
+  s15<-read_xlsx(i)
+  output<-extractDG(s15)
+  Q[i] <- output[2]
+  Date[i]<-output[1]
+}

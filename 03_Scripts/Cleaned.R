@@ -479,41 +479,6 @@ CO2<-rbind(LB3_CO2, LB5_CO2, LB5a_CO2, LB6_CO2, LB6a_CO2, LB7_CO2, LB9_CO2,
 
 write_csv(CO2, "02_Clean_data/Chem/CO2_cleaned.csv")
 
-###h#####
-h3<- read_excel("02_Clean_data/Calculated_Stage/Stream #3.xlsx", skip=1)
-h3<-clean_h(h3) %>% mutate(ID=c('3'))
-
-h5<- read_excel("02_Clean_data/Calculated_Stage/Stream #5.xlsx", skip=1)
-h5<-clean_h(h5) %>% mutate(ID=c('5'))
-
-h5a<- read_excel("02_Clean_data/Calculated_Stage/Stream #5a.xlsx", skip=1)
-h5a<-clean_h(h5a) %>% mutate(ID=c('5a'))
-
-h6<- read_excel("02_Clean_data/Calculated_Stage/Stream #6.xlsx", skip=1)
-h6<-clean_h(h6) %>% mutate(ID=c('6'))
-
-h6a<- read_excel("02_Clean_data/Calculated_Stage/Stream #6a.xlsx", skip=1)
-h6a<-clean_h(h6a) %>% mutate(ID=c('6a'))
-
-h7<- read_excel("02_Clean_data/Calculated_Stage/Stream #7.xlsx", skip=1)
-h7<-clean_h(h7) %>% mutate(ID=c('7'))
-
-h9<- read_excel("02_Clean_data/Calculated_Stage/Stream #9.xlsx", skip=1)
-h9<-clean_h(h9) %>% mutate(ID=c('9'))
-
-h13<- read_excel("02_Clean_data/Calculated_Stage/Stream #13.xlsx", skip=1)
-h13<-clean_h(h13) %>% mutate(ID=c('13'))
-
-h14<- read_excel("02_Clean_data/Calculated_Stage/Stream #14.xlsx", skip=1)
-h14<-clean_h(h14) %>% mutate(ID=c('14'))
-
-h15<- read_excel("02_Clean_data/Calculated_Stage/Stream #15.xlsx", skip=1)
-h15<-clean_h(h15) %>% mutate(ID=c('15'))
-
-h<-rbind(h3, h5, h5a, h6, h6a, h7, h9, h13, h14, h15)
-
-write_csv(h, "02_Clean_data/Chem/h_cleaned.csv")
-
 ####Compile####
 file.names <- list.files(path="02_Clean_data/Chem", pattern=".csv", full.names=TRUE)
 file.names<-file.names[c(2,3,1,4,5)]
@@ -528,7 +493,7 @@ write_csv(master, "02_Clean_data/master.csv")
 detach("package:plyr", unload = TRUE)
 
 ###check#####
-ggplot(DO, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=5)
+ggplot(master, aes(Date, depth)) + geom_line() + facet_wrap(~ ID, ncol=5)
 
-ggplot(master, aes(Date, DO)) + geom_point() + facet_wrap(~ ID, ncol=5)
+ggplot(master, aes(depth, DO)) + geom_point() + facet_wrap(~ ID, ncol=5)
 
