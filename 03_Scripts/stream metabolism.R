@@ -40,20 +40,19 @@ metabolism <- function(site) {
   return(prediction2)}
 master <- read_csv("02_Clean_data/master.csv")
 
-split<-master %>% split(master$ID)
-input<-"01_Raw_data/For StreamMetabolizer"
-for(i in names(split)){
-  write.csv(split[[i]],file.path(input,i))}
-
-master<-data.frame()
-file.names <- list.files(path="01_Raw_data/For StreamMetabolizer", full.names=TRUE)
-lapply(file.names, function(x) {
-  t <- read_csv(x, col_types = cols(...1 = col_skip()))
-  k <- metabolism(t) # apply function
-  master<-rbind(master, k)
-})
-write_csv(master, "04_Output/master_metabolism.csv")
-
+# split<-master %>% split(master$ID)
+# input<-"01_Raw_data/For StreamMetabolizer"
+# for(i in names(split)){
+#   write.csv(split[[i]],file.path(input,i))}
+#
+# master<-data.frame()
+# file.names <- list.files(path="01_Raw_data/For StreamMetabolizer", full.names=TRUE)
+# lapply(file.names, function(x) {
+#   t <- read_csv(x)
+#   k <- metabolism(t) # apply function
+#   master<-rbind(master, k)
+# })
+# write_csv(master, "04_Output/master_metabolism.csv")
 
 ###3#####
 s3<-filter(master, ID=='3')
@@ -64,9 +63,9 @@ s5<-filter(master, ID=='5')
 s5_ouput<-metabolism(s5)
 s5_ouput$ID<-'5'
 
-s6<-filter(master, ID=='6')
+site<-filter(master, ID=='6')
 s6_ouput<-metabolism(s6)
-s6_ouput$ID<-'6'
+s6_ouput$ID<-'6' #NOT WORKING
 
 s6a<-filter(master, ID=='6a')
 s6a_ouput<-metabolism(s6a)
