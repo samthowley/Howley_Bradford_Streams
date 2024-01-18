@@ -63,7 +63,7 @@ s5<-filter(master, ID=='5')
 s5_ouput<-metabolism(s5)
 s5_ouput$ID<-'5'
 
-site<-filter(master, ID=='6')
+s6<-filter(master, ID=='6')
 s6_ouput<-metabolism(s6)
 s6_ouput$ID<-'6' #NOT WORKING
 
