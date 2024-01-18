@@ -57,17 +57,16 @@ clean_CO2_dat<-function(fil){
   LB<-LB[,c(1,4)]
   colnames(LB)[1] <- "Date"
   colnames(LB)[2] <- "CO2"
-  LB<-filter(LB, CO2>500& CO2<15000)
+  LB<-filter(LB, CO2>500)
   return(LB)}
-clean_h<-function(h){
-  x<-c("Date Time, GMT-04:00","Water Depth (m)","Flow (L/S)")
-  h<-h[,x]
-  h<-rename(h,'Date'="Date Time, GMT-04:00", 'depth'="Water Depth (m)", 'discharge'="Flow (L/S)")
-  h$depth[h$depth<0] <- 0
-  h<-h %>% mutate(min=minute(Date)) %>% filter(min==0)
-  h<-h[-1,-4]
-  h <- h[!duplicated(h[c('Date')]),]
-  return(h)}
+clean_CO2_vaisala<-function(fil){
+  LB <- read_csv(fil, skip= 3)
+  LB<-LB[,c(1,4)]
+  colnames(LB)[1] <- "Date"
+  colnames(LB)[2] <- "CO2"
+  LB$CO2<-LB$CO2*4.2
+  LB<-filter(LB, CO2>500)
+  return(LB)}
 
 ####DO######
 file.names <- list.files(path="01_Raw_data/HOBO Excels/3/DO", pattern=".csv", full.names=TRUE)
@@ -437,8 +436,17 @@ CO213_dat_all<-data.frame()
 file.names <- list.files(path="01_Raw_data/Lily Box/dat/13", pattern=".dat", full.names=TRUE)
 for(fil in file.names){CO213_dat <-clean_CO2_dat(fil)
 CO213_dat_all<-rbind(CO213_dat_all, CO213_dat)}
-LB13_CO2<-rbind(CO213_csv_all,CO213_dat_all)
+
+CO213_vai_all<-data.frame()
+file.names <- list.files(path="01_Raw_data/Lily Box/dat/13/vaisala", pattern=".dat", full.names=TRUE)
+for(fil in file.names){CO213_dat <-clean_CO2_vaisala(fil)
+CO213_vai_all<-rbind(CO213_vai_all, CO213_dat)}
+
+LB13_CO2<-rbind(CO213_csv_all,CO213_dat_all,CO213_vai_all)
 LB13_CO2$ID<-'13'
+
+file.names <- list.files(path="01_Raw_data/Lily Box/dat/13/vaisala", pattern=".dat", full.names=TRUE)
+
 
 CO214_csv_all<-data.frame()
 file.names <- list.files(path="01_Raw_data/Lily Box/csv/14", pattern=".csv", full.names=TRUE)
@@ -476,6 +484,7 @@ LB15_CO2$ID<-'15'
 
 CO2<-rbind(LB3_CO2, LB5_CO2, LB5a_CO2, LB6_CO2, LB6a_CO2, LB7_CO2, LB9_CO2,
            LB13_CO2, LB14_CO2)
+CO2 <- CO2[!duplicated(CO2[c('Date','ID')]),]
 
 write_csv(CO2, "02_Clean_data/Chem/CO2_cleaned.csv")
 
@@ -485,15 +494,19 @@ file.names<-file.names[c(2,3,1,4,5)]
 
 data <- lapply(file.names,function(x) {read_csv(x)})
 library(plyr)
-
 master<-join_all(data, by=c('Date','ID'), type='left')
-master<-master %>%  mutate(min = minute(Date)) %>% filter(min==0) %>% filter(Date> "2022-11-16")
+
+master<-master %>%  mutate(min = minute(Date)) %>% filter(min==0) %>% filter(Date> "2021-11-16")
+master <- master[!duplicated(master[c('Date','ID')]),]
 
 write_csv(master, "02_Clean_data/master.csv")
 detach("package:plyr", unload = TRUE)
 
 ###check#####
-ggplot(master, aes(Date, depth)) + geom_line() + facet_wrap(~ ID, ncol=5)
+ggplot(DO, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=5)
 
-ggplot(master, aes(depth, DO)) + geom_point() + facet_wrap(~ ID, ncol=5)
+ggplot(master, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=5)
 
+LB <- read_csv("01_Raw_data/Lily Box/dat/13/13_Bradford_LF_01152024.dat", skip= 3)
+LB<-filter(LB, Date> '2023-12-01')
+ggplot(LB, aes(Date, CO2)) + geom_line()

@@ -4,6 +4,7 @@ library(tidyverse)
 library(readxl)
 library(writexl)
 library(openxlsx)
+library(weathermetrics)
 master <- read_csv("02_Clean_data/master.csv")
 #k600 calculation constants######
 dome_length<-0.38
@@ -272,12 +273,12 @@ write_xlsx(done_15, "04_Output/k600/15.xlsx")
 library(lubridate)
 library(weathermetrics)
 
-###organize data file@##########
-# gas<- read_csv("01_Raw_data/GD/Unorganized/GasDome_12192023.dat",skip = 3)
-# gas<-gas[,c(1,5)]
-# colnames(gas)[1] <- "Date"
-# colnames(gas)[2] <- "CO2"
-# gas<-filter(gas, Date<'2023-11-10')
-# write_csv(gas, "01_Raw_data/GD/Unorganized/GasDome_11012023.csv")
+##organize data file@##########
+gas<- read_csv("01_Raw_data/GD/GasChamber_01052024.dat",skip = 3)
+gas<-gas[,c(1,5)]
+colnames(gas)[1] <- "Date"
+colnames(gas)[2] <- "CO2"
+gas<-filter(gas, Date>'2024-01-03')
+write_csv(gas, "01_Raw_data/GD/Unorganized/GasDome_11012023.csv")
 
 
