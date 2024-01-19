@@ -3,6 +3,7 @@ library(tidyverse)
 library(writexl)
 library(readxl)
 library(lubridate)
+library(weathermetrics)
 
 samplingperiod <- read_csv("samplingperiod.csv",
                            col_types = cols(Date = col_datetime(format = "%m/%d/%Y %H:%M")))
@@ -67,6 +68,17 @@ clean_CO2_vaisala<-function(fil){
   LB$CO2<-LB$CO2*4.2
   LB<-filter(LB, CO2>500)
   return(LB)}
+theme_sam<-theme()+    theme(axis.text.x = element_text(size = 12, angle=0),
+                             axis.text.y = element_text(size = 17, angle=0),
+                             axis.title =element_text(size = 17, angle=0),
+                             plot.title = element_text(size = 17, angle=0),
+                             legend.key.size = unit(0.8, 'cm'),
+                             legend.text=element_text(size = 17),
+                             legend.title =element_text(size = 17),
+                             legend.position ="none",
+                             panel.background = element_rect(fill = 'white'),
+                             axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
+                             axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black"))
 
 ####DO######
 file.names <- list.files(path="01_Raw_data/HOBO Excels/3/DO", pattern=".csv", full.names=TRUE)
@@ -78,6 +90,9 @@ DO_3_all <- DO_3_all[!duplicated(DO_3_all[c('Date')]),]
 DO_3_all[order(as.Date(DO_3_all$date, format="%Y-%m-%d %H:%M:%S")),]
 }
 DO_3_all$ID<-"3"
+for(i in 1:nrow(DO_3_all)){if(DO_3_all$Temp[i]<=45 ) { DO_3_all$Temp[i]<- celsius.to.fahrenheit(DO_3_all$Temp[i])}
+  else {DO_3_all$Temp[i]<- DO_3_all$Temp[i]-0 }} #remove hours out of the water and erraneous days
+
 
 file.names <- list.files(path="01_Raw_data/HOBO Excels/5/DO", pattern=".csv", full.names=TRUE)
 DO_5_all<-data.frame()
@@ -503,10 +518,10 @@ write_csv(master, "02_Clean_data/master.csv")
 detach("package:plyr", unload = TRUE)
 
 ###check#####
-ggplot(DO, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=5)
+master<-filter(master, depth<3)
+ggplot(master, aes(Date, depth)) + geom_line() + facet_wrap(~ ID, ncol=5)+
+  theme_sam
 
-ggplot(master, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=5)
-
-LB <- read_csv("01_Raw_data/Lily Box/dat/13/13_Bradford_LF_01152024.dat", skip= 3)
+  LB <- read_csv("01_Raw_data/Lily Box/dat/13/13_Bradford_LF_01152024.dat", skip= 3)
 LB<-filter(LB, Date> '2023-12-01')
-ggplot(LB, aes(Date, CO2)) + geom_line()
+ggplot(DO_3_all, aes(Date, Temp)) + geom_line()
