@@ -65,7 +65,7 @@ k600_list <- function(stage,k600,date) {
   col2<- col2 %>% rename('stage'="V1",'k600'="V2") #assign correct column names
 
   col1<-data.frame(date=date) #date column
-  col1<-pivot_longer(col1, cols = 1:1, names_to = 'excel', values_to = 'Date') #wide to long
+  col1<-pivot_longer(col1, cols = 1:ncol(col1), names_to = 'excel', values_to = 'Date') #wide to long
   col1<-col1[,-c(1)]
 
   done<-cbind(col1, col2)
@@ -278,6 +278,20 @@ gas<- read_csv("01_Raw_data/GD/GasChamber_01052024.dat",skip = 3)
 gas<-gas[,c(1,5)]
 colnames(gas)[1] <- "Date"
 colnames(gas)[2] <- "CO2"
+gas<-filter(gas, Date>'2024-01-04')
+
+gas$Date<-mdy_hms(gas$Date)
+gas$time<-strftime(gas$Date, format="%H:%M:%S", tz = "UTC")
+
+start<-'11:12:00'
+end<-'11:30:00'
+
+gas1<-gas %>%filter(time>start & time< end)
+
+ggplot(gas1, aes(Date,LowSpC)) + geom_line()
+
+
+
 gas<-filter(gas, Date>'2024-01-03')
 write_csv(gas, "01_Raw_data/GD/Unorganized/GasDome_11012023.csv")
 
