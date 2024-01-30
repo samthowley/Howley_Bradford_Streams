@@ -16,7 +16,7 @@ clean_DG <- function(DG) {
   DG1<-DG %>%filter(time>start & time< end)
   return(DG1)}
 
-DG <- read_csv("01_Raw_data/DG/raw/12192023.csv",
+DG <- read_csv("01_Raw_data/DG/raw/04142022.csv",
                skip = 1)
 
 start<-'13:37:00'
