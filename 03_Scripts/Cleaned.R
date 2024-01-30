@@ -5,8 +5,10 @@ library(readxl)
 library(lubridate)
 library(weathermetrics)
 
-samplingperiod <- read_csv("samplingperiod.csv",
-                           col_types = cols(Date = col_datetime(format = "%m/%d/%Y %H:%M")))
+samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2021-03-29 00:00", tz="UTC"),
+                                            to=as.POSIXct("2024-03-29 00:00", tz="UTC"),by="hour")))
+samplingperiod<-samplingperiod %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
+
 clean_DO <- function(fil) {
   DO <- read_csv(fil,skip= 1)
   DO<-DO[,c(2,3,4)]

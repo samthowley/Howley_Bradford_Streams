@@ -274,25 +274,13 @@ library(lubridate)
 library(weathermetrics)
 
 ##organize data file@##########
-gas<- read_csv("01_Raw_data/GD/GasChamber_01052024.dat",skip = 3)
+gas<- read_csv("01_Raw_data/GD/GasDome_01052024.dat",skip = 3)
 gas<-gas[,c(1,5)]
 colnames(gas)[1] <- "Date"
 colnames(gas)[2] <- "CO2"
 gas<-filter(gas, Date>'2024-01-04')
 
-gas$Date<-mdy_hms(gas$Date)
-gas$time<-strftime(gas$Date, format="%H:%M:%S", tz = "UTC")
-
-start<-'11:12:00'
-end<-'11:30:00'
-
-gas1<-gas %>%filter(time>start & time< end)
-
-ggplot(gas1, aes(Date,LowSpC)) + geom_line()
-
-
-
 gas<-filter(gas, Date>'2024-01-03')
-write_csv(gas, "01_Raw_data/GD/Unorganized/GasDome_11012023.csv")
+write_csv(gas, "01_Raw_data/GD/Unorganized/GasDome_01052024.csv")
 
 

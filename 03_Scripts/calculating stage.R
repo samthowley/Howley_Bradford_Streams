@@ -13,88 +13,110 @@ PT_unformatted <- function(fil) {
 
 ###calc stage#####
 PT<-read_csv('01_Raw_data/PT/compiled_PT.csv')
-PT<-PT %>% mutate(hour=hour(Date),day=day(Date), month=month(Date), year=year(Date))
+PT<-PT %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 baro<-read_csv('01_Raw_data/PT/compiled_baro.csv')
-baro<-baro %>% mutate(hour=hour(Date),day=day(Date), month=month(Date), year=year(Date))
+baro<-baro %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
+
 baro<-baro[,-1]
-master<-left_join(PT, baro, by=c('hour','day','month','year','region'))
+master<-left_join(PT, baro, by=c('region','hr', 'day', 'mnth', 'yr'))
 
 master$Water_press<-master$PT-master$PTbaro
 master$sensor_depth<-1000*master$Water_press/2.2/(2.54^2)/100
+master$date<-as.Date(master$Date)
 
-#PG PL#####
 master <- master %>%
   mutate(PG= case_when(ID== '3' ~ 136,
-                       ID== '5' & Date>='2023-11-01' ~ 146,
-                       ID== '5' & Date<='2023-11-01' ~ 147,
-                       ID== '5a' & Date>='2023-11-01' ~ 143,
-                       ID== '5a' & Date<='2023-11-01' ~ 142,
-                       ID== '6' & Date>='2023-11-01' ~ 184,
-                       ID== '6' & Date>='2022-04-06' & Date<='2023-11-01' ~ 179,
-                       ID== '6' & Date<='2022-04-06' ~ 143,
-                       ID== '7' & Date>='2022-11-15' ~ 134,
-                       ID== '7' & Date<='2022-11-15' ~ 135,
-                       ID== '9' & Date>='2023-11-01' ~ 122,
-                       ID== '9' & Date>='2022-11-14' & Date<='2023-11-01'~ 125,
-                       ID== '9' & Date>='2021-04-16' & Date<='2022-11-14'~ 142,
-                       ID== '13' & Date>='2023-12-19' ~ 212,
-                       ID== '13' & Date>='2022-09-20' & Date<='2023-12-19'~ 141,
-                       ID== '13' & Date>='2021-04-16' & Date<='2022-09-20'~ 139,
-                       ID== '14' & Date>='2023-11-01' ~ 137,
-                       ID== '14' & Date>='2022-11-15' & Date<='2023-11-01'~ 136,
-                       ID== '14' & Date>='2021-04-06' & Date<='2022-11-15'~ 141,
-                       ID== '15' & Date>='2022-11-14' ~ 138,
-                       ID== '15' & Date<='2022-11-14' ~ 139,
+
+                       ID== '5' ~ 147,
+                       ID== '5' & date>='2023-11-01' ~ 146,
+
+                       ID== '5a'  ~ 142,
+                       ID== '5a' & date>='2023-11-01' ~ 143,
+
+                       ID== '6'  ~ 143,
+                       ID== '6' & date>='2022-04-06' & date<='2023-11-01' ~ 179,
+                       ID== '6' & date>='2023-11-01' ~ 184,
+
+                       ID== '7' ~ 135,
+                       ID== '7' & date>='2022-11-15' ~ 134,
+
+                       ID== '9' ~ 142,
+                       ID== '9' & date>='2022-11-14' & date<='2023-11-01'~ 125,
+                       ID== '9' & date>='2023-11-01' ~ 122,
+
+                       ID== '13' ~ 139,
+                       ID== '13' & date>='2022-09-20' & date<='2023-12-19'~ 141,
+                       ID== '13' & date>='2023-12-19' ~ 212,
+
+                       ID== '14' ~ 141,
+                       ID== '14' & date>='2022-11-15' & date<='2023-11-01'~ 136,
+                       ID== '14' & date>='2023-11-01' ~ 137,
+
+                       ID== '15' ~ 139,
+                       ID== '15' & date>='2022-11-14' ~ 138,
                        ID== '6a' ~ 142))
 master <- master %>%
   mutate(PL= case_when(
-    ID== '3' & Date>='2023-11-01' ~ 107,
-    ID== '3' & Date<='2023-11-01'~ 108,
-    ID== '5' & Date>='2023-11-01' ~ 98,
-    ID== '5' & Date>='2022-11-14' & Date<='2023-11-01'~ 105,
-    ID== '5' & Date>='2021-03-20' & Date<='2022-11-14'~ 102,
-    ID== '5a' & Date>='2022-11-14' ~ 101,
-    ID== '5a' & Date>='2021-03-20' & Date<='2022-11-14'~ 110,
-    ID== '6' & Date>='2023-11-01' ~ 122,
-    ID== '6' & Date>='2022-04-06' & Date<='2023-11-01' ~ 132,
-    ID== '6' & Date<='2022-04-06' ~ 113,
-    ID== '7' & Date>='2023-11-01' ~ 100,
-    ID== '7' & Date>='2022-11-15' & Date<='2023-11-01'~ 99,
-    ID== '7' & Date>='2021-04-06' & Date<='2022-11-15'~ 103,
-    ID== '9' & Date>='2023-11-01' ~ 116,
-    ID== '9' & Date<='2023-11-01'~ 109,
-    ID== '13' & Date>='2023-12-19' ~ 182,
-    ID== '13' & Date>='2022-09-20' & Date<='2023-12-19'~ 103,
-    ID== '13' & Date>='2021-04-16' & Date<='2022-09-20'~ 60,
-    ID== '14' & Date>='2023-11-01' ~ 110,
-    ID== '14' & Date>='2022-11-15' & Date<='2023-11-01'~ 104,
-    ID== '14' & Date>='2021-04-06' & Date<='2022-11-15'~ 110,
-    ID== '15' & Date>='2023-11-01' ~ 104,
-    ID== '15' & Date>='2022-11-14' & Date<='2023-11-01'~ 105,
-    ID== '15' & Date>='2021-03-30' & Date<='2022-11-14'~ 103,
-    ID== '6a' & Date>='2023-11-01' ~ 113,
-    ID== '6a' & Date>='2022-11-15' & Date<='2023-11-01'~ 109,
-    ID== '6a' & Date>='2021-04-06' & Date<='2022-11-15'~ 103))
-###########
+    ID== '3'~ 108,
+    ID== '3' & date>='2023-11-01' ~ 107,
+
+    ID== '5' ~ 102,
+    ID== '5' & date>='2022-11-14' & date<='2023-11-01'~ 105,
+    ID== '5' & date>='2023-11-01' ~ 98,
+
+
+    ID== '5a'  ~ 110,
+    ID== '5a' & date>='2021-03-20' & date<='2022-11-14'~ 110,
+    ID== '5a' & date>='2022-11-14' ~ 101,
+
+    ID== '6' ~ 113,
+    ID== '6' & date>='2022-04-06' & date<='2023-11-01' ~ 132,
+    ID== '6' & date>='2023-11-01' ~ 122,
+
+    ID== '7' ~ 103,
+    ID== '7' & date>='2022-11-15' & date<='2023-11-01'~ 99,
+    ID== '7' & date>='2023-11-01' ~ 100,
+
+    ID== '9' ~ 109,
+    ID== '9' & date>='2023-11-01' ~ 116,
+
+    ID== '13' ~ 60,
+    ID== '13' & date>='2022-09-20' & date<='2023-12-19'~ 103,
+    ID== '13' & date>='2023-12-19' ~ 182,
+
+    ID== '14' ~ 110,
+    ID== '14' & date>='2022-11-15' & date<='2023-11-01'~ 104,
+    ID== '14' & date>='2023-11-01' ~ 110,
+
+
+    ID== '15' ~ 103,
+    ID== '15' & date>='2022-11-14' & date<='2023-11-01'~ 105,
+    ID== '15' & date>='2023-11-01' ~ 104,
+
+    ID== '6a' ~ 103,
+    ID== '6a' & date>='2022-11-15' & date<='2023-11-01'~ 109,
+    ID== '6a' & date>='2023-11-01' ~ 113))
 
 master$depth<-master$sensor_depth-(master$PL-master$PG)/100
 master$flow<-433.35*(master$depth^2.5421)
 x<-c("Date","Water_press","depth","ID")
 master<-master[,x]
+master <- master[!duplicated(master[c( 'Date','ID')]),]
 
 ggplot(master, aes(Date, depth)) + geom_line() + facet_wrap(~ ID, ncol=5)
 
-write_csv(master, "02_Clean_data/Chem/depth.csv")
+write_csv(master, "02_Clean_data/depth.csv")
 
 #Check PT##########
 
-# file.names <- list.files(path="01_Raw_data/Hobo Excels/15/PT", pattern=".csv", full.names=TRUE)
+# file.names <- list.files(path="01_Raw_data/PT/15", pattern=".csv", full.names=TRUE)
 # PT15<-data.frame()
 # for(fil in file.names){
 #   PT <- PT_unformatted(fil)
 #   PT15<-rbind(PT15,PT)}
+# ggplot(PT15, aes(Date, PT)) + geom_line()
 # PT15$ID<-'15'
-#
+# #
 # file.names <- list.files(path="01_Raw_data/Hobo Excels/14/PT", pattern=".csv", full.names=TRUE)
 # PT14<-data.frame()
 # for(fil in file.names){
@@ -144,7 +166,7 @@ write_csv(master, "02_Clean_data/Chem/depth.csv")
 #   PT5<-rbind(PT5,PT)}
 # PT5$ID<-'5'
 #
-# file.names <- list.files(path="01_Raw_data/Hobo Excels/5a/PT", pattern=".csv", full.names=TRUE)
+# file.names <- list.files(path="01_Raw_data/PT/5a", pattern=".csv", full.names=TRUE)
 # PT5a<-data.frame()
 # for(fil in file.names){
 #   PT <- PT_unformatted(fil)
@@ -174,31 +196,55 @@ write_csv(master, "02_Clean_data/Chem/depth.csv")
 # ggplot(compile, aes(Date, PT)) + geom_line() + facet_wrap(~ ID, ncol=5)
 
 #baro######
+
+# samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2021-03-29 00:00", tz="UTC"),
+#                                             to=as.POSIXct("2024-03-29 00:00", tz="UTC"),by="hour")))
+# samplingperiod<-samplingperiod %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
+#
+#
 # file.names <- list.files(path="01_Raw_data/baro/6a", pattern=".csv", full.names=TRUE)
 # baro6a<-data.frame()
 # for(fil in file.names){
 #   PT <- PT_unformatted(fil)
 #   baro6a<-rbind(baro6a,PT)}
-# baro6a<-rename(baro6a, 'PTbaro'='PT')
-# baro6a$region<-'N'
+# baro6a<-rename(baro6a, 'PTbaro_6a'='PT')
+# baro6a<-baro6a %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
+# baro6a<-baro6a[,-1]
 #
 # file.names <- list.files(path="01_Raw_data/baro/5", pattern=".csv", full.names=TRUE)
 # baro5<-data.frame()
 # for(fil in file.names){
 #   PT <- PT_unformatted(fil)
 #   baro5<-rbind(baro5,PT)}
-# baro5<-rename(baro5, 'PTbaro'='PT')
-# baro5$region<-'S'
+# baro5<-rename(baro5, 'PTbaro_5'='PT')
+# baro5<-baro5 %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
+# baro5<-baro5[,-1]
 #
-# compile_baro<-rbind(baro6a, baro5)
-# compile_baro<-compile_baro %>% filter(PTbaro>14 & PTbaro<16)
+# coalesce<-left_join(samplingperiod, baro6a, by=c('hr', 'day', 'mnth', 'yr'))
+# coalesce<-left_join(coalesce, baro5, by=c('hr', 'day', 'mnth', 'yr'))
 #
-# compile_baro<-compile_baro %>% mutate(day=day(Date),month=month(Date), year=year(Date), hour=hour(Date))
-# compile_baro<-compile_baro %>% group_by(hour, day, month, year,region) %>% mutate(PTbaro= mean(PTbaro, na.rm=T))
-# compile_baro <- compile_baro[!duplicated(compile_baro[c('hour','day','month','year','region')]),]
-# compile_baro<-compile_baro[,c(1,2,3)]
+#
+# coalesce$PTbaro_6a[coalesce$PTbaro_6a <14.4] <- NA
+# coalesce$PTbaro_6a[coalesce$PTbaro_6a >16 ] <- NA
+# coalesce$PTbaro_5[coalesce$PTbaro_5 >16 ] <- NA
+#
+# coalesce$PTbaro_5 <- ifelse(is.na(coalesce$PTbaro_5), coalesce$PTbaro_6a, coalesce$PTbaro_5)
+# coalesce$PTbaro_6a <- ifelse(is.na(coalesce$PTbaro_6a), coalesce$PTbaro_5, coalesce$PTbaro_6a)
+#
+# ggplot(coalesce, aes(x=Date)) +
+#   geom_line(aes(y=PTbaro_5, color="5"))+
+#   geom_line(aes(y=PTbaro_6a-1, color='6a'))
+#
+# baro_5<-coalesce[,c(1,7)]
+# baro_5<-rename(baro_5, 'PTbaro'='PTbaro_5')
+# baro_6a<-coalesce[,c(1,6)]
+# baro_6a<-rename(baro_6a, 'PTbaro'='PTbaro_6a')
+#
+# baro_6a$region<-'N'
+# baro_5$region<-'S'
+# compile_baro<-rbind(baro_6a, baro_5)
 #
 # ggplot(compile_baro, aes(Date, PTbaro)) + geom_line() + facet_wrap(~ region, ncol=5)
 #
 # write_csv(compile_baro, "01_Raw_data/PT/compiled_baro.csv")
-
+#
