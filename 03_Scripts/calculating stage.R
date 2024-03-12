@@ -12,7 +12,7 @@ baro<-baro[,-1]
 master<-left_join(PT, baro, by=c('region','hr', 'day', 'mnth', 'yr'))
 
 master <-master %>% mutate(PT_clean = case_when(ID=='3' & PT<=14.96 ~ PT+0.37,
-                                                     ID=='6' & Date>'2022-11-14' ~ PT-0.4,
+                                                     ID=='6' & Date>'2022-11-14' ~ PT-0.6,
                                                      ID=='13' & PT<15.25 ~ PT+0.2,
                                                      ID=='14' & PT<15.5 ~ NA,
                                                      ID=='5' & PT<15 ~ NA,
@@ -25,14 +25,9 @@ master$PT[master$ID=='13' & master$PT<15.25] <- NA
 
 master$PT <- ifelse(is.na(master$PT), master$PT_clean, master$PT)
 
-master <- master %>% filter(ID=='13' & PT>15| ID=='14' & PT>15.25|
-                              ID=='5'& PT>15|ID=='5a'& PT>14.75|ID=='6'& PT>14.75|
-                              ID=='9'& PT>14.65 | ID=='3'| ID=='6a'|ID=='7'|ID=='15')
-
 master$Water_press<-master$PT-master$PTbaro
 master$sensor_depth<-1000*master$Water_press/2.2/(2.54^2)/100
 master$date<-as.Date(master$Date)
-
 master <- master %>%
   mutate(PL= case_when(ID== '3' & date<='2022-11-15' ~ 137,
                        ID== '5' & date<='2022-11-14'~ 147,
@@ -109,41 +104,53 @@ master <- master %>%
 
 master$depth<-master$sensor_depth-(master$PL-master$PG)/100
 master <- master[!duplicated(master[c( 'Date','ID')]),]
-master<-master %>% mutate(min=minute(Date))%>%filter(min==0)
 
-ggplot(master, aes(Date, PT)) + geom_line()+ facet_wrap(~ ID, ncol=5)
+master <-master %>% mutate(depth_clean = case_when(ID=='6' & Date>'2023-11-02' ~ depth+0.16,
+                                                   ID=='9' & Date>'2023-11-02' ~ depth-0.1,
+                                                   ID=='13' & Date>='2022-01-28 12:00:00' & Date<'2022-03-10'~ depth+0.16,
+                                                   ID=='3'& Date<'2022-11-10' & depth<0.23 ~ depth+0.1,
+                                                   ID=='6a'& Date>'2023-12-16 14:00:00' ~ depth-0.3,
+                                                   ID=='5a'& Date>'2022-11-10 02:00:00'& Date<'2022-11-14 19:00:00' ~ depth-0.1,))
 
+master$depth[master$ID=='5a'& master$Date>'2022-11-10 02:00:00'& master$Date<'2022-11-14 19:00:00'] <- NA
+master$depth[master$ID=='6' & master$Date>'2023-11-02'] <- NA
+master$depth[master$ID=='9' & master$Date>'2023-11-02'] <- NA
+master$depth[master$ID=='13' & master$Date>'2022-01-26' & master$Date<'2022-03-10'] <- NA
+master$depth[master$ID=='3'& master$Date<'2022-11-10' & master$depth<0.23] <- NA
+master$depth[master$ID=='6a'& master$Date>'2023-12-16'] <- NA
+
+master$depth <- ifelse(is.na(master$depth), master$depth_clean, master$depth)
+
+master <-master %>% mutate(depth_clean = case_when(ID=='13' & Date>'2023-11-01 07:00:00'& Date<'2023-12-06 08:00:00'~ depth-0.12))
+master$depth[master$ID=='13' & master$Date>'2023-11-01 07:00:00' & master$Date<'2023-12-06 08:00:00'] <- NA
+master$depth <- ifelse(is.na(master$depth), master$depth_clean, master$depth)
+
+master <-master %>% mutate(depth_clean = case_when(ID=='13' & Date>'2023-12-16 11:00:00'~ depth-0.2))
+master$depth[master$ID=='13' & master$Date>'2023-12-16 11:00:00'] <- NA
+master$depth <- ifelse(is.na(master$depth), master$depth_clean, master$depth)
+
+master <- master %>% filter(ID=='13' & depth> -0.10|
+                              ID=='14' & depth> 0.3|
+                              ID=='5'& depth> -0.2|
+                              ID=='5a'& depth> -0.35 & depth<0.82|
+                              ID=='6'& depth> -0.2|
+                              ID=='9'& depth>-0.2 |
+                              ID=='3'| ID=='6a'|ID=='7'|ID=='15')
+
+
+ggplot(master, aes(x=Date)) + geom_line(aes(y=depth))+
+  #geom_line(aes(y=PT_clean, color='cleaned'))+
+  facet_wrap(~ ID, ncol=5)
+
+master<-master[, c(1,3,16,11)]
 write_csv(master, "02_Clean_data/depth.csv")
 
 #check
-# s13<-master %>% filter(ID=='9')
+# s13<-master %>% filter(ID=='15')
 # ggplot(s13, aes(x=Date)) +
-#  #geom_line(aes(y=PT_clean, color='removed'))+
-#   geom_line(aes(y=PT))+
-#  geom_hline(yintercept = 14.65)
-#
-#
-#
-# n <-master %>% mutate(PT_clean = case_when(ID=='3' & PT<=14.96 ~ PT+0.37,
-#                                                 ID=='6' & Date>'2022-11-14' ~ PT-0.4,
-#                                                 ID=='13' & PT<15.25 ~ PT+0.2,
-#                                                 ID=='14' & PT<15.5 ~ NA,
-#                                                  ID=='5' & PT<15 ~ NA,
-#                                                 ID=='9' & Date>'2022-09-20' & Date<'2023-07-20' & PT<=14.85~ PT+0.35))
-#
-# n$PT[n$ID=='3' & n$PT<=14.96] <- NA
-# n$PT[n$ID=='6' & n$Date>'2022-11-14'] <- NA
-# n$PT[n$ID=='9' & n$Date>'2022-09-20' & n$Date<'2023-07-20' & n$PT<=14.85] <- NA
-# n$PT[n$ID=='13' & n$PT<15.25] <- NA
-#
-# n$PT <- ifelse(is.na(n$PT), n$PT_clean, n$PT)
-#
-#
-# n <-master %>% mutate(PT_clean = case_when(ID=='13' & Date>'2023-11-01' ~ PT-0.2,
-#                                            ID=='6' & PT>15 ~ NA))
-
-
-
+#  geom_line(aes(y=depth_clean, color='removed'))+
+#   geom_line(aes(y=depth))+
+#  geom_hline(yintercept = 0.82)
 
 
 
@@ -222,7 +229,9 @@ baro_6a<-rename(baro_6a, 'PTbaro'='PTbaro_6a')%>%mutate(ID='5',region='N')
 compile_baro<-rbind(baro_6a, baro_5)
 compile_baro<-compile_baro[,-3]
 
-ggplot(compile_baro, aes(Date, PTbaro)) + geom_line() + facet_wrap(~ region, ncol=5)
+ggplot(compile_baro, aes(Date, PTbaro)) +
+  geom_line() + facet_wrap(~ region, ncol=5)+
+  geom_hline(yintercept = 14.5)
 
 write_csv(compile_baro, "01_Raw_data/PT/compiled_baro.csv")
 

@@ -89,57 +89,33 @@ DG_rC <- DG_rC[!duplicated(DG_rC[c( 'date','ID')]),]
 x<-c("date","ID","Q","u_mean" ,"depth_mean","m_0","m_1")
 DG_rC<-DG_rC[,x]
 
-DG_rC$logQ<-log10(DG_rC$Q)
-ggplot(DG_rC, aes(depth_mean, logQ)) + geom_point() + geom_smooth(method='lm',se = FALSE)+
+DG_rC<- DG_rC %>% mutate(logQ=log10(Q),logh=log10(depth_mean))
+
+ggplot(DG_rC, aes(logh, logQ)) + geom_point() + geom_smooth(method='lm',se = FALSE)+
   facet_wrap(~ ID, ncol=5)
 
 split<-DG_rC %>% split(DG_rC$ID)
 write.xlsx(split, file = '04_Output/rC_DG.xlsx')
 
-rC <- lmList(log10(Q) ~ depth_mean | ID, data=DG_rC)
+rC <- lmList(logQ ~ logh | ID, data=DG_rC)
 (cf <- coef(rC))
 
 depth<-read_csv('02_Clean_data/depth.csv')
 depth <- depth %>%
   mutate(Q= case_when(
-    ID== '13'~ 10^cf[1,1]+10^(depth*cf[1,2]),
-    ID== '14'~ 10^cf[2,1]+10^(depth*cf[2,2]),
-    ID== '15'~ 10^cf[3,1]+10^(depth*cf[3,2]),
-    ID== '3'~ 10^cf[4,1]+10^(depth*cf[4,2]),
-    ID== '5'~ 10^cf[5,1]+10^(depth*cf[5,2]),
-    ID== '5a'~ 10^cf[6,1]+10^(depth*cf[6,2]),
-    ID== '6'~ 10^cf[7,1]+10^(depth*cf[7,2]),
-    ID== '6a'~ 10^cf[8,1]+10^(depth*cf[8,2]),
-    ID== '7'~ 10^cf[9,1]+10^(depth*cf[9,2]),
-    ID== '9'~ 10^cf[10,1]+10^(depth*cf[10,2])
+    ID== '13'~ (10^cf[1,1])*depth^(cf[1,2]),
+    ID== '14'~ (10^cf[2,1])*depth^(cf[2,2]),
+    ID== '15'~ (10^cf[3,1])*depth^(cf[3,2]),
+    ID== '3'~ (10^cf[4,1])*depth^(cf[4,2]),
+    ID== '5'~ (10^cf[5,1])*depth^(cf[5,2]),
+    ID== '5a'~ (10^cf[6,1])*depth^(cf[6,2]),
+    ID== '6'~ (10^cf[7,1])*depth^(cf[7,2]),
+    ID== '6a'~ (10^cf[8,1])*depth^(cf[8,2]),
+    ID== '7'~ (10^cf[9,1])*depth^(cf[9,2]),
+    ID== '9'~ (10^cf[10,1])*depth^(cf[10,2]),
     ))
-depth$ID<-as.factor(depth$ID)
 
-for(i in 1:nrow(depth)) {if(depth$ID[i]== '3' & depth$Q[i]> 900) {
-  depth$Q[i]<-NA}
-  else if (depth$ID[i]== '5' & depth$Q[i]>= 2000){
-    depth$Q[i]<-NA}
-  else if(depth$ID[i]== '6' & depth$Q[i]>= 1200){
-    depth$Q[i]<-NA}
-  else if(depth$ID[i]== '7' & depth$Q[i]>= 750){
-    depth$Q[i]<-NA}
-  else if(depth$ID[i]== '9' & depth$Q[i]>= 900){
-    depth$Q[i]<-NA}
-  else if(depth$ID[i]== '13' & depth$Q[i]>= 2000){
-    depth$Q[i]<-NA}
-  else if(depth$ID[i]== '14' & depth$Q[i]>= 1400){
-    depth$Q[i]<-NA}
-  else if(depth$ID[i]== '15' & depth$Q[i]>= 2500){
-    depth$Q[i]<-NA}
-  else if(depth$ID[i]== '5a' & depth$Q[i]>= 400){
-    depth$Q[i]<-NA}
-  else if(depth$ID[i]== '6a' & depth$Q[i]>= 1199){
-    depth$Q[i]<-NA}
-  else {depth$Q[i]<- depth$Q[i]-0 }}
-
-
-
-ggplot(depth, aes(Date, depth)) + geom_line() + geom_hline(yintercept = 0)+
+ggplot(depth, aes(Date, Q)) + geom_line() + geom_hline(yintercept = 0)+
   facet_wrap(~ ID, ncol=5)
 write_csv(depth, "02_Clean_data/discharge.csv")
 
