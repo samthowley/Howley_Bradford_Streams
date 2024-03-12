@@ -68,6 +68,8 @@ ggplot(s14, aes(Date)) +
 
 #s5
 master<-rbind(s3,s5a, s6, s6a, s7, s9, s13, s14)
+x<-c('Date',"CO2_molL","HCO3_molL",'ID')
+master<-master[,x]
 write_csv(master, "02_Clean_data/master_alk.csv")
 
 smol<-rbind(s3,s5a, s6, s7, s9)

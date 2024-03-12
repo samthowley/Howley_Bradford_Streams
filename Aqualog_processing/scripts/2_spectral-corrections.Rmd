@@ -1,31 +1,4 @@
----
-title: "DOM EEM processing"
-subtitle: "Template for Analysis"
-author: "Emily Taylor"
-date: "Last compiled on `r format(Sys.time(), '%d %B, %Y')`"
-header-includes:
-  - \usepackage{placeins}
-  - \usepackage{subfig}
-  - \usepackage{booktabs}
-  - extra_dependencies: subfig
-output: 
-  html_notebook: 
-    toc_depth: 5
-    toc: true
-    toc_float: true
-    number_sections: yes
-    df_print: paged
-    code_folding: hide
-  pdf_document:
-    fig_crop: yes
-    toc: true
-    number_sections: true
-geometry: margin = 0.75in
-editor_options:
-  markdown:
-    wrap: 80
-  chunk_output_type: console
----
+
 
 More details on the protocols followed for building this PARAFAC model can be found in the [StaRdom package vingette](https://cran.r-project.org/web/packages/staRdom/vignettes/PARAFAC_analysis_of_EEM.html)
 
@@ -75,6 +48,9 @@ source("./scripts/functions/plotting_parameters_and_functions.R")
 source("./scripts/functions/spectral_corrections.R")
 
 source("./scripts/functions/grid_size_adjustment.R")
+
+source("./scripts/functions/format_aqua_data.R")
+
 ```
 
 
@@ -111,44 +87,6 @@ eem_metatemplate(eem_list, absorbance) %>%
 
 ```
 
-While it will slow down the process considerably, it is worth viewing the EEMs at each step, especially when first working with DOM fluorescence data. It might be quicker depending on the number of samples to view each run individually. 
-To select a singular run use the code below before step 2 and use keep = TRUE. 
-To remove a sample from the set, use keep = FALSE.
-
-```{r}
-#keeping the below chunk as an example 
-#eem_list <-
-#  eem_extract(
-#    eem_list,
-#    c("^B1S2_Blank_3_190531_$", # use the ^ and $ before and after a sample name for an exact selection
-#      "^B1S3_Blank_4_190531_$",
-#      "2020Aug14", # use date or some other unique but shared identifier to select a specific sample set
-#      "19MAY24"),
-#    keep = TRUE,
-#    ignore_case = TRUE)
-  
-#selecting eem files for only those you want to review
- eem_list_forReview <-
-  eem_extract(
-    eem_list,
-    c("blank"),
-    keep = TRUE,
-    ignore_case = TRUE)
-    
-#plotting
-par(mfrow = c(3, 3), mar = c(1, 1, 2, 3))
-#par(mfrow = c(2,1))
-#dev.off()
-eem_plot_3D(eem_list_forReview)
-
-```
-
-plots of the full eem_list
-```{r initial-threeD-plots, fig.show = 'hold', cache = TRUE}
-par(mfrow = c(3, 3), mar = c(1, 1, 2, 3))
-#eem_plot_3D(eem_list)
-#this will plot all samples. I've hased it out because your computer will catch on fire if you try and plot a butt load of figures if you have many samples
-```
 
 #### 1. Import Meta-Table
 
@@ -192,11 +130,6 @@ eem_list <-
     ignore_case = TRUE
   )
 
-# you can also fix sample names
-eem_list <- 
-  eem_name_replace(eem_list,
-                   c("^B1S1_SWBUP_2019Jun05$"),
-                   c("^B1S1_SWBUP_2019Jun18$"))
 
 ```
 
@@ -239,21 +172,8 @@ eem_list <- eem_range(eem_list,ex = c(239,800), em = c(246,800))
 min(eem_list[[1]][["ex"]]) #239
 max(eem_list[[1]][["ex"]]) #800
 
-#selecting eem files for only those you want to review
- eem_list_forReview <-
-  eem_extract(
-    eem_list,
-    c("Pond20"),#looking at one site
-    keep = TRUE,
-    ignore_case = TRUE)
-
 ```
 
-```{r new-grid-threeD-plots, fig.show = 'hold'}
-par(mfrow = c(3, 3), mar = c(1, 1, 2, 3))
-eem_plot_3D(eem_list_forReview)
-
-```
 
 ### 1. Blank Subtraction
 
@@ -345,22 +265,6 @@ absorbance <-
                 -dplyr::matches("nano|miliq|milliq|mq|blank", ignore.case = TRUE))
 ```
 
-### 1. Removal Raman and Rayleigh Scatter
-
-```         
-- The function order is "raman1", "raman2", "rayleigh1" and "rayleigh2" 
-- The figure order is raman 2, then rayleigh2, then raman 1, then rayleigh 1
-```
-
-#### 1. Check Raman and Rayleigh Bands
-
-This is a side view of the emission fluorescence at excitation = 350. This can be used to assess how wide the Raman and Rayleigh scattering bands are and whether the chosen scattering removal band covers their full width
-
-```{r check-em-at-350, fig.show = 'hold'}
-
-# eem_bands(eem_list_done2)
-
-```
 
 #### 1. Remove Rayleigh Band 2 
 
