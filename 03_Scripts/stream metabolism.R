@@ -40,7 +40,7 @@ metabolism <- function(site) {
   mm <- metab(bayes_specs, data=site)
   prediction2 <- mm@fit$daily %>% select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean)
   return(prediction2)}
-master <- read_csv("02_Clean_data/master.csv")
+master <- read_csv("master.csv")
 
 # split<-master %>% split(master$ID)
 # input<-"01_Raw_data/For StreamMetabolizer"
@@ -98,8 +98,10 @@ s5a_ouput<-metabolism(s5a)
 s5a_ouput$ID<-'5a'
 
 master<-rbind(s3_ouput, s5_ouput, s5a_ouput, s6_ouput,s6a_ouput, s7_ouput, s9_ouput,
-              s13_ouput,  s14_ouput,s15_ouput)
+              s13_ouput,s15_ouput)
 master<- master %>% rename('ER'="ER_daily_mean", 'GPP'="GPP_daily_mean", 'Date'='date')
+
+master<-master %>% filter(Date> "2023-06-16") %>%filter(ER>-30)
 
 write_csv(master, "04_Output/master_metabolism.csv")
 

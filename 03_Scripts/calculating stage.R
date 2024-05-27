@@ -141,7 +141,6 @@ master <- master %>% filter(ID=='13' & depth> -0.10|
 ggplot(master, aes(x=Date)) + geom_line(aes(y=depth))+
   #geom_line(aes(y=PT_clean, color='cleaned'))+
   facet_wrap(~ ID, ncol=5)
-
 master<-master[, c(1,3,16,11)]
 write_csv(master, "02_Clean_data/depth.csv")
 
@@ -171,7 +170,6 @@ ggplot(PT_all, aes(Date, PT)) + geom_line() + facet_wrap(~ ID, ncol=5)
 
 PT_all <-  PT_all %>%
   mutate(region= case_when(ID=="6"|ID=="6a"|ID=="3"|ID=="7"~ 'N',
-
                         ID=="5"|ID=="5a"|ID=="15"|ID=="9"|
                         ID=="14"|ID=="13"~ 'S'))
 
@@ -182,7 +180,7 @@ PT_all<-PT_all[,c(1,2,3,4)]
 ggplot(PT_all, aes(Date, PT)) + geom_line() + facet_wrap(~ ID, ncol=5)
 
 write_csv(PT_all, "01_Raw_data/PT/compiled_PT.csv")
-
+range(PT_all$Date, na.rm=T)
 
 #compile baro######
 
@@ -199,7 +197,7 @@ for(fil in file.names){
 
 baro_all<-baro_all %>%rename('PTbaro'='PT') %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 baro_all<-baro_all[,-1]
-samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2021-03-29 00:00", tz="UTC"),to=as.POSIXct("2024-03-29 00:00", tz="UTC"),by="hour")))
+samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2021-03-29 00:00", tz="UTC"),to=as.POSIXct("2024-04-19 00:00", tz="UTC"),by="hour")))
 samplingperiod<- samplingperiod %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 baro_all<-left_join(baro_all, samplingperiod, by=c('hr', 'day', 'mnth', 'yr'))
 
@@ -232,6 +230,7 @@ compile_baro<-compile_baro[,-3]
 ggplot(compile_baro, aes(Date, PTbaro)) +
   geom_line() + facet_wrap(~ region, ncol=5)+
   geom_hline(yintercept = 14.5)
+range(compile_baro$Date, na.rm=T)
 
 write_csv(compile_baro, "01_Raw_data/PT/compiled_baro.csv")
 

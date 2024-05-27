@@ -4,6 +4,8 @@ library(readxl)
 library(tools)
 library(openxlsx)
 library(lme4)
+library(mmand)
+library(grwat)
 
 ###seperating DG######
 clean_DG <- function(DG) {
@@ -17,16 +19,16 @@ clean_DG <- function(DG) {
   DG1<-DG %>%filter(time>start & time< end)
   return(DG1)}
 
-DG <- read_csv("01_Raw_data/DG/raw/08042023.13.csv",
+DG <- read_csv("01_Raw_data/DG/raw/03252024.csv",
                skip = 1)
 
-start<-'09:12:00'
-end<-'09:22:00'
+start<-'15:29:00'
+end<-'15:40:00'
 
 DG1<-clean_DG(DG)
 ggplot(DG1, aes(Date,LowSpC)) + geom_line()
 
-write_csv(DG1, '01_Raw_data/DG/13/08042023_13.csv')
+write_csv(DG1, '01_Raw_data/DG/seperated/03252024_9.csv')
 
 #extract DG#####
 notes<- read_csv("01_Raw_data/DG/Streams_dilution_gauging.csv",
@@ -76,23 +78,29 @@ DG$date<-as.Date(DG$Date)
 DG <- DG[!duplicated(DG[c('date','ID')]),]
 write_csv(DG, "04_Output/compiled_DG.csv")
 
-#rating curve####
+#Calculate Q####
 DG<-read_csv('04_Output/compiled_DG.csv')
 DG<-DG %>%mutate(hr=hour(Date), day=day(Date),month=month(Date), yr=year(Date))
 
 depth <- read_csv("02_Clean_data/depth.csv")
 depth<-depth %>%mutate(hr=hour(Date), day=day(Date),month=month(Date), yr=year(Date))
-depth<-depth %>% group_by(ID, day, month, yr) %>% mutate(depth_mean=mean(depth, na.rm=T))
+depth<- depth %>% group_by(ID, day, month, yr) %>% mutate(depth_mean=mean(depth, na.rm=T))
+depth[order(depth$ID,ymd_hms(depth$Date)),]
 
 DG_rC<-left_join(DG, depth, by=c('ID', 'hr','day', 'month', 'yr'))
 DG_rC <- DG_rC[!duplicated(DG_rC[c( 'date','ID')]),]
 x<-c("date","ID","Q","u_mean" ,"depth_mean","m_0","m_1")
 DG_rC<-DG_rC[,x]
 
-DG_rC<- DG_rC %>% mutate(logQ=log10(Q),logh=log10(depth_mean))
+DG_rC<- DG_rC %>% mutate(logQ=log10(Q),logh=log10(depth_mean)) %>%
+  filter(ID != '14')
 
-ggplot(DG_rC, aes(logh, logQ)) + geom_point() + geom_smooth(method='lm',se = FALSE)+
-  facet_wrap(~ ID, ncol=5)
+# ggplot(DG_rC, aes(depth_mean, Q)) + geom_point() +
+#   geom_smooth(method='lm',se = FALSE)+
+#   facet_wrap(~ ID, ncol=3)+
+#   theme_sam+ scale_x_continuous(trans='log10') +
+#   scale_y_continuous(trans='log10')+
+#   ylab('Discharge (L/s)')+xlab("Depth (m)")
 
 split<-DG_rC %>% split(DG_rC$ID)
 write.xlsx(split, file = '04_Output/rC_DG.xlsx')
@@ -103,24 +111,39 @@ rC <- lmList(logQ ~ logh | ID, data=DG_rC)
 depth<-read_csv('02_Clean_data/depth.csv')
 depth <- depth %>%
   mutate(Q= case_when(
-    ID== '13'~ (10^cf[1,1])*depth^(cf[1,2]),
-    ID== '14'~ (10^cf[2,1])*depth^(cf[2,2]),
-    ID== '15'~ (10^cf[3,1])*depth^(cf[3,2]),
-    ID== '3'~ (10^cf[4,1])*depth^(cf[4,2]),
-    ID== '5'~ (10^cf[5,1])*depth^(cf[5,2]),
-    ID== '5a'~ (10^cf[6,1])*depth^(cf[6,2]),
-    ID== '6'~ (10^cf[7,1])*depth^(cf[7,2]),
-    ID== '6a'~ (10^cf[8,1])*depth^(cf[8,2]),
-    ID== '7'~ (10^cf[9,1])*depth^(cf[9,2]),
-    ID== '9'~ (10^cf[10,1])*depth^(cf[10,2]),
-    ))
+    ID== '13'~ (10^cf[1,1]) *depth^(cf[1,2]),
+    ID== '14'~ (10^cf[2,1]) *depth^(cf[2,2]),
+    ID== '15'~ (10^cf[3,1]) *depth^(cf[3,2]),
+    ID== '3'~ (10^cf[4,1]) *depth^(cf[4,2]),
+    ID== '5'~ (10^cf[5,1]) *depth^(cf[5,2]),
+    ID== '5a'~ (10^cf[6,1]) *depth^(cf[6,2]),
+    ID== '6'~ (10^cf[7,1]) *depth^(cf[7,2]),
+    ID== '6a'~ (10^cf[8,1]) *depth^(cf[8,2]),
+    ID== '7'~ (10^cf[9,1]) *depth^(cf[9,2]),
+    ID== '9'~ (10^cf[10,1]) *depth^(cf[10,2])))
 
-ggplot(depth, aes(Date, Q)) + geom_line() + geom_hline(yintercept = 0)+
+# ggplot(depth, aes(Date, Q)) + geom_line() + geom_hline(yintercept = 0)+
+#   facet_wrap(~ ID, ncol=5)
+x<-c("Date","ID","Q")
+depth<-depth[,x]
+
+discharge <- depth %>% group_by(ID) %>%
+  mutate(Qbase = gr_baseflow(Q, method = 'jakeman',a = 0.925, passes = 3))
+discharge<-discharge %>% group_by(ID) %>% mutate(medianQbase=median(Qbase, na.rm=T))
+
+discharge <- discharge %>%
+  mutate(Q_ID= case_when(
+    medianQbase <= Q~  'low',
+    medianQbase > Q~ 'high'))
+
+discharge$Qbase[discharge$Qbase<0]<-NA
+
+ggplot(discharge, aes(Date)) +
+  geom_line(aes(y=Qbase, color='base'))+
+  geom_line(aes(y=medianQbase, color='median'))+
   facet_wrap(~ ID, ncol=5)
-write_csv(depth, "02_Clean_data/discharge.csv")
 
-site<-filter(depth, ID=='3')
-ggplot(site, aes(x=Date)) + geom_line(aes(y=Q))+ geom_line(aes(y=depth, color='h'))
+write_csv(discharge, "02_Clean_data/discharge.csv")
 
 
 # ##### combined all data ####
