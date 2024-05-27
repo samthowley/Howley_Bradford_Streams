@@ -1,0 +1,75 @@
+###################################################################################################
+Log File: C:\Users\Public\Documents\Jobin Yvon\Data\Howley\Moein\4122024_RAIN\AqualogSampleQLog.txt
+JYAqualogSampleQ.dll Version: 4.3.0.27
+Date: Friday, April 12, 2024
+Time: 11:07:22 AM
+###################################################################################################
+[2024-04-12 11-07-22] 
+Aqualog Sample Q Experimental Parameters:
+[Aqualog Sample Q File] C:\Users\Public\Documents\Jobin Yvon\Data\Howley\Moein\4122024_RAIN\04122024.aqu
+[Aqualog Experiment File] C:\Users\Public\Documents\Jobin Yvon\Data\Howley\Moein\4122024_RAIN\04122024_Exper_2024-04-12-11-07-22.xml
+[Output Destination Folder] C:\Users\Public\Documents\Jobin Yvon\Data\Howley\Moein\4122024_RAIN\
+
+Aqualog Sample Q Notes:
+
+Dilution Factor: 0
+
+Blank & Sample Setup:
+[Blank Group 1] B1-B1
+[Blank Group 1: Sample 1] S1-ST492024 (Repeats=0)
+[Blank Group 1: Sample 2] S2-SFD492024 (Repeats=0)
+[Blank Group 1: Sample 3] S3-SUBD492024 (Repeats=0)
+[Blank Group 1: Sample 4] S4-GWD492024 (Repeats=0)
+[Blank Group 1: Sample 5] S5-LFOD492024 (Repeats=0)
+[Blank Group 1: Sample 6] S6-SUBS492024 (Repeats=0)
+[Blank Group 1: Sample 7] S7-TFS492024 (Repeats=0)
+[Blank Group 1: Sample 8] S8-SURS492024 (Repeats=0)
+[Blank Group 1: Sample 9] S9-SURD492024 (Repeats=0)
+[Blank Group 2] B2-B2
+[Blank Group 2: Sample 1] S10-SFS492024 (Repeats=0)
+[Blank Group 2: Sample 2] S11-LFCS492024 (Repeats=0)
+[Blank Group 2: Sample 3] S12-LFOS492024 (Repeats=0)
+[Blank Group 2: Sample 4] S13-GWS492024 (Repeats=0)
+[Blank Group 2: Sample 5] S14-W492024 (Repeats=0)
+[Blank Group 2: Sample 6] S15-LFCD492024 (Repeats=0)
+[Blank Group 2: Sample 7] S16-GWW492024 (Repeats=0)
+[Blank Group 2: Sample 8] S17-TFD492024 (Repeats=0)
+[Total Number of Samples] 17
+
+Post Processing Options:
+
+Export Options:
+ABS = True
+OGW = True
+ASCII = True
+PCT = True
+BEM = True
+SEM = True
+
+Delay Options:
+Single Cell Kinetics = False
+Delay Before First Blank = 0 Seconds
+Delay Between Each Experiment = 0 Seconds
+################################################################################
+[2024-04-12 11-07-22] STARTING Aqualog SampleQ Execution
+[2024-04-12 11-07-25] Experiment 01 of 19 [Blank 1] Start Done B1
+[2024-04-12 11-16-03] Experiment 02 of 19 [Blank 1, Sample 1, Repeat 0] Start Done B1S1ST492024
+[2024-04-12 11-21-23] Experiment 03 of 19 [Blank 1, Sample 2, Repeat 0] Start Done B1S2SFD492024
+[2024-04-12 11-26-42] Experiment 04 of 19 [Blank 1, Sample 3, Repeat 0] Start Done B1S3SUBD492024
+[2024-04-12 11-32-02] Experiment 05 of 19 [Blank 1, Sample 4, Repeat 0] Start Done B1S4GWD492024
+[2024-04-12 11-40-02] Experiment 06 of 19 [Blank 1, Sample 5, Repeat 0] Start Done B1S5LFOD492024
+[2024-04-12 11-45-21] Experiment 07 of 19 [Blank 1, Sample 6, Repeat 0] Start Done B1S6SUBS492024
+[2024-04-12 11-50-39] Experiment 08 of 19 [Blank 1, Sample 7, Repeat 0] Start Done B1S7TFS492024
+[2024-04-12 11-55-58] Experiment 09 of 19 [Blank 1, Sample 8, Repeat 0] Start Done B1S8SURS492024
+[2024-04-12 12-05-38] Experiment 10 of 19 [Blank 1, Sample 9, Repeat 0] Start Done B1S9SURD492024
+[2024-04-12 12-10-55] Experiment 11 of 19 [Blank 2] Start Done B2
+[2024-04-12 12-14-45] Experiment 12 of 19 [Blank 2, Sample 1, Repeat 0] Start Done B2S10SFS492024
+[2024-04-12 12-20-05] Experiment 13 of 19 [Blank 2, Sample 2, Repeat 0] Start Done B2S11LFCS492024
+[2024-04-12 12-27-56] Experiment 14 of 19 [Blank 2, Sample 3, Repeat 0] Start Done B2S12LFOS492024
+[2024-04-12 12-33-17] Experiment 15 of 19 [Blank 2, Sample 4, Repeat 0] Start Done B2S13GWS492024
+[2024-04-12 12-38-35] Experiment 16 of 19 [Blank 2, Sample 5, Repeat 0] Start Done B2S14W492024
+[2024-04-12 12-43-53] Experiment 17 of 19 [Blank 2, Sample 6, Repeat 0] Start Done B2S15LFCD492024
+[2024-04-12 12-50-54] Experiment 18 of 19 [Blank 2, Sample 7, Repeat 0] Start Done B2S16GWW492024
+[2024-04-12 12-56-13] Experiment 19 of 19 [Blank 2, Sample 8, Repeat 0] Start Done B2S17TFD492024
+[2024-04-12 13-01-32] COMPLETED Aqualog SampleQ Execution
+--------------------------------------------------------------------------------
