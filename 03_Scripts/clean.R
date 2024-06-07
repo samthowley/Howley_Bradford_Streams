@@ -7,14 +7,14 @@ library(weathermetrics)
 library(tools)
 library(cowplot)
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2022-11-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-05-08 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2024-05-31 00:00", tz="UTC"),by="hour")))
 
 clean_DO <- function(fil) {
   DO <- read_csv(fil,skip= 1)
   DO<-DO[,c(2,3,4)]
   colnames(DO)[1] <- "Date"
   colnames(DO)[2] <- "DO"
-  colnames(DO)[3] <- "Temp"
+  colnames(DO)[3] <- "Temp_DO"
   DO$Date <- mdy_hms(DO$Date)
   DO<-left_join(DO, samplingperiod, by='Date')
   DO$ID<-strsplit(file_path_sans_ext(i), '_')[[1]][6]
@@ -28,7 +28,7 @@ MiniDot_DO<-function(fil){
   DO<-DO[,c(2,6,5)]
   colnames(DO)[1] <- "Date"
   colnames(DO)[2] <- "DO"
-  colnames(DO)[3] <- "Temp"
+  colnames(DO)[3] <- "Temp_DO"
   DO<-left_join(DO, samplingperiod, by='Date')
   DO$ID<-strsplit(file_path_sans_ext(i), '_')[[1]][6]
 
@@ -38,9 +38,10 @@ MiniDot_DO<-function(fil){
   return(DO)}
 clean_SpC <- function(fil) {
   SpC <- read_csv(fil, skip= 1)
-  SpC<-SpC[,c(2,3)]
+  SpC<-SpC[,c(2,3,4)]
   colnames(SpC)[1] <- "Date"
   colnames(SpC)[2] <- "SpC"
+  colnames(SpC)[3] <- "Temp_SpC"
   SpC$Date <- mdy_hms(SpC$Date)
   SpC<-left_join(SpC, samplingperiod, by='Date')
   SpC$ID<-strsplit(file_path_sans_ext(i), '_')[[1]][6]
@@ -48,26 +49,14 @@ clean_SpC <- function(fil) {
 }
 clean_pH <- function(i) {
   pH <- read_xlsx(i)
-  pH<-pH[,c(2,5)]
+  pH<-pH[,c(2,5,3)]
   colnames(pH)[1] <- "Date"
   colnames(pH)[2] <- "pH"
+  colnames(pH)[3] <- "Temp_pH"
+  pH$Temp_pH<-celsius.to.fahrenheit(pH$Temp_pH)
   #pH<-filter(pH, pH<6.2) #remove hours out of water
   pH$ID<-strsplit(file_path_sans_ext(i), '_')[[1]][6]
   return(pH)}
-clean_CO2_csv<-function(i){
-  LB <- read_csv(i)
-  LB<-LB[,c(1,5)]
-  colnames(LB)[2] <- "CO2"
-  LB$ID<-strsplit(file_path_sans_ext(i), '_')[[1]][4]
-  LB$Date<-mdy_hms(LB$Date)
-  return(LB)}
-clean_CO2_dat<-function(fil){
-  LB <- read_csv(fil, skip= 3)
-  LB<-LB[,c(1,4)]
-  colnames(LB)[1] <- "Date"
-  colnames(LB)[2] <- "CO2"
-  LB$ID<-strsplit(basename(i), '_')[[1]][1]
-  return(LB)}
 theme_sam<-theme()+    theme(axis.text.x = element_text(size = 12, angle=0),
                              axis.text.y = element_text(size = 17, angle=0),
                              axis.title =element_text(size = 17, angle=0),
@@ -97,7 +86,9 @@ for(i in file.names){
   DO_all[order(as.Date(DO_all$date, format="%Y-%m-%d %H:%M:%S")),]
 }
 
-DO_all<-filter(DO_all, DO>0)
+DO_all$DO[DO_all$DO<0]<-NA
+DO_all$Temp_DO[DO_all$Temp_DO<0]<-NA
+
 DO_all<- DO_all[!duplicated(DO_all[c('Date','ID')]),]
 ggplot(DO_all, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=4)+theme_sam
 
@@ -112,7 +103,12 @@ for(i in file.names){
   SpC<-clean_SpC(i)
   SpC_all<-rbind(SpC_all, SpC)
 }
-SpC_all<-filter(SpC_all, SpC<1000)
+
+
+SpC_all$SpC[SpC_all$SpC>1000]<-NA
+SpC_all$Temp_SpC[SpC_all$Temp_SpC<0]<-NA
+SpC_all$Temp_SpC[SpC_all$Temp_SpC>30]<-NA
+
 SpC_all <- SpC_all[!duplicated(SpC_all[c('Date','ID')]),]
 ggplot(SpC_all, aes(Date, SpC)) + geom_line() + facet_wrap(~ ID, ncol=4)+theme_sam
 write_csv(SpC_all, "02_Clean_data/SpC_cleaned.csv")
@@ -128,8 +124,10 @@ for(fil in file.names){
   }
 pH_all <- pH_all[!duplicated(pH_all[c('Date','ID')]),]
 
-ggplot(pH_all, aes(Date, pH)) + geom_line() + facet_wrap(~ ID, ncol=4)+theme_sam
-range(pH_all$Date, na.rm=T)
+pH_all$pH[pH_all$pH>8]<-NA
+ggplot(pH_all, aes(Date, pH)) + geom_line() + geom_hline(yintercept=8)+
+  facet_wrap(~ ID, ncol=4)+theme_sam
+
 write_csv(pH_all, "02_Clean_data/pH_cleaned.csv")
 
 # pH_all<- read_csv("02_Clean_data/pH_cleaned.csv")
@@ -145,6 +143,14 @@ master<-join_all(data, by=c('Date','ID'), type='left')
 master<-master %>%  mutate(min = minute(Date)) %>% filter(min==0) %>%
   filter(Date> "2021-11-16")
 master <- master[!duplicated(master[c('Date','ID')]),]
+detach("package:plyr", unload = TRUE)
+
+#compile Temp
+
+
+master$Temp_DO <- ifelse(is.na(master$Temp_DO), master$Temp_pH, master$Temp_DO)
+master$Temp_DO <- ifelse(is.na(master$Temp_DO), master$Temp_PT, master$Temp_PT)
+
+
 
 write_csv(master, "master.csv")
-detach("package:plyr", unload = TRUE)

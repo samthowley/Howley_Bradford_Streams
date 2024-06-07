@@ -18,19 +18,34 @@ domeFoot_L<-83.6
 R<-0.08205
 dome_length<-0.38
 
+file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
+file.names<-file.names[c(3,5)]
+data <- lapply(file.names,function(x) {read_csv(x)})
+library(plyr)
+master<-join_all(data, by=c('Date','ID'), type='left')
+detach("package:plyr", unload = TRUE)
+stream<-master %>%  mutate(min = minute(Date)) %>% filter(min==0)
+
+
 GasDome <- function(gas,stream) {
-  stream<-stream %>%  rename("CO2_enviro"='CO2')%>% mutate(day=day(Date), hour=hour(Date), month=month(Date),yr=year(Date))
-  y<-c("CO2_enviro",'Temp','depth',"day","hour", 'month', 'yr', 'ID')
-  stream<-stream[,y]
+  stream<-stream %>% mutate(day=day(Date), hour=hour(Date), month=month(Date),yr=year(Date))
+  stream<-stream[,c('Temp','depth',"day","hour", 'month', 'yr', 'ID')]
+  stream$Temp[is.na(stream$Temp)]<-mean(stream$Temp, na.rm=T)
+
+  gas <- gas %>%
+    group_by(count = cumsum(c(TRUE, diff(Date) >= 1))) %>%
+    ungroup()
+  pre<-gas[1:6,]
+  gas$CO2_enviro<-mean(pre$CO2, na.rm=T)
 
   gas<-gas %>% mutate(day=day(Date), hour=hour(Date), month=month(Date),yr=year(Date))
   gas<-left_join(gas, stream,by=c('hour', 'day', 'month', 'yr', 'ID'), relationship = "many-to-many")
 
-  gas$mouthTemp_F<-mean(gas$Temp, na.rm=T)
-  gas$mouthTemp_C<-fahrenheit.to.celsius(gas$mouthTemp_F)
-  gas$mouthTemp_K<-gas$mouthTemp_C+273.15
-  gas$SchmidtO2hi<-1568-86.04*gas$mouthTemp_C+2.142*gas$mouthTemp_C^2-0.0216*gas$mouthTemp_C^3
-  gas$SchmidtCO2hi<-1742-91.24*gas$mouthTemp_C+2.208*gas$mouthTemp_C^2-0.0219*gas$mouthTemp_C^3
+  gas$Temp_F<-mean(gas$Temp, na.rm=T)
+  gas$Temp_C<-fahrenheit.to.celsius(gas$Temp_F)
+  gas$Temp_K<-gas$Temp_C+273.15
+  gas$SchmidtO2hi<-1568-86.04*gas$Temp_C+2.142*gas$Temp_C^2-0.0216*gas$Temp_C^3
+  gas$SchmidtCO2hi<-1742-91.24*gas$Temp_C+2.208*gas$Temp_C^2-0.0219*gas$Temp_C^3
 
   gas<-gas %>%
     group_by(day,month, yr,ID) %>%
@@ -40,14 +55,13 @@ GasDome <- function(gas,stream) {
     ungroup
 
   diffuse<-lm(CO2 ~ Date, data = gas)
-  relationship<-coef(diffuse)
-  gas$slope<-relationship[2]
+  gas$slope<-coef(diffuse)[2]
 
   gas$deltaCO2_atm<- (abs(gas$slope)*6/1000000) #change in CO2 during float
 
-  gas$n<-(gas$deltaCO2_atm*domeVol_L/R/gas$mouthTemp_K)
+  gas$n<-(gas$deltaCO2_atm*domeVol_L/R/gas$Temp_K)
   gas$FCO2<-gas$n/domeFoot_m2*60
-  gas$exp<-2400*((1/gas$mouthTemp_K)-(1/298.15))
+  gas$exp<-2400*((1/gas$Temp_K)-(1/298.15))
   gas$KH<-0.034*((gas$exp)*(gas$exp))#mol/L/atm
   gas$KH_1000<-gas$KH*1000
 
@@ -59,14 +73,12 @@ GasDome <- function(gas,stream) {
   (gas$KCO2_1d<-gas$KCO2_md/gas$depth)
   (gas$k600_1d<- as.numeric(gas$k600_md/gas$depth))
 
-  x<-c("day","depth","Temp","KO2_1d","KCO2_1d","k600_1d","ID")
+  x<-c("day","depth","Temp_C","KO2_1d","KCO2_1d","k600_1d","ID")
   gas<-gas[,x]
   gas <- gas[!duplicated(gas[c('k600_1d','ID')]),]
 
   return(gas)
 }
-stream<-read.csv('02_Clean_data/master.csv')
-stream$Date<-ymd_hms(stream$Date)
 
 #k600 compiled########
 gasdome<-data.frame()
@@ -76,11 +88,10 @@ file.names <- list.files(path="01_Raw_data/GD/seperated", full.names=TRUE)
 for(i in file.names){
   gas<-read_csv(i)
   gas$ID<-strsplit(file_path_sans_ext(i), '_')[[1]][5]
-  gas<-GasDome(gas,stream)
+  gas<-GasDome(gas,master)
   gasdome<-rbind(gasdome, gas)}
 gasdome_compiled <- gasdome[!duplicated(gasdome[c('day','ID')]),]
-gasdome_compiled<-gasdome_compiled %>% filter(k600_1d>0)
-
+gasdome_compiled<-gasdome_compiled %>% mutate(k600_1d=abs(k600_1d))
 write_csv(gasdome_compiled, "01_Raw_data/GD/GasDome_compiled.csv")
 
 #Join with Q####
@@ -103,31 +114,20 @@ write.xlsx(split, file = '04_Output/rC_k600.xlsx')
 # (cf <- coef(rC))
 
 #organize data file##########
-gas<- read_csv("01_Raw_data/GD/raw/GasDome_10312023_03072024.dat",skip = 3)
+gas<- read_csv("01_Raw_data/GD/raw/GasDome_05302024.dat",skip = 3)
 gas<-gas[,c(1,5)]
 colnames(gas)[1] <- "Date"
 colnames(gas)[2] <- "CO2"
-gas<-gas %>%filter(Date>'2024-02-10')%>%filter(CO2<500)
+gas<-gas %>%filter(Date>'2024-05-10')
 
-ggplot(gas, aes(Date, CO2)) + geom_line()
-write_csv(gas, "01_Raw_data/GD/raw/GasDome_03072024.csv")
+write_csv(gas, "01_Raw_data/GD/raw/GasDome_05302024.csv")
+
+seperated<- read_csv("01_Raw_data/GD/seperated/GB_05302024_6.csv")
+
+seperated<-filter(seperated, Date< ymd_hms('2024-05-30 15:15:00'))
+ggplot(seperated, aes(x=Date, y=CO2)) +
+  geom_point()+geom_smooth(method='lm',se = FALSE)
+
+write_csv(seperated, "01_Raw_data/GD/seperated/GB_05302024_13.csv")
 
 
-
-
-# depth<-read_csv('02_Clean_data/depth.csv')
-# depth <- depth %>%
-#   mutate(Q= case_when(
-#     ID== '13'~ depth*cf[1,1]+depth*cf[1,2],
-#     ID== '14'~ depth*cf[2,1]+depth*cf[2,2],
-#     ID== '15'~ depth*cf[3,1]+depth*cf[3,2],
-#     ID== '3'~ depth*cf[4,1]+depth*cf[4,2],
-#     ID== '5'~ depth*cf[5,1]+depth*cf[5,2],
-#     ID== '5a'~ depth*cf[6,1]+depth*cf[6,2],
-#     ID== '6'~ depth*cf[7,1]+depth*cf[7,2],
-#     ID== '6a'~ depth*cf[8,1]+depth*cf[8,2],
-#     ID== '7'~ depth*cf[9,1]+depth*cf[9,2],
-#     ID== '9'~ depth*cf[10,1]+depth*cf[10,2]
-#   ))
-# ggplot(depth, aes(Date, Q)) + geom_point() + facet_wrap(~ ID, ncol=5)
-# write_csv(depth, "02_Clean_data/k600.csv")
