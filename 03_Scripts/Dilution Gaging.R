@@ -145,7 +145,6 @@ ggplot(discharge, aes(Date)) +
 
 write_csv(discharge, "02_Clean_data/discharge.csv")
 
-
 # ##### combined all data ####
 DG_all<-data.frame()
 file.names <- list.files(path="01_Raw_data/DG/seperated", pattern=".csv", full.names=TRUE)

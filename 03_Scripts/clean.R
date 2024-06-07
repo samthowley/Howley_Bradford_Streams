@@ -130,8 +130,6 @@ ggplot(pH_all, aes(Date, pH)) + geom_line() + geom_hline(yintercept=8)+
 
 write_csv(pH_all, "02_Clean_data/pH_cleaned.csv")
 
-# pH_all<- read_csv("02_Clean_data/pH_cleaned.csv")
-# range(pH_all$Date, na.rm=T)
 ####Compile####
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
 file.names<-file.names[c(3,4,2,5,6,7)]
@@ -146,11 +144,17 @@ master <- master[!duplicated(master[c('Date','ID')]),]
 detach("package:plyr", unload = TRUE)
 
 #compile Temp
+master$Temp_PT[master$Temp_PT>87]<-NA
+master$Temp_PT[master$Temp_PT<0]<-NA
 
+master$Temp_PT <- ifelse(is.na(master$Temp_PT), master$Temp_pH, master$Temp_PT)
+master$Temp_PT <- ifelse(is.na(master$Temp_PT), master$Temp_DO, master$Temp_PT)
 
-master$Temp_DO <- ifelse(is.na(master$Temp_DO), master$Temp_pH, master$Temp_DO)
-master$Temp_DO <- ifelse(is.na(master$Temp_DO), master$Temp_PT, master$Temp_PT)
+ggplot(master, aes(x=Date)) + geom_line(aes(y=Temp_PT))+facet_wrap(~ ID, ncol=5)
 
-
-
+master<-master[,c("Date","depth","ID","Q","Qbase","CO2","DO","pH","SpC","Temp_PT","Water_press")]
+master<-rename(master, 'Temp'="Temp_PT")
 write_csv(master, "master.csv")
+
+#TEST##########
+write_csv(X5_Bradford_LB_05302024, "test.csv")

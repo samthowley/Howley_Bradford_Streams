@@ -5,13 +5,7 @@ library(readxl)
 library(seacarb)
 library(weathermetrics)
 
-file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
-file.names<-file.names[c(3,2,5,6)]
-data <- lapply(file.names,function(x) {read_csv(x)})
-library(plyr)
-master<-join_all(data, by=c('Date','ID'), type='left')
-detach("package:plyr", unload = TRUE)
-master<-master %>%  mutate(min = minute(Date)) %>% filter(min==0)
+master<-read_csv('master.csv')
 
 HCO3 <- function(master) {
   master <- master[complete.cases(master[ , c('Temp','CO2','pH','Water_press')]), ]

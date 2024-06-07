@@ -141,7 +141,8 @@ master <- master %>% filter(ID=='13' & depth> -0.10|
 ggplot(master, aes(x=Date)) + geom_line(aes(y=depth))+
   #geom_line(aes(y=PT_clean, color='cleaned'))+
   facet_wrap(~ ID, ncol=5)
-master<-master[, c(1,3,16,11)]
+
+master<-master[, c("Date","Temp_PT","depth","ID","Water_press")]
 write_csv(master, "02_Clean_data/depth.csv")
 
 #check
@@ -166,8 +167,10 @@ PT_all<-data.frame()
    PT$ID<-strsplit(basename(fil), '_')[[1]][1]
   PT_all<-rbind(PT_all,PT)}
 
-PT_all$PT[PT_all$PT]
-#PT_all<- PT_all %>%filter(Date>'2020-01-01')%>%filter(PT>12 & PT<17)
+
+PT_all<- PT_all %>%filter(Date>'2020-01-01')
+PT_all$PT[PT_all$PT<12]<-NA
+PT_all$PT[PT_all$PT>17.5]<-NA
 ggplot(PT_all, aes(Date, PT)) + geom_line() + facet_wrap(~ ID, ncol=5)
 
 PT_all <-  PT_all %>%
@@ -178,8 +181,8 @@ PT_all <-  PT_all %>%
 PT_all<-PT_all %>% mutate(day=day(Date),month=month(Date), year=year(Date), hour=hour(Date))
 PT_all<-PT_all %>% group_by(hour, day, month, year,ID) %>% mutate(PT= mean(PT, na.rm=T))
 PT_all <- PT_all[!duplicated(PT_all[c('Date','ID')]),]
-PT_all<-PT_all[,c(1,2,3,4)]
-ggplot(PT_all, aes(Date, PT)) + geom_line() + facet_wrap(~ ID, ncol=5)
+
+PT_all<-PT_all[,c("Date","PT","Temp_PT","ID","region")]
 
 write_csv(PT_all, "01_Raw_data/PT/compiled_PT.csv")
 range(PT_all$Date, na.rm=T)
