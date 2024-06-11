@@ -119,12 +119,8 @@ carbon <- carbon[!duplicated(carbon[c('Site','Date','Species')]),]
 stream<-filter(carbon, chapter=='stream')
 RC<-filter(carbon, chapter=='RC')
 
-RClog<-read_csv('RC log.csv')
-RClog<-RClog %>%mutate(Date=mdy(Date))
-RC_all<- left_join(RC,RClog, by=c('Date','Site'))
-
-write_csv(RC_all, "02_Clean_data/TC_RC.csv")
-write_csv(stream, "02_Clean_data/TC_stream.csv")
+write_csv(RC, "04_Output/TC_RC.csv")
+write_csv(stream, "04_Output/TC_stream.csv")
 
 ggplot(stream, aes(x=depth_daily, y=Conc.,color=Species)) +
   geom_point()+facet_wrap(~ Site, ncol=5)
