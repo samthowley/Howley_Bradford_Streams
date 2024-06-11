@@ -1,4 +1,6 @@
 #packages#####
+rm(list=ls())
+
 library(tidyverse)
 library(writexl)
 library(readxl)
@@ -62,38 +64,71 @@ together<-left_join(vials,results,by=c('Vial','day','month','year'))
 carbon<-together %>%
   rename('ID'='Site', 'Date'='Sample Date','Conc_Raw'='Conc') %>%
   mutate(Conc.= Conc_Raw*(1/DF), day=day(Date), month=month(Date), year=year(Date))%>%
-  filter(Conc. != Inf | Conc. <= 0)
+  filter(Conc. != Inf)
+carbon$Conc.[carbon$Conc.<0]<-NA
 
 x<-c("ID","Date",'Species',"Conc.","Conc_Raw",'day','month','year')
 carbon<-carbon[,x]
 
-alkalinity <- read_csv("02_Clean_data/alkalinity.csv")
-alkalinity<-alkalinity %>% mutate(day=day(Date), month=month(Date), year=year(Date))
-alkalinity<-alkalinity[,-1]
-check<-left_join(carbon, alkalinity, by=c('day','month','year','ID'))
-check <- check[!duplicated(check[c('ID','Date','Species')]),]
-write_csv(check, "check.csv")
+carbon<-rename(carbon, 'Site'='ID')
+carbon<-carbon %>% mutate(ID=case_when(Site=='3'~'3',Site=='5'~'5',Site=='5a'~'5a',
+                                    Site=='6'~'6',Site=='6a'~'6a',Site=='7'~'7',
+                                    Site=='9'~'9',Site=='13'~'13',Site=='15'~'15',
+                                    Site=='5GW1'~'5',Site=='5GW2'~'5',Site=='5GW3'~'5',Site=='5GW4'~'5',
+                                    Site=='5GW5'~'5',Site=='5GW6'~'5',Site=='5GW7'~'5',Site=='6GW1'~'6',
+                                    Site=='6GW2'~'6',Site=='6GW3'~'6',Site=='6GW4'~'6',Site=='6GW5'~'6',
+                                    Site=='6GW6'~'6',Site=='9GW1'~'9',Site=='9GW2'~'9',Site=='9GW3'~'9',
+                                    Site=='9GW4'~'9'))
+
+
+carbon<-carbon %>% mutate(chapter=case_when(Site=='3'~'stream',Site=='5'~'stream',Site=='5a'~'stream',
+                                       Site=='6'~'stream',Site=='6a'~'stream',Site=='7'~'stream',
+                                       Site=='9'~'stream',Site=='13'~'stream',Site=='15'~'stream',
+
+                                       Site=='5GW1'~'RC',Site=='5GW2'~'RC',Site=='5GW3'~'RC',Site=='5GW4'~'RC',
+                                       Site=='5GW5'~'RC',Site=='5GW6'~'RC',Site=='5GW7'~'RC',Site=='6GW1'~'RC',
+                                       Site=='6GW2'~'RC',Site=='6GW3'~'RC',Site=='6GW4'~'RC',Site=='6GW5'~'RC',
+                                       Site=='6GW6'~'RC',Site=='9GW1'~'RC',Site=='9GW2'~'RC',Site=='9GW3'~'RC',
+                                       Site=='9GW4'~'RC'))
+
+
+# alkalinity <- read_csv("02_Clean_data/alkalinity.csv")
+# alkalinity<-alkalinity %>% mutate(day=day(Date), month=month(Date), year=year(Date))
+# alkalinity<-alkalinity[,-1]
+# check<-left_join(carbon, alkalinity, by=c('day','month','year','ID'))
+# check <- check[!duplicated(check[c('ID','Date','Species')]),]
+# write_csv(check, "check.csv")
+
 
 discharge <- read_csv("02_Clean_data/discharge.csv")
 discharge<-discharge %>% mutate(day=day(Date), month=month(Date), year=year(Date))
 discharge<-discharge %>% group_by(ID,day, month,year) %>% mutate(Q_daily=mean(Q, na.rm=T))
-discharge<-discharge[,c('ID',"Q",'Qbase','Q_ID','Q_daily','day','month','year')]
-range(discharge$Date, na.rm=T)
+discharge<-discharge[,c('ID','Q_daily', 'Q_ID','day','month','year')]
 
 depth <- read_csv("02_Clean_data/depth.csv")
 depth<-depth %>% mutate(day=day(Date), month=month(Date), year=year(Date))
 depth<-depth %>% group_by(ID,day, month,year) %>% mutate(depth_daily=mean(depth, na.rm=T))
-depth<-depth[,c(2,5,6,7,8)]
+depth<-depth[,c("day","month","year","depth_daily", 'ID')]
 
 carbon<-left_join(carbon, discharge,by=c('day','month','year','ID'))
 carbon<-left_join(carbon, depth,by=c('day','month','year','ID'))
 
-carbon<- carbon %>% filter(ID != '9a',ID != '9b') %>%
-  mutate(logQ_daily=log10(Q_daily))
-carbon <- carbon[!duplicated(carbon[c('ID','Date','Species')]),]
+carbon<- carbon %>% filter(ID != '9a',ID != '9b', ID!='14')
+carbon <- carbon[!duplicated(carbon[c('Site','Date','Species')]),]
 
-x<-c("Date","ID","Conc.","Conc_Raw","Species","Q_daily",'depth_daily', 'Q_ID')
-carbon<-carbon[,x]
+stream<-filter(carbon, chapter=='stream')
+RC<-filter(carbon, chapter=='RC')
 
-range(carbon$Date, na.rm=T)
-write_csv(carbon, "02_Clean_data/TC.csv")
+RClog<-read_csv('RC log.csv')
+RClog<-RClog %>%mutate(Date=mdy(Date))
+RC_all<- left_join(RC,RClog, by=c('Date','Site'))
+
+write_csv(RC_all, "02_Clean_data/TC_RC.csv")
+write_csv(stream, "02_Clean_data/TC_stream.csv")
+
+ggplot(stream, aes(x=depth_daily, y=Conc.,color=Species)) +
+  geom_point()+facet_wrap(~ Site, ncol=5)
+
+ggplot(RC, aes(x=depth_daily, y=Conc.,color=Species)) +
+  geom_point()+facet_wrap(~ Site, ncol=5)
+
