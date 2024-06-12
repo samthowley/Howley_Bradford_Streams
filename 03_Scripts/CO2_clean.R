@@ -99,5 +99,14 @@ test<-left_join(test, discharge, by='Date')
 ggplot(test, aes(Date))+
   geom_line(aes(y=Vaisala+1900, color= "Vaisala"))+geom_line(aes(y=Eosense, color= "Eosense"))
 
-write_csv(test, "test1.csv")
+write_csv(test, "test3.csv")
 
+
+
+air_test <- read_csv("Matts Wetlands_Test.dat",skip=1)
+air_test<-air_test[-c(1,2),-c(2,3)]
+air_test<-air_test %>% rename('Date'='TIMESTAMP')
+air_test<-air_test %>% mutate(Date=ymd_hms(Date), Eosense=as.numeric(Eosense),
+                      Vaisala=as.numeric(Vaisala), K30=as.numeric(K30))
+
+write_xlsx(air_test, "air_test.xlsx")
