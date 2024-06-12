@@ -84,3 +84,20 @@ ggplot(CO2, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=4)+theme_sam
 # range(CO2$Date, na.rm=T)
 write_csv(CO2, "02_Clean_data/CO2_cleaned.csv")
 
+test <- read_csv("01_Raw_data/Lily Box/dat/5_Bradford_LB_05302024.dat", skip=1)
+test<-test[-c(1,2),-c(2,3,5,6)]
+test<-test %>% rename('Date'='TIMESTAMP', 'Eosense'='CO2High', 'Vaisala'='CO2')
+test<-test %>% mutate(Date=ymd_hms(Date), Eosense=as.numeric(Eosense),
+                      Vaisala=as.numeric(Vaisala)) %>% filter(Date>"2024-05-08 00:00:00")
+test<-test %>%mutate(Vaisala=Vaisala*4.2)
+
+discharge <- read_csv("02_Clean_data/discharge.csv")
+discharge<-discharge %>% filter(ID=='5', Date>"2024-05-08 00:00:00")
+discharge<-discharge[,c(1,3)]
+test<-left_join(test, discharge, by='Date')
+
+ggplot(test, aes(Date))+
+  geom_line(aes(y=Vaisala+1900, color= "Vaisala"))+geom_line(aes(y=Eosense, color= "Eosense"))
+
+write_csv(test, "test1.csv")
+
