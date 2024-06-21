@@ -108,10 +108,18 @@ discharge<-discharge[,c('ID','Q_daily', 'Q_ID','day','month','year')]
 depth <- read_csv("02_Clean_data/depth.csv")
 depth<-depth %>% mutate(day=day(Date), month=month(Date), year=year(Date))
 depth<-depth %>% group_by(ID,day, month,year) %>% mutate(depth_daily=mean(depth, na.rm=T))
-depth<-depth[,c("day","month","year","depth_daily", 'ID')]
+depth<-depth[,c("day","month","year","depth_daily",'Water_press',"Temp_PT",'ID')]
+
+pH <- read_csv("02_Clean_data/pH_cleaned.csv")
+pH<-pH %>% mutate(day=day(Date), month=month(Date), year=year(Date))
+pH<-pH %>% group_by(ID,day, month,year) %>% mutate(pH_daily=mean(pH, na.rm=T))
+pH<-pH[,c("day","month","year","pH_daily",'ID')]
+
 
 carbon<-left_join(carbon, discharge,by=c('day','month','year','ID'))
 carbon<-left_join(carbon, depth,by=c('day','month','year','ID'))
+carbon<-left_join(carbon, pH,by=c('day','month','year','ID'))
+
 
 carbon<- carbon %>% filter(ID != '9a',ID != '9b', ID!='14')
 carbon <- carbon[!duplicated(carbon[c('Site','Date','Species')]),]
