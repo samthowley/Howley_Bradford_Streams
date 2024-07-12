@@ -195,15 +195,15 @@ for(fil in file.names){
   PT <- read_csv(fil,col_types = cols(`#` = col_skip()),skip = 1)
   PT<-PT[,c(1,2)]
   colnames(PT)[1] <- "Date"
-  colnames(PT)[2] <- "PT"
+  colnames(PT)[2] <- "PTbaro"
   PT$Date <- mdy_hms(PT$Date)
   PT$ID<-strsplit(basename(fil), '_')[[1]][1]
   baro_all<-rbind(baro_all,PT)}
 
-baro_all<-baro_all %>%rename('PTbaro'='PT') %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
+baro_all<-baro_all %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 baro_all<-baro_all[,-1]
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2021-03-29 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-05-31 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2024-07-31 00:00", tz="UTC"),by="hour")))
 samplingperiod<- samplingperiod %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 baro_all<-left_join(baro_all, samplingperiod, by=c('hr', 'day', 'mnth', 'yr'))
 
