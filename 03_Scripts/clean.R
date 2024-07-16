@@ -7,7 +7,7 @@ library(weathermetrics)
 library(tools)
 library(cowplot)
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2022-11-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-05-31 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2024-07-12 00:00", tz="UTC"),by="hour")))
 
 clean_DO <- function(fil) {
   DO <- read_csv(fil,skip= 1)
@@ -88,12 +88,11 @@ for(i in file.names){
 
 DO_all$DO[DO_all$DO<0]<-NA
 DO_all$Temp_DO[DO_all$Temp_DO<0]<-NA
+DO_all$DO[DO_all$DO>10]<-NA
+
 
 DO_all<- DO_all[!duplicated(DO_all[c('Date','ID')]),]
 ggplot(DO_all, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=4)+theme_sam
-
-# DO_all<- read_csv("02_Clean_data/DO_cleaned.csv")
-# range(DO_all$Date, na.rm=T)
 
 write_csv(DO_all, "02_Clean_data/DO_cleaned.csv")
 ####SpC####
@@ -105,7 +104,7 @@ for(i in file.names){
 }
 
 
-SpC_all$SpC[SpC_all$SpC>1000]<-NA
+SpC_all$SpC[SpC_all$SpC>600]<-NA
 SpC_all$Temp_SpC[SpC_all$Temp_SpC<0]<-NA
 SpC_all$Temp_SpC[SpC_all$Temp_SpC>30]<-NA
 
@@ -113,7 +112,6 @@ SpC_all <- SpC_all[!duplicated(SpC_all[c('Date','ID')]),]
 ggplot(SpC_all, aes(Date, SpC)) + geom_line() + facet_wrap(~ ID, ncol=4)+theme_sam
 write_csv(SpC_all, "02_Clean_data/SpC_cleaned.csv")
 
-#SpC_all <- read_csv("02_Clean_data/SpC_cleaned.csv")
 #range(SpC_all$Date, na.rm=T)
 ###pH#####
 file.names <- list.files(path="01_Raw_data/HOBO Excels/pH", pattern=".xlsx", full.names=TRUE)
@@ -132,7 +130,7 @@ write_csv(pH_all, "02_Clean_data/pH_cleaned.csv")
 
 ####Compile####
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
-file.names<-file.names[c(3,4,2,5,6,7)]
+file.names<-file.names[c(5,4,6,7,8,9,1)]
 
 data <- lapply(file.names,function(x) {read_csv(x)})
 library(plyr)
@@ -150,11 +148,12 @@ master$Temp_PT[master$Temp_PT<0]<-NA
 master$Temp_PT <- ifelse(is.na(master$Temp_PT), master$Temp_pH, master$Temp_PT)
 master$Temp_PT <- ifelse(is.na(master$Temp_PT), master$Temp_DO, master$Temp_PT)
 
-ggplot(master, aes(x=Date)) + geom_line(aes(y=Temp_PT))+facet_wrap(~ ID, ncol=5)
+ggplot(master, aes(x=Date)) + geom_line(aes(y=DO))+facet_wrap(~ ID, ncol=5)
 
 master<-master[,c("Date","depth","ID","Q","Qbase","CO2","DO","pH","SpC","Temp_PT","Water_press")]
 master<-rename(master, 'Temp'="Temp_PT")
 write_csv(master, "master.csv")
 
+range(master$Date)
 #TEST##########
 write_csv(X5_Bradford_LB_05302024, "test.csv")

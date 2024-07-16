@@ -138,21 +138,12 @@ master <- master %>% filter(ID=='13' & depth> -0.10|
                               ID=='3'| ID=='6a'|ID=='7'|ID=='15')
 
 
-ggplot(master, aes(x=Date)) + geom_line(aes(y=depth))+
-  #geom_line(aes(y=PT_clean, color='cleaned'))+
-  facet_wrap(~ ID, ncol=5)
+ggplot(master, aes(x=Date)) + geom_line(aes(y=depth))+facet_wrap(~ ID, ncol=5)
 
 master<-master[, c("Date","Temp_PT","depth","ID","Water_press")]
+range(master$Date)
+###########
 write_csv(master, "02_Clean_data/depth.csv")
-
-#check
-# s13<-master %>% filter(ID=='15')
-# ggplot(s13, aes(x=Date)) +
-#  geom_line(aes(y=depth_clean, color='removed'))+
-#   geom_line(aes(y=depth))+
-#  geom_hline(yintercept = 0.82)
-
-
 
 #Compile PT##########
 file.names <- list.files(path="01_Raw_data/PT/raw", pattern=".csv", full.names=TRUE)
@@ -184,8 +175,8 @@ PT_all <- PT_all[!duplicated(PT_all[c('Date','ID')]),]
 
 PT_all<-PT_all[,c("Date","PT","Temp_PT","ID","region")]
 
-write_csv(PT_all, "01_Raw_data/PT/compiled_PT.csv")
 range(PT_all$Date, na.rm=T)
+write_csv(PT_all, "01_Raw_data/PT/compiled_PT.csv")
 
 #compile baro######
 
@@ -211,20 +202,12 @@ baro5<-baro_all%>%filter(ID=='5')%>%rename('PTbaro_5'='PTbaro')
 baro6a<-baro_all%>%filter(ID=='6a')%>%rename('PTbaro_6a'='PTbaro')
 coalesce<-left_join(baro5,baro6a, by=c('Date'))
 
-# ggplot(coalesce, aes(x=Date)) +
-#   geom_line(aes(y=PTbaro_5, color="5"))+
-#   geom_line(aes(y=PTbaro_6a-1, color='6a'))
-
 coalesce$PTbaro_6a[coalesce$PTbaro_6a <14.4] <- NA
 coalesce$PTbaro_6a[coalesce$PTbaro_6a >16 ] <- NA
 coalesce$PTbaro_5[coalesce$PTbaro_5 >16 ] <- NA
 
 coalesce$PTbaro_5 <- ifelse(is.na(coalesce$PTbaro_5), coalesce$PTbaro_6a, coalesce$PTbaro_5)
 coalesce$PTbaro_6a <- ifelse(is.na(coalesce$PTbaro_6a), coalesce$PTbaro_5, coalesce$PTbaro_6a)
-
-# ggplot(coalesce, aes(x=Date)) +
-#   geom_line(aes(y=PTbaro_5, color="5"))+
-#   geom_line(aes(y=PTbaro_6a-1, color='6a'))
 
 baro_5<-coalesce[,c(7,1)]
 baro_5<-baro_5 %>% rename('PTbaro'='PTbaro_5')%>%mutate(ID='5',region='S')

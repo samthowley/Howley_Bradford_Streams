@@ -78,10 +78,9 @@ CO2<-CO2 %>% group_by(hour, day, month, yr,ID) %>% mutate(CO2=mean(CO2, na.rm=T)
 
 y<-c("Date",'CO2','ID')
 CO2<-CO2[,y]
-ggplot(CO2, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=4)+theme_sam
 
-# CO2<- read_csv("02_Clean_data/CO2_cleaned.csv")
-# range(CO2$Date, na.rm=T)
+##############
+ggplot(CO2, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=4)+theme_sam
 write_csv(CO2, "02_Clean_data/CO2_cleaned.csv")
 
 test <- read_csv("01_Raw_data/Lily Box/dat/5_Bradford_LB_05302024.dat", skip=1)

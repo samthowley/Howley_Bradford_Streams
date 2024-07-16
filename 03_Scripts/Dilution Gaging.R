@@ -92,15 +92,11 @@ DG_rC <- DG_rC[!duplicated(DG_rC[c( 'date','ID')]),]
 x<-c("date","ID","Q","u_mean" ,"depth_mean","m_0","m_1")
 DG_rC<-DG_rC[,x]
 
-DG_rC<- DG_rC %>% mutate(logQ=log10(Q),logh=log10(depth_mean)) %>%
-  filter(ID != '14')
+DG_rC<- DG_rC %>% mutate(logQ=log10(Q),logh=log10(depth_mean))
 
-# ggplot(DG_rC, aes(depth_mean, Q)) + geom_point() +
-#   geom_smooth(method='lm',se = FALSE)+
-#   facet_wrap(~ ID, ncol=3)+
-#   theme_sam+ scale_x_continuous(trans='log10') +
-#   scale_y_continuous(trans='log10')+
-#   ylab('Discharge (L/s)')+xlab("Depth (m)")
+ggplot(DG_rC, aes(depth_mean)) +
+  geom_point(aes(y=Q))+facet_wrap(~ ID, ncol=5)
+
 
 split<-DG_rC %>% split(DG_rC$ID)
 write.xlsx(split, file = '04_Output/rC_DG.xlsx')
@@ -122,8 +118,6 @@ depth <- depth %>%
     ID== '7'~ (10^cf[9,1]) *depth^(cf[9,2]),
     ID== '9'~ (10^cf[10,1]) *depth^(cf[10,2])))
 
-# ggplot(depth, aes(Date, Q)) + geom_line() + geom_hline(yintercept = 0)+
-#   facet_wrap(~ ID, ncol=5)
 x<-c("Date","ID","Q")
 depth<-depth[,x]
 
@@ -132,19 +126,20 @@ discharge <- depth %>% group_by(ID) %>%
 discharge<-discharge %>% group_by(ID) %>% mutate(medianQbase=median(Qbase, na.rm=T))
 
 discharge <- discharge %>%
-  mutate(Q_ID= case_when(
-    medianQbase <= Q~  'low',
+  mutate(Q_ID= case_when(medianQbase <= Q~  'low',
     medianQbase > Q~ 'high'))
 
 discharge$Qbase[discharge$Qbase<0]<-NA
+discharge<-discharge %>% filter(ID!=14)
 
 ggplot(discharge, aes(Date)) +
   geom_line(aes(y=Qbase, color='base'))+
   geom_line(aes(y=medianQbase, color='median'))+
   facet_wrap(~ ID, ncol=5)
-
+##########
 write_csv(discharge, "02_Clean_data/discharge.csv")
-
+q<-read_csv("02_Clean_data/discharge.csv")
+range(q$Date)
 # ##### combined all data ####
 DG_all<-data.frame()
 file.names <- list.files(path="01_Raw_data/DG/seperated", pattern=".csv", full.names=TRUE)
