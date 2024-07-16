@@ -1,9 +1,9 @@
 #Set your main Aqualog folder directory where EVERYTHING lives (projects, scripts, raw data)
 setwd("01_Raw_data/Aqualog_processing")
-project_name <- "04232024"
+project_name <- "07162024"
 dilution_sheet_name <- paste("metatable_dilution_",project_name,".csv",sep = "")
-review_sample <- c(NA)
-output_date <- "04232024"
+review_sample <- c('5GW5')
+output_date <- "07162024"
 
 librarian::shelf(
   tidyr,
@@ -78,35 +78,35 @@ absorbance_path <- paste(data_folder,"/abs",sep="") # select abs folder
 absorbance <- absorbance_read(absorbance_path, recursive = T, cores = cores) # load csv or txt tables in folder
 
 #selecting eem files for only those you want to review
-eem_list_forReview <-
-  eem_extract(
-    eem_list,
-    review_sample,
-    keep = TRUE,
-    ignore_case = TRUE)
-#plot the review sample
-eem_overview_plot(eem_list_forReview)
+# eem_list_forReview <-
+#   eem_extract(
+#     eem_list,
+#     review_sample,
+#     keep = TRUE,
+#     ignore_case = TRUE)
+# #plot the review sample
+# eem_overview_plot(eem_list_forReview)
 
 #Step 1: create dilution sheet
 eem_metatemplate(eem_list, absorbance) %>%
   mutate(dilution = "1") %>%
-  write.csv(file = paste("./projects/Bradford Streams",dilution_sheet_name,sep = "/"), row.names = FALSE)
+  write.csv(file = paste("./projects/Bradford RC",dilution_sheet_name,sep = "/"), row.names = FALSE)
 
 #Step 2: go open that dilution sheet and fill it in manually!!!!
 
-file.names <- list.files(path="projects/Bradford Streams/sample logs", pattern=".csv", full.names=TRUE)
-logs_all<-data.frame()
-for(i in file.names){
-  log<-read_csv(i)
-  log<-log[,c(2,3,4)]
-  log<-rename(log, 'site'='Sample ID', 'Date'='Sampled')
-  logs_all<-rbind(logs_all, log)}
-logs_all$Date<-mdy(logs_all$Date)
-write.csv(logs_all,"projects/Bradford Streams/master_dilution_04162024.csv")
+# file.names <- list.files(path="projects/Bradford Streams/sample logs", pattern=".csv", full.names=TRUE)
+# logs_all<-data.frame()
+# for(i in file.names){
+#   log<-read_csv(i)
+#   log<-log[,c(2,3,4)]
+#   log<-rename(log, 'site'='Sample ID', 'Date'='Sampled')
+#   logs_all<-rbind(logs_all, log)}
+# logs_all$Date<-mdy(logs_all$Date)
+# write.csv(logs_all,"projects/Bradford Streams/master_dilution_04162024.csv")
 
 #Step 3: read in edited dilution sheet
 meta <-
-  read.table(paste("./projects/Bradford Streams",dilution_sheet_name,sep = "/"),
+  read.table(paste("./projects/Bradford RC",dilution_sheet_name,sep = "/"),
              header = TRUE,
              sep = ",",
              dec = ".",
@@ -120,31 +120,30 @@ min(eem_list[[1]][["ex"]]) #239
 max(eem_list[[1]][["ex"]]) #800
 
 #selecting eem files for only those you want to review
-eem_list_forReview <-
-  eem_extract(
-    eem_list,
-    review_sample,
-    keep = TRUE,
-    ignore_case = TRUE)
-eem_list <-
-  eem_range(eem_list,
-            ex = c(245, 600),
-            em = c(245, 650)
-  )
+# eem_list_forReview <-
+#   eem_extract(
+#     eem_list,
+#     review_sample,
+#     keep = TRUE,
+#     ignore_case = TRUE)
+# eem_list <-
+#   eem_range(eem_list,
+#             ex = c(245, 600),
+#             em = c(245, 650))
 
 
 # remove the blank scatter from sample scatter. if you have more than one blank, they will be averaged before removal.
 eem_list <- eem_remove_blank(eem_list)
 eem_list <- eem_interp(eem_list, type = 0, nonneg = TRUE)
 
-eem_list_forReview <-
-  eem_extract(
-    eem_list,
-    review_sample,
-    keep = TRUE,
-    ignore_case = TRUE)
-# View EEMs plots
-eem_overview_plot(eem_list_forReview, spp = 9, contour = TRUE)
+# eem_list_forReview <-
+#   eem_extract(
+#     eem_list,
+#     review_sample,
+#     keep = TRUE,
+#     ignore_case = TRUE)
+# # View EEMs plots
+# eem_overview_plot(eem_list_forReview, spp = 9, contour = TRUE)
 
 #inner filter effect
 eem_list <-
@@ -157,12 +156,12 @@ eem_list <-
 
 #raman normalization
 eem_list <- eem_raman_normalisation2(eem_list, blank = "blank")
-eem_list_forReview <-
-  eem_extract(
-    eem_list,
-    review_sample,
-    keep = TRUE,
-    ignore_case = TRUE)
+# eem_list_forReview <-
+#   eem_extract(
+#     eem_list,
+#     review_sample,
+#     keep = TRUE,
+#     ignore_case = TRUE)
 
 #remove blanks
 eem_list <-
@@ -181,14 +180,14 @@ eem_list_rem <-
     remove_scatter_width = c(5, 5, 0, 20),
     interpolation = TRUE
   )
-eem_list_rem_forReview <-
-  eem_extract(
-    eem_list_rem,
-    review_sample,
-    keep = TRUE,
-    ignore_case = TRUE)
+# eem_list_rem_forReview <-
+#   eem_extract(
+#     eem_list_rem,
+#     review_sample,
+#     keep = TRUE,
+#     ignore_case = TRUE)
 # Check Band Removal Widths
-eem_overview_plot(eem_list_rem_forReview, spp = 9, contour = TRUE)
+#eem_overview_plot(eem_list_rem_forReview, spp = 9, contour = TRUE)
 
 #remove Rayleigh Band 1
 eem_list_rem <-
@@ -199,14 +198,14 @@ eem_list_rem <-
     width_above = 10, #change this and the line below if you want a thinner/thicker chunk removed
     width_under = 50
   )
-eem_list_rem_forReview <-
-  eem_extract(
-    eem_list_rem,
-    review_sample,
-    keep = TRUE,
-    ignore_case = TRUE)
+# eem_list_rem_forReview <-
+#   eem_extract(
+#     eem_list_rem,
+#     review_sample,
+#     keep = TRUE,
+#     ignore_case = TRUE)
 # Check Band Removal Widths
-eem_overview_plot(eem_list_rem_forReview, spp = 9, contour = T)
+#eem_overview_plot(eem_list_rem_forReview, spp = 9, contour = T)
 
 
 # Interpolate EEMs for removed scatter bands
@@ -218,14 +217,14 @@ eem_list_done <-
     verbose = TRUE,
     nonneg = TRUE
   )
-eem_list_done_forReview <-
-  eem_extract(
-    eem_list_done,
-    review_sample,
-    keep = TRUE,
-    ignore_case = TRUE)
+# eem_list_done_forReview <-
+#   eem_extract(
+#     eem_list_done,
+#     review_sample,
+#     keep = TRUE,
+#     ignore_case = TRUE)
 # View interpolated EEMs
-eem_overview_plot(eem_list_done_forReview, spp = 9, contour = T)
+#eem_overview_plot(eem_list_done_forReview, spp = 9, contour = T)
 
 #dilution
 dil_data <- meta["dilution"]
@@ -259,7 +258,7 @@ slope_parms$Date<-str_split_fixed(slope_parms$site_date, "_", 2)[,2]
 slope_parms$Date<-mdy(slope_parms$Date)
 
 write.csv(slope_parms, row.names = FALSE,
-          file = paste("./projects/Bradford Streams/output/indices_abs_",output_date,".csv",sep = ""))
+          file = paste("./projects/Bradford RC/outputs/indices_abs_",output_date,".csv",sep = ""))
 
 eem_index <-
   cbind.data.frame(
@@ -275,4 +274,4 @@ eem_index$Date<-str_split_fixed(eem_index$site_date, "_", 2)[,2]
 eem_index$Date<-mdy(eem_index$Date)
 
 write.csv(eem_index, row.names = FALSE,
-          file = paste("./projects/Bradford Streams/output/","indices_eem_",output_date,".csv",sep = ""))
+          file = paste("./projects/Bradford RC/outputs/","indices_eem_",output_date,".csv",sep = ""))
