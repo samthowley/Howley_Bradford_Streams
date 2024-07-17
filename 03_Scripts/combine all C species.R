@@ -45,7 +45,7 @@ DIC_strm<-DIC_strm[,c("Site","Date","DIC" )]
 DOC_strm<-filter(DC_strm, Species=='DOC')
 DOC_strm<-rename(DOC_strm, "DOC"="Conc.")
 DC<-left_join(DOC_strm, DIC_strm, by=c("Site","Date"))
-DC<-DC[,c("Site","ID","Date","DOC","DIC","Q_daily","Q_ID","depth_daily","Water_press","Temp_PT_PT")]
+DC<-DC[,c("Site","ID","Date","DOC","DIC","Q_daily","Q_ID","depth_daily","Water_press","Temp_PT")]
 master<-left_join(DC,POC, by=c('Date', 'Site'))
 
 CO2 <- function(master) {

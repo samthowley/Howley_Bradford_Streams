@@ -87,6 +87,7 @@ for(i in file.names){
   gasdome<-rbind(gasdome, gas)}
 gasdome_compiled <- gasdome[!duplicated(gasdome[c('day','ID')]),]
 gasdome_compiled<-gasdome_compiled %>% mutate(k600_1d=abs(k600_1d))
+range(gasdome_compiled$Date)
 write_csv(gasdome_compiled, "01_Raw_data/GD/GasDome_compiled.csv")
 
 
@@ -94,7 +95,6 @@ write_csv(gasdome_compiled, "01_Raw_data/GD/GasDome_compiled.csv")
 gasdome_compiled<-read_csv('01_Raw_data/GD/GasDome_compiled.csv')
 Q<-read_csv('02_Clean_data/discharge.csv')
 Q<-Q %>% mutate(Date= as.Date(Date)) %>% group_by(Date,ID) %>% mutate(Q_avg=mean(Q, na.rm=T))
-gasdome_compiled<-rename(gasdome_compiled, 'Date'='day')
 
 gasdome_compiled<-left_join(gasdome_compiled, Q, by=c('Date', 'ID'))
 gasdome_compiled <- gasdome_compiled[!duplicated(gasdome_compiled[c('Date','ID')]),]

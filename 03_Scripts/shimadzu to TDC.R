@@ -58,7 +58,7 @@ for(fil in file.names){
   results<-rbind(results, parsed)}
 
 results<-results %>% mutate(day=day(Ran), month=month(Ran), year=year(Ran))
-
+range(carbon$Ran, na.rm=T)
 together<-left_join(vials,results,by=c('Vial','day','month','year'))
 
 carbon<-together %>%
@@ -91,6 +91,9 @@ carbon<-carbon %>% mutate(chapter=case_when(Site=='3'~'stream',Site=='5'~'stream
                                        Site=='6GW6'~'RC',Site=='9GW1'~'RC',Site=='9GW2'~'RC',Site=='9GW3'~'RC',
                                        Site=='9GW4'~'RC'))
 
+carbon$chapter[is.na(carbon$chapter)]<-'wetland'
+wetland<-filter(carbon, chapter=='wetland')
+write_csv(wetland, "04_Output/TC_wetland.csv")
 
 # alkalinity <- read_csv("02_Clean_data/alkalinity.csv")
 # alkalinity<-alkalinity %>% mutate(day=day(Date), month=month(Date), year=year(Date))
