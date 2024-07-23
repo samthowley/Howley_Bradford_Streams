@@ -108,4 +108,4 @@ air_test<-air_test %>% rename('Date'='TIMESTAMP')
 air_test<-air_test %>% mutate(Date=ymd_hms(Date), Eosense=as.numeric(Eosense),
                       Vaisala=as.numeric(Vaisala), K30=as.numeric(K30))
 
-write_xlsx(air_test, "air_test.xlsx")
+write_xlsx(air_test, "air_test_07232024.xlsx")
