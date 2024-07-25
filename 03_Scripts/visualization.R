@@ -5,6 +5,7 @@ library(lubridate)
 library(weathermetrics)
 library(tools)
 library(cowplot)
+library(ggtern)
 
 theme_sam<-theme()+   theme(axis.text.x = element_text(size = 12, angle=0),
                              axis.text.y = element_text(size = 17, angle=0),
@@ -34,7 +35,7 @@ discharge<-filter(discharge, Qbase>0 & Q<3000)
   scale_color_manual(values = c('blue','darkred'))
 
 (depth_timeseries<-ggplot(depth, aes(Date))+
-    geom_line(aes(y=depth)) +
+    geom_line(aes(y=depth)) + geom_hline(yintercept = 0)+
     facet_wrap(~ ID, ncol=5)+theme_sam+
     ylab('Depth (m)') + xlab("Date"))
 

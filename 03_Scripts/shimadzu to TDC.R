@@ -23,15 +23,14 @@ for(fil in file.names){
   vials<-rbind(vials, vial)}
 vials<- vials %>% mutate(day=day(Ran),month=month(Ran), year=year(Ran), `Sample Date`=mdy(`Sample Date`))
 
-file.names <- list.files(path="01_Raw_data/Shimadzu/results",pattern=".csv", full.names=TRUE)
 results<-data.frame()
+file.names <- list.files(path="01_Raw_data/Shimadzu/results",pattern=".csv", full.names=TRUE)
 for(fil in file.names){
   runs<-read_csv(fil)
   runs$Ran<-mdy(runs$Ran)
   runs<-runs %>% rename('Conc'='Result(NPOC)') %>%mutate(Species='DOC')
   runs<-runs[,-2]
   results<-rbind(results, runs)}
-
 file.names <- list.files(path="01_Raw_data/Shimadzu/dat files", pattern=".txt", full.names=TRUE)
 for(fil in file.names){
   runs<-read_csv(fil, skip=10)
@@ -40,7 +39,6 @@ for(fil in file.names){
   runs$Ran<-mdy_hms(runs$Ran)
   runs<-runs %>% rename('Conc'='Result(NPOC)') %>%mutate(Species='DOC')
   results<-rbind(results, runs)}
-
 file.names <- list.files(path="01_Raw_data/Shimadzu/dat files/TOC runs", pattern=".txt", full.names=TRUE)
 for(fil in file.names){
   runs<-read_csv(fil, skip=10)
@@ -56,9 +54,18 @@ for(fil in file.names){
   parsed$Ran<-mdy_hms(parsed$Ran)
   parsed<-parsed[,-1]
   results<-rbind(results, parsed)}
+file.names <- list.files(path="01_Raw_data/Shimadzu/csv files", pattern=".csv", full.names=TRUE)
+for(fil in file.names){
+  runs<-read_csv(fil)
+  runs<-runs[,c(6,1,2,7)]
+  runs<-runs %>% rename('Conc'='Interpolated', 'Vial'='Vials') %>% mutate(Ran=mdy(Ran), Vial=as.character(Vial))
+  results<-rbind(results, runs)
+  }
+
+
+
 
 results<-results %>% mutate(day=day(Ran), month=month(Ran), year=year(Ran))
-range(carbon$Ran, na.rm=T)
 together<-left_join(vials,results,by=c('Vial','day','month','year'))
 
 carbon<-together %>%
@@ -93,6 +100,7 @@ carbon<-carbon %>% mutate(chapter=case_when(Site=='3'~'stream',Site=='5'~'stream
 
 carbon$chapter[is.na(carbon$chapter)]<-'wetland'
 wetland<-filter(carbon, chapter=='wetland')
+
 write_csv(wetland, "04_Output/TC_wetland.csv")
 
 # alkalinity <- read_csv("02_Clean_data/alkalinity.csv")
@@ -138,4 +146,10 @@ ggplot(stream, aes(x=depth_daily, y=Conc.,color=Species)) +
 
 ggplot(RC, aes(x=depth_daily, y=Conc.,color=Species)) +
   geom_point()+facet_wrap(~ Site, ncol=5)
+
+
+#check#####
+TOC <- read_csv("01_Raw_data/Shimadzu/dat files/duds/2024_07_11_Howley_TOC_STREAMS_norm.txt",
+                                                skip = 10)
+write_csv(TOC, "01_Raw_data/Shimadzu/csv files/TOC_07112024.csv")
 
