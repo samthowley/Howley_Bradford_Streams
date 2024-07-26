@@ -13,7 +13,7 @@ library(weathermetrics)
 library('StreamMetabolism')
 #######
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2021-03-29 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-02-05 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2024-07-12 00:00", tz="UTC"),by="hour")))
 samplingperiod<-samplingperiod %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 
 bayes_name <- mm_name(type='bayes', pool_K600='normal', err_obs_iid=TRUE, err_proc_iid=TRUE)
@@ -38,7 +38,11 @@ metabolism <- function(site) {
   y<-c("DO.obs","depth","temp.water", "DO.sat","solar.time","light" )
   site<-site[,y]
   mm <- metab(bayes_specs, data=site)
-  prediction2 <- mm@fit$daily %>% select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean)
+  prediction2 <- mm@fit$daily %>% select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean,
+                                         GPP_Rhat,ER_Rhat,K600_daily_Rhat)
+  prediction2<- prediction2 %>% filter(ER_Rhat> 0.9 & ER_Rhat<1.05)%>% filter(K600_daily_Rhat> 0.9 & K600_daily_Rhat<1.05)%>%
+    select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean)
+
   return(prediction2)}
 master <- read_csv("master.csv")
 
@@ -56,7 +60,10 @@ master <- read_csv("master.csv")
 # })
 # write_csv(master, "04_Output/master_metabolism.csv")
 
-###3#####
+###models#####
+# ggplot(master,aes(x=depth,y=Q))+geom_point()
+# master<-filter(master, Q>3)
+
 s3<-filter(master, ID=='3')
 s3_ouput<-metabolism(s3)
 s3_ouput$ID<-'3'
@@ -85,10 +92,6 @@ s13<-filter(master, ID=='13')
 s13_ouput<-metabolism(s13)
 s13_ouput$ID<-'13'
 
-s14<-filter(master, ID=='14')
-s14_ouput<-metabolism(s14)
-s14_ouput$ID<-'14'
-
 s15<-filter(master, ID=='15')
 s15_ouput<-metabolism(s15)
 s15_ouput$ID<-'15'
@@ -102,6 +105,8 @@ master<-rbind(s3_ouput, s5_ouput, s5a_ouput, s6_ouput,s6a_ouput, s7_ouput, s9_ou
 master<- master %>% rename('ER'="ER_daily_mean", 'GPP'="GPP_daily_mean", 'Date'='date')
 
 master<-master %>% filter(Date> "2023-06-16") %>%filter(ER>-30)
+#############
+
 
 write_csv(master, "04_Output/master_metabolism.csv")
 
