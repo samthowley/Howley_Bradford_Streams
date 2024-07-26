@@ -103,18 +103,10 @@ wetland<-filter(carbon, chapter=='wetland')
 
 write_csv(wetland, "04_Output/TC_wetland.csv")
 
-# alkalinity <- read_csv("02_Clean_data/alkalinity.csv")
-# alkalinity<-alkalinity %>% mutate(day=day(Date), month=month(Date), year=year(Date))
-# alkalinity<-alkalinity[,-1]
-# check<-left_join(carbon, alkalinity, by=c('day','month','year','ID'))
-# check <- check[!duplicated(check[c('ID','Date','Species')]),]
-# write_csv(check, "check.csv")
-
-
 discharge <- read_csv("02_Clean_data/discharge.csv")
 discharge<-discharge %>% mutate(day=day(Date), month=month(Date), year=year(Date))
 discharge<-discharge %>% group_by(ID,day, month,year) %>% mutate(Q_daily=mean(Q, na.rm=T))
-discharge<-discharge[,c('ID','Q_daily', 'Q_ID','day','month','year')]
+discharge<-discharge[,-1]
 
 depth <- read_csv("02_Clean_data/depth.csv")
 depth<-depth %>% mutate(day=day(Date), month=month(Date), year=year(Date))
@@ -133,7 +125,7 @@ carbon<-left_join(carbon, pH,by=c('day','month','year','ID'))
 
 
 carbon<- carbon %>% filter(ID != '9a',ID != '9b', ID!='14')
-carbon <- carbon[!duplicated(carbon[c('Site','Date','Species')]),]
+carbon <- carbon[!duplicated(carbon[c('ID','Date','Species')]),]
 
 stream<-filter(carbon, chapter=='stream')
 RC<-filter(carbon, chapter=='RC')

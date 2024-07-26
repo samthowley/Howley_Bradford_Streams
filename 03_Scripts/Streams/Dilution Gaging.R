@@ -123,18 +123,13 @@ depth<-depth[,x]
 
 discharge <- depth %>% group_by(ID) %>%
   mutate(Qbase = gr_baseflow(Q, method = 'jakeman',a = 0.925, passes = 3))
-discharge<-discharge %>% group_by(ID) %>% mutate(medianQbase=median(Qbase, na.rm=T))
 
-discharge <- discharge %>%
-  mutate(Q_ID= case_when(medianQbase <= Q~  'low',
-    medianQbase > Q~ 'high'))
+discharge<-discharge %>% group_by(ID) %>% mutate(Qsurficial=Q-Qbase)
 
-discharge$Qbase[discharge$Qbase<0]<-NA
-discharge<-discharge %>% filter(ID!=14)
 
 ggplot(discharge, aes(Date)) +
+  geom_line(aes(y=Qsurficial, color='runoff'))+
   geom_line(aes(y=Qbase, color='base'))+
-  geom_line(aes(y=medianQbase, color='median'))+
   facet_wrap(~ ID, ncol=5)
 ##########
 write_csv(discharge, "02_Clean_data/discharge.csv")

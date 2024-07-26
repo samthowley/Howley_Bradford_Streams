@@ -117,14 +117,8 @@ pH_scatter<-ggplot(master, aes(Q, pH)) + geom_point() +
   ylab('pH') + xlab("Discharge (L/s)")
 
 #Species of C####
-HCO3 <- read_csv("02_Clean_data/alkalinity.csv")
-alk<- HCO3 %>% mutate(C_molL= CO2_molL+HCO3_molL,day=day(Date), month=month(Date), year=year(Date),
-                      Species='DIC')
-x<-c('ID','C_molL', 'day','month','year','Species')
-alk<-alk[,x]
+TC <- read_csv("02_Clean_data/allC_stream.csv")
 
-TC <- read_csv("02_Clean_data/TC.csv")
-TC<-TC %>%mutate(C_molL=Conc./12000,day=day(Date), month=month(Date), year=year(Date))
 DOC<- TC %>% filter(Species=='DOC')
 DOC<-DOC[,x]
 DIC<- TC %>% filter(Species=='DIC')
@@ -142,7 +136,7 @@ carbon_mol <- carbon_mol[!duplicated(carbon_mol[c('ID','day','month','year','Spe
 (C_box<-ggplot(carbon_mol, aes(x=ID, y=C_molL, fill=Species))+
   geom_boxplot(color="black")+theme_sam+theme(legend.position ="bottom")+
   ylab('mmol/L'))
-
+#Chimney-reactor#####
 #eem####
 eem_index<-read_csv("01_Raw_data/Aqualog_processing/projects/Bradford Streams/output/indices_eem_04162024.csv")
 eem_index<-eem_index[,-c(1,3,9,11,13,15)]
