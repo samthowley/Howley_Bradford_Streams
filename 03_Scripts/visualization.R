@@ -119,23 +119,13 @@ pH_scatter<-ggplot(master, aes(Q, pH)) + geom_point() +
 #Species of C####
 TC <- read_csv("02_Clean_data/allC_stream.csv")
 
-DOC<- TC %>% filter(Species=='DOC')
-DOC<-DOC[,x]
-DIC<- TC %>% filter(Species=='DIC')
-DIC<-DIC[,x]
+TC<-TC %>%mutate(Qid=case_when( Qbase>=Qsurficial~"low",Qbase<Qsurficial~"high"))
 
-carbon_mol<-rbind(DIC, alk,DOC)
-#carbon_mol<-left_join(DOC,DIC, by=c('day','month','year','ID'))
-#carbon_mol<-carbon_mol %>%mutate(DIC_DOC= DIC_molL/DOC_molL)
+ggtern(data=TC,aes(DOC_molL,DIC_molL,POC_molL,color=Qid)) +
+  theme_rgbw() +
+  geom_point() +
+  labs(x="DOC_molL",y="DIC_molL",z="POC_molL")+facet_wrap(~ ID, ncol=3)
 
-Q<-discharge[,c("Q_ID","day","month","year","Q_daily", 'ID')]
-carbon_mol<-left_join(carbon_mol,Q, by=c('day','month','year','ID'))
-carbon_mol <- carbon_mol[!duplicated(carbon_mol[c('ID','day','month','year','Species')]),]
-
-
-(C_box<-ggplot(carbon_mol, aes(x=ID, y=C_molL, fill=Species))+
-  geom_boxplot(color="black")+theme_sam+theme(legend.position ="bottom")+
-  ylab('mmol/L'))
 #Chimney-reactor#####
 #eem####
 eem_index<-read_csv("01_Raw_data/Aqualog_processing/projects/Bradford Streams/output/indices_eem_04162024.csv")

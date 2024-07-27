@@ -31,16 +31,18 @@ HCO3 <- function(master) {
   return(master)}
 
 DIC<-master %>% group_by(ID) %>% HCO3()
-DIC<-DIC  %>% group_by(ID, Date) %>% mutate(CO2_molL=mean(CO2_molL, na.rm=T),
-                                            HCO3_molL=mean(HCO3_molL, na.rm=T),
-                                            CO3_molL=mean(CO3_molL, na.rm=T))
-DIC <- DIC[!duplicated(DIC[c('Date','ID')]),]
-DIC<-DIC  %>% group_by(ID, Date) %>% mutate(CO2_mgL=CO2_molL/28000,
-                                            HCO3_mgL=HCO3_molL/37000,
-                                            CO3_mgL=CO3_molL/36000) %>%
-  mutate(DIC= CO2_mgL+CO3_mgL+HCO3_mgL)
+DIC<-DIC  %>% group_by(ID, Date) %>% mutate(CO2_mmolL=mean(CO2_molL, na.rm=T)*1000,
+                                            HCO3_mmolL=mean(HCO3_molL, na.rm=T)*1000,
+                                            CO3_mmolL=mean(CO3_molL, na.rm=T)*1000) %>%
+  mutate(CO2_mgL=CO2_molL*28000,
+         HCO3_mgL=HCO3_molL*36000,
+         CO3_mgL=CO3_molL*35000)
 
-y<-c("Date",'ID','CO2_mgL','HCO3_mgL','CO3_mgL','CO2_molL','HCO3_molL','CO3_molL')
+DIC <- DIC[!duplicated(DIC[c('Date','ID')]),]
+DIC<-DIC  %>% group_by(ID, Date) %>% mutate(DIC_mmol_int= CO2_mmolL+CO3_mmolL+HCO3_mmolL)%>%
+  mutate(DIC_mgL_int=CO2_mgL+CO3_mgL+HCO3_mgL)
+
+y<-c("Date",'ID','CO2_molL','HCO3_molL','CO3_molL','DIC_mmol_int',"CO2_mgL","HCO3_mgL","CO3_mgL",'DIC_mgL_int')
 DIC<-DIC[,y]
-range(master$Date, na.rm=T)
+DIC <- DIC[complete.cases(DIC[ , c('CO2_molL')]), ]
 write_csv(DIC, "02_Clean_data/alkalinity.csv")
