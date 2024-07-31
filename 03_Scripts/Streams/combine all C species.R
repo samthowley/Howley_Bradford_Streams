@@ -52,7 +52,7 @@ alkalinity<-alkalinity %>%mutate(Date=as.Date(Date))%>%
 DC$DIC <- ifelse(is.na(DC$DIC), alkalinity$alk_avg, DC$DIC)
 
 totDC<-left_join(DC,POC, by=c("ID","Date"))
-totDC<-totDC %>% select(ID, Date,POC_mgL,DIC,DOC, Q_daily, Qsurficial)
+totDC<-totDC %>% select(ID, Date,POC_mgL,DIC,DOC, Q_daily, Qsurficial, Qbase)
 write_csv(totDC, "04_Output/stream_sampledC.csv")
 
 #####################
@@ -80,11 +80,11 @@ CO2<-na.omit(CO2)
 
 CO2<-CO2mol(CO2)
 
-CO2<-CO2 %>% mutate(CO2chimney_umolL= (CO2obs_mol-CO2resp_molL)*1000000, CO2reactor_umolL=CO2resp_molL*1000000) %>%
-  select(Date, ID, CO2chimney_umolL, CO2reactor_umolL, depth, Qsurficial, Q)
+CO2<-CO2 %>% mutate(CO2chimney_mmol= (CO2obs_mol-CO2resp_molL)*1000, CO2reactor_mmol=CO2resp_molL*1000) %>%
+  select(Date, ID, CO2chimney_mmol, CO2reactor_mmol, depth, Qsurficial, Qbase, Q)
 
 ggplot(CO2, aes(Q))+
-  geom_point(aes(y=CO2chimney_umolL, color = "chimney")) +geom_point(aes(y=CO2reactor_umolL, color="pathway"))+
+  geom_point(aes(y=CO2chimney_mmol, color = "chimney")) +geom_point(aes(y=CO2reactor_mmol, color="pathway"))+
   facet_wrap(~ ID, ncol=3)
 
 write_csv(CO2, "04_Output/chimney_reactor.csv")
@@ -104,11 +104,14 @@ totC<-left_join(CO2_obs, totDC, by=c("ID",'Date'))
 totC<-totC %>%fill(CO2obs_mol, .direction = "up")
 totC <- totC[!duplicated(totC[c('ID','Date')]),]
 
-totC<-totC %>% mutate(CO2_mgL=CO2obs_mol*12010) %>%mutate(DIC_total_mgL=CO2_mgL+DIC) %>% rename('DOC_mgL'='DOC')
+totC<-totC %>% mutate(CO2_mgL=CO2obs_mol*12010) %>%mutate(DIC_total_mgL=CO2_mgL+DIC) %>%
+  rename('DOC_mgL'='DOC')%>% filter(DIC<200) %>% filter(DOC<200)
+totC <- totC[complete.cases(totC[ , c('DOC_mgL')]), ]
 
-ggplot(totC, aes(Q))+
-  geom_point(aes(y=DIC_molL, color= "DIC_molL")) +geom_point(aes(y=DOC_molL, color='DOC_molL')) +
-  geom_point(aes(y=POC_molL, color='POC_molL')) +facet_wrap(~ ID, ncol=3)
+ggplot(totC, aes(Q_daily))+
+  geom_point(aes(y=DIC_total_mgL, color= "DIC")) +
+  geom_point(aes(y=DOC_mgL, color='DOC')) +
+  geom_point(aes(y=POC_mgL, color='POC')) +facet_wrap(~ ID, ncol=3)
 
 write_csv(totC, "02_Clean_data/allC_stream.csv")
 

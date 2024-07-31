@@ -10,21 +10,16 @@ library(seacarb)
 
 
 RClog<-read_xlsx('01_Raw_data/RC log.xlsx')
+RClog<- RClog%>% select(Date, ID, Site, WTdepth, CO2_mv)
 
 DC_RC<-read_csv('04_Output/TC_RC.csv')
-DC_RC<-DC_RC[DC_RC$Site %in% c('5GW1','5GW2','5GW3','5GW4','5GW5','5GW6','5GW7',
-                                        '6GW1','6GW2','6GW3','6GW4','6GW5',
-                                        '9GW1','9GW2','9GW3','9GW4'), ]
-DIC_RC<-filter(DC_RC, Species=='DIC')
-DIC_RC<-rename(DIC_RC, "DIC"="Conc.")
-DIC_RC<-DIC_RC[,c("Site","Date","DIC" )]
 
-DOC_RC<-filter(DC_RC, Species=='DOC')
-DOC_RC<-rename(DOC_RC, "DOC"="Conc.")
-DOC_RC<-DOC_RC[,c("Site","Date","DOC","Q_daily","Q_ID","depth_daily")]
+DIC_RC<-DC_RC %>%filter(Species=='DIC') %>%rename("DIC_mgL"="Conc.") %>% select(Site, Date, DIC_mgL)
+DOC_RC<-DC_RC %>%filter(Species=='DOC') %>%rename("DOC_mgL"="Conc.") %>% select(Site, Date, DOC_mgL)
 
-DC<-left_join(DOC_RC, DIC_RC, by=c("Site","Date"))
-C_RC<-left_join(DC, RClog, by=c("Site","Date"))
+C_RC<-left_join(RClog,DIC_RC , by=c("Site","Date"))
+C_RC<-left_join(C_RC, DOC_RC, by=c("Site","Date"))
+
 write_csv(C_RC, "02_Clean_data/allC_RC.csv")
 
 ###Interpolating CO2######

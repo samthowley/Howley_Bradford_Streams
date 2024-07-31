@@ -7,17 +7,18 @@ library(tools)
 library(cowplot)
 library(ggtern)
 
-theme_sam<-theme()+   theme(axis.text.x = element_text(size = 12, angle=0),
-                             axis.text.y = element_text(size = 17, angle=0),
-                             axis.title =element_text(size = 14, angle=0),
-                             plot.title = element_text(size = 17, angle=0),
+theme_set(theme(axis.text.x = element_text(size = 12),
+                             axis.text.y = element_text(size = 17),
+                axis.title.y = element_text(size = 17, angle = 90),
+                axis.title.x = element_text(size = 17),
+                             plot.title = element_text(size = 17),
                              legend.key.size = unit(0.8, 'cm'),
                              legend.text=element_text(size = 17),
                              legend.title =element_blank(),
                              legend.position ="bottom",
                              panel.background = element_rect(fill = 'white'),
                              axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
-                             axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black"))
+                             axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black")))
 
 discharge <- read_csv("02_Clean_data/discharge.csv")
 discharge<-discharge %>% mutate(day=day(Date), month=month(Date), year=year(Date))
@@ -25,7 +26,14 @@ discharge<-discharge %>% group_by(ID,day, month,year) %>%
   mutate(Q_daily=mean(Q, na.rm=T), loqQdaily=log(Q_daily)) %>% filter(Q_daily>2, ID !=14)
 
 depth <- read_csv("02_Clean_data/depth.csv")
-#discharge trends####
+
+TC <- read_csv("02_Clean_data/allC_stream.csv")
+
+chim_react<-read_csv("04_Output/chimney_reactor.csv")
+
+master <- read_csv("master.csv")
+
+#discharge: trends with depth, base vs surficial flow####
 discharge<-filter(discharge, Qbase>0 & Q<3000)
 (Q_timeseries<-ggplot(discharge, aes(Date))+
    geom_line(aes(y=Q, color= "Total Discharge")) +
@@ -43,25 +51,48 @@ depth<-depth %>% mutate(day=day(Date), month=month(Date), year=year(Date))
 depth<-depth %>% group_by(ID,day, month,year) %>% mutate(depth_daily=mean(depth, na.rm=T))
 depth<-depth[,c(2,5,6,7,8)]
 
-#TC####
-TC <- read_csv("02_Clean_data/TC.csv")
-DOC<-TC %>% filter(ID != 14, Species=='DOC')
+#total Carbon####
 
-DOC$ID <- factor(DOC$ID , levels=c('13','5','6a','15','5a','7','6','9','3'))
+TC$ID <- factor(TC$ID , levels=c('13','5','6a','15','5a','7','6','9','3'))
 
-DOC<-DOC%>%mutate(logQ_daily=log(Q_daily)) %>% filter(Q_daily>2, Conc.>2)
+TC<-TC%>%mutate(logQ_daily=log(Q_daily), Qid=case_when( Qbase>=Qsurficial~"low",Qbase<=Qsurficial~"high"))
+TC$Qid[is.na(TC$Qid)]<-'low'
 
-DOC_box<-ggplot(DOC, aes(x=ID, y=Conc., fill=Q_ID)) +
-  geom_boxplot(fill='#A4A4A4', color="black")+
-  theme_sam+ylab('DOC mg/L')+theme(axis.title.x = element_blank())
+ggtern(data=TC,aes(DOC_mgL,DIC_total_mgL,POC_mgL,color=Qid)) +
+  geom_point() +
+  labs(x="DOC_mgL",y="DIC_mgL",z="POC_mgL")+facet_wrap(~ ID, ncol=3)
 
-(DOC_scatter<-ggplot(DOC, aes(logQ_daily, Conc.)) + geom_point() +
-  facet_wrap(~ ID, ncol=5)+theme_sam+theme_sam+geom_smooth(method='lm', se=FALSE)+
-  ylab('DOC mg/L')+ theme(axis.title.x = element_blank()))
+ggplot(TC, aes(x=Q)) +
+  geom_point(aes(y=DIC_total_mgL, color='DIC')) +
+  geom_point(aes(y=DOC_mgL, color='DOC')) +
+  geom_point(aes(y=POC_mgL, color='POC'))+facet_wrap(~ ID, ncol=5)
 
-plot_grid(DOC_box,DOC_scatter, nrow=2)
 
-#ER####
+POC<-TC %>% select(Date, ID, POC_mgL, Q_daily, Qid) %>%rename('mgL'='POC_mgL') %>% mutate(Species='POC')
+DOC<-TC %>% select(Date, ID, DOC_mgL, Q_daily, Qid) %>%rename('mgL'='DOC_mgL') %>% mutate(Species='DOC')%>%
+  filter(mgL<150)
+DIC<-TC %>% select(Date, ID, DIC_total_mgL, Q_daily, Qid) %>%rename('mgL'='DIC_total_mgL') %>%
+  mutate(Species='DIC')
+
+TC_vert<-rbind(POC,DOC, DIC)
+TC_vert_low<-TC_vert %>% filter(Qid=='low')
+TC_vert_hi<-TC_vert %>% filter(Qid=='high')
+
+ggplot(TC_vert_low, aes(x=ID, y=mgL, fill=Species))+
+  geom_boxplot()
+ggplot(TC_vert_hi, aes(x=ID, y=mgL, fill=Species))+
+  geom_boxplot()
+ggplot(TC_vert, aes(x=ID, y=mgL, fill=Species))+
+  geom_boxplot()+ ylab("mg/L")
+
+TC<-filter(TC, DOC_mg/L<200)
+ggplot(TC, aes(x=Q_daily)) +scale_x_log10()+
+  geom_point(aes(y=DIC_total_mgL, color='DIC'),size=2) +
+  geom_point(aes(y=DOC_mgL, color='DOC'),size=2)+
+  geom_point(aes(y=POC_mgL, color='POC'),size=2)+ylab("mg/L")+xlab('Discharge L/s')+ylim(0, 120)+
+  facet_wrap(~ ID, ncol=5)
+
+#metabolism: boxplots,TC_vert_low#metabolism: boxplots, Q vs GPP/ER, ####
 metabolism <- read_csv("04_Output/master_metabolism.csv")
 metabolism<-metabolism %>% mutate(day=day(Date), month=month(Date), year=year(Date))
 
@@ -89,26 +120,31 @@ scatter<-plot_grid(ER_scatter,GPP_scatter, ncol=2)
 boxplots<-plot_grid(ER_box,GPP_box, ncol=2)
 plot_grid(scatter,boxplots, nrow=2)
 
-#Chem####
-master <- read_csv("master.csv")
+#Chem: boxplots by ID, Q vs mg/L####
 master<- master %>% mutate(day=day(Date), month=month(Date), year=year(Date))
 master<-master%>%filter(Q>2, ID != 14)
 
 master$ID <- factor(master$ID , levels=c('13','5','6a','15','5a','7','6','9','3'))
 
-DO_box<-ggplot(master, aes(x=ID, y=DO)) +
+DOQ_box<-ggplot(master, aes(x=ID, y=DO, fill= Q_ID)) +
   geom_boxplot(color="black")+theme_sam+
-  ylab('Dissolved Oxygen')+theme(axis.title.x = element_blank())
-CO2_box<-ggplot(master, aes(x=ID, y=CO2)) +
-  geom_boxplot(color="black")+theme_sam+
-  ylab('CO2 (ppm)')+theme(axis.title.x = element_blank())
-pH_box<-ggplot(master, aes(x=ID, y=pH))+
-  geom_boxplot(color="black")+theme_sam+
-  ylab('pH')+theme(axis.title.x = element_blank())
+  ylab('Dissolved Oxygen (mg/L)')+scale_fill_manual(values = c('lightgreen','blue'))+
+  theme(axis.title.x = element_blank())
 
-DO_scatter<-ggplot(master, aes(Q, DO)) + geom_point() +
-  facet_wrap(~ ID, ncol=5)+theme_sam+geom_smooth(method='lm', se=FALSE)+
-  ylab('DO') + xlab("Discharge (L/s)")
+pHQ_box<-ggplot(master, aes(x=ID, y=pH, fill= Q_ID)) +
+  geom_boxplot(color="black")+theme_sam+
+  ylab('pH')+scale_fill_manual(values = c('lightgreen','blue'), name="Discharge")+
+  theme(axis.title.x = element_blank(),
+        legend.position ="bottom")
+
+CO2Q_box<-ggplot(master, aes(x=ID, y=CO2, fill= Q_ID)) +
+  geom_boxplot(color="black")+theme_sam+
+  ylab('CO2 (mg/L)')+scale_fill_manual(values = c('lightgreen','blue'))+
+  theme(axis.title.x = element_blank())
+
+ggplot(master, aes(Q, DO)) + geom_point() +
+  facet_wrap(~ ID, ncol=5)+geom_smooth(method='lm', se=FALSE)+
+  ylab('DO mg/L') + xlab("Discharge (L/s)")+scale_x_log10()
 CO2_scatter<-ggplot(master, aes(Q, CO2)) + geom_point() +
   facet_wrap(~ ID, ncol=5)+theme_sam+geom_smooth(method='lm', se=FALSE)+
   ylab('CO2') + xlab("Discharge (L/s)")
@@ -116,18 +152,27 @@ pH_scatter<-ggplot(master, aes(Q, pH)) + geom_point() +
   facet_wrap(~ ID, ncol=5)+theme_sam+geom_smooth(method='lm', se=FALSE)+
   ylab('pH') + xlab("Discharge (L/s)")
 
-#Species of C####
-TC <- read_csv("02_Clean_data/allC_stream.csv")
-
-TC<-TC %>%mutate(Qid=case_when( Qbase>=Qsurficial~"low",Qbase<Qsurficial~"high"))
-
-ggtern(data=TC,aes(DOC_molL,DIC_molL,POC_molL,color=Qid)) +
-  theme_rgbw() +
-  geom_point() +
-  labs(x="DOC_molL",y="DIC_molL",z="POC_molL")+facet_wrap(~ ID, ncol=3)
-
 #Chimney-reactor#####
-#eem####
+chim_react<-chim_react%>%mutate(logQ=log(Q), ratio=CO2reactor_mmol/CO2chimney_mmol,
+                                Qid=case_when( Qbase>=Qsurficial~"low",Qbase<=Qsurficial~"high"))%>%
+  filter(ratio>0 & ratio <10)
+
+ggplot(chim_react, aes(x=Q)) +
+  geom_point(aes(y=CO2chimney_mmol, color='Chimney')) +
+  geom_point(aes(y=CO2reactor_mmol, color='Reactor'))+facet_wrap(~ ID, ncol=5)+
+  xlab('CO2 mmol/L')+ylab('Discharge (L/s)')+scale_x_log10()
+
+ggplot(chim_react, aes(x=ID, y=ratio, fill=Qid))+
+  geom_boxplot()+ylab("umol/L")
+
+chim_vert<-chim_react %>% select(ID, Q, CO2chimney_mmolL) %>% rename('mgL'='CO2chimney_mmolL')%>% mutate(Pathway="Chimney")
+react_vert<-chim_react %>% select(ID, Q, CO2reactor_mmolL) %>% rename('mgL'='CO2reactor_mmolL')%>% mutate(Pathway="Reactor")
+pathway_vert<-rbind(chim_vert, react_vert)
+
+ggplot(pathway_vert, aes(x=ID, y=mgL, fill=Pathway))+
+  geom_boxplot()+ylab("umol/L")
+
+#FDOM: Q vs bix, hix####
 eem_index<-read_csv("01_Raw_data/Aqualog_processing/projects/Bradford Streams/output/indices_eem_04162024.csv")
 eem_index<-eem_index[,-c(1,3,9,11,13,15)]
 eem_index<-eem_index %>% mutate(day=day(Date), month=month(Date), year=year(Date))%>%
@@ -155,42 +200,4 @@ hix_scatter<-ggplot(eem_index, aes(Q_daily, hix)) + geom_point() +
 boxplots<-plot_grid(bix_box,hix_box, ncol=2)
 scatter<-plot_grid(bix_scatter,hix_scatter, ncol=2)
 plot_grid(scatter,boxplots, nrow=2)
-
-#trends with discharge####
-names(HCO3)
-DOQ_box<-ggplot(master, aes(x=ID, y=DO, fill= Q_ID)) +
-    geom_boxplot(color="black")+theme_sam+
-    ylab('Dissolved Oxygen (mg/L)')+scale_fill_manual(values = c('lightgreen','blue'))+
-  theme(axis.title.x = element_blank())
-
-pHQ_box<-ggplot(master, aes(x=ID, y=pH, fill= Q_ID)) +
-  geom_boxplot(color="black")+theme_sam+
-  ylab('pH')+scale_fill_manual(values = c('lightgreen','blue'), name="Discharge")+
-  theme(axis.title.x = element_blank(),
-        legend.position ="bottom")
-
-CO2Q_box<-ggplot(master, aes(x=ID, y=CO2, fill= Q_ID)) +
-  geom_boxplot(color="black")+theme_sam+
-  ylab('CO2 (mg/L)')+scale_fill_manual(values = c('lightgreen','blue'))+
-  theme(axis.title.x = element_blank())
-
-
-HCO3<-HCO3 %>% mutate(day=day(Date), month=month(Date), year=year(Date), total=CO2_molL+HCO3_molL)
-HCO3<-left_join(HCO3, Q, by=c('day','month','year','ID'))
-ggplot(HCO3, aes(x=ID, y=total, fill= Q_ID)) +
-  geom_boxplot(color="black")+theme_sam+
-  ylab('CO2 mg/L')+scale_fill_manual(values = c('lightgreen','blue'))+
-  theme(axis.title.x = element_blank())
-
-
-
-#plot grids#####
-(chemsig<-plot_grid(CO2_box, DO_box,pH_box,DOC_box, nrow=4, align = 'v'))
-(emerging_trends<-plot_grid(DOQ_box, CO2Q_box,pHQ_box, nrow=3, align = 'v'))
-
-(C_box<-ggplot(carbon_mol, aes(x=ID, y=C_molL*1000, fill=Species))+
-    geom_boxplot(color="black")+theme_sam+theme(legend.position ="bottom")+
-    ylab('mmol/L'))+scale_color_manual(values=c('black','gray'))
-
-dev.new()
 
