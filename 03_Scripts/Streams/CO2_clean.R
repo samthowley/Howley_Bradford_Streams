@@ -7,8 +7,8 @@ library(weathermetrics)
 library(tools)
 library(cowplot)
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-12-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-07-31 00:00", tz="UTC"),by="hour")))
-theme_sam<-theme()+    theme(axis.text.x = element_text(size = 12, angle=0),
+                                            to=as.POSIXct("2024-08-01 00:00", tz="UTC"),by="hour")))
+theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
                              axis.text.y = element_text(size = 17, angle=0),
                              axis.title =element_text(size = 17, angle=0),
                              plot.title = element_text(size = 17, angle=0),
@@ -18,7 +18,7 @@ theme_sam<-theme()+    theme(axis.text.x = element_text(size = 12, angle=0),
                              legend.position ="none",
                              panel.background = element_rect(fill = 'white'),
                              axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
-                             axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black"))
+                             axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black")))
 #CO2#####
 CO2<-data.frame()
 
@@ -51,7 +51,6 @@ for(i in file.names){
 ggplot(CO2, aes(Date, CO2)) + geom_line()+ facet_wrap(~ ID, ncol=4)
 
 file.names <- list.files(path="01_Raw_data/Lily Box/csv", pattern=".csv", full.names=TRUE)
-
 for(i in file.names){
   LB <- read_csv(i)
   LB<-LB[,c(1,5)]
@@ -81,7 +80,7 @@ y<-c("Date",'CO2','ID')
 CO2<-CO2[,y]
 
 ##############
-ggplot(CO2, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=4)+theme_sam
+ggplot(CO2, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=4)
 write_csv(CO2, "02_Clean_data/CO2_cleaned.csv")
 
 test <- read_csv("01_Raw_data/Lily Box/dat/5_Bradford_LB_05302024.dat", skip=1)

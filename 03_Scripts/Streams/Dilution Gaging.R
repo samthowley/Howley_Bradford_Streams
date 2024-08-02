@@ -122,7 +122,7 @@ x<-c("Date","ID","Q")
 depth<-depth[,x]
 
 discharge <- depth %>% group_by(ID) %>%
-  mutate(Qbase = gr_baseflow(Q, method = 'jakeman',a = 0.925, passes = 3))
+  mutate(Qbase = gr_baseflow(Q, method = 'jakeman',a = 0.925, passes = 3)) %>%filter(Qbase>0)
 
 discharge<-discharge %>% group_by(ID) %>% mutate(Qsurficial=Q-Qbase)
 

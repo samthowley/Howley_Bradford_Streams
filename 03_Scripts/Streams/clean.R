@@ -7,7 +7,7 @@ library(weathermetrics)
 library(tools)
 library(cowplot)
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2022-11-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-07-12 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2024-08-01 00:00", tz="UTC"),by="hour")))
 
 clean_DO <- function(fil) {
   DO <- read_csv(fil,skip= 1)
@@ -57,7 +57,7 @@ clean_pH <- function(i) {
   #pH<-filter(pH, pH<6.2) #remove hours out of water
   pH$ID<-strsplit(file_path_sans_ext(i), '_')[[1]][6]
   return(pH)}
-theme_sam<-theme()+    theme(axis.text.x = element_text(size = 12, angle=0),
+theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
                              axis.text.y = element_text(size = 17, angle=0),
                              axis.title =element_text(size = 17, angle=0),
                              plot.title = element_text(size = 17, angle=0),
@@ -67,7 +67,7 @@ theme_sam<-theme()+    theme(axis.text.x = element_text(size = 12, angle=0),
                              legend.position ="none",
                              panel.background = element_rect(fill = 'white'),
                              axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
-                             axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black"))
+                             axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black")))
 
 ####DO######
 file.names <- list.files(path="01_Raw_data/HOBO Excels/DO", pattern=".csv", full.names=TRUE)
@@ -92,7 +92,7 @@ DO_all$DO[DO_all$DO>10]<-NA
 
 
 DO_all<- DO_all[!duplicated(DO_all[c('Date','ID')]),]
-ggplot(DO_all, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=4)+theme_sam
+ggplot(DO_all, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=4)
 
 write_csv(DO_all, "02_Clean_data/DO_cleaned.csv")
 ####SpC####
@@ -109,7 +109,7 @@ SpC_all$Temp_SpC[SpC_all$Temp_SpC<0]<-NA
 SpC_all$Temp_SpC[SpC_all$Temp_SpC>30]<-NA
 
 SpC_all <- SpC_all[!duplicated(SpC_all[c('Date','ID')]),]
-ggplot(SpC_all, aes(Date, SpC)) + geom_line() + facet_wrap(~ ID, ncol=4)+theme_sam
+ggplot(SpC_all, aes(Date, SpC)) + geom_line() + facet_wrap(~ ID, ncol=4)
 write_csv(SpC_all, "02_Clean_data/SpC_cleaned.csv")
 
 #range(SpC_all$Date, na.rm=T)
@@ -124,8 +124,7 @@ pH_all <- pH_all[!duplicated(pH_all[c('Date','ID')]),]
 
 pH_all$pH[pH_all$pH>8]<-NA
 ggplot(pH_all, aes(Date, pH)) + geom_line() + geom_hline(yintercept=8)+
-  facet_wrap(~ ID, ncol=4)+theme_sam
-
+  facet_wrap(~ ID, ncol=4)
 write_csv(pH_all, "02_Clean_data/pH_cleaned.csv")
 
 ####Compile####
