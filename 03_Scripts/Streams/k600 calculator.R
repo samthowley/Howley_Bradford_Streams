@@ -94,25 +94,27 @@ write_csv(gasdome_compiled, "01_Raw_data/GD/GasDome_compiled.csv")
 #Join with Q####
 gasdome_compiled<-read_csv('01_Raw_data/GD/GasDome_compiled.csv')
 Q<-read_csv('02_Clean_data/discharge.csv')
-Q<-Q %>% mutate(Date= as.Date(Date)) %>% group_by(Date,ID) %>% mutate(Q_avg=mean(Q, na.rm=T))
+Q<-Q %>% mutate(Date= as.Date(Date)) %>% group_by(Date,ID) %>%
+  mutate(Q_avg=mean(Q, na.rm=T))
 
-gasdome_compiled<-left_join(gasdome_compiled, Q, by=c('Date', 'ID'))
-gasdome_compiled <- gasdome_compiled[!duplicated(gasdome_compiled[c('Date','ID')]),]
+GD<-left_join(gasdome_compiled, Q, by=c('Date', 'ID'))
+#GD<-GD%>%filter(Q_avg>3)
+GD <- GD[!duplicated(GD[c('Date','ID')]),]
 
-ggplot(gasdome_compiled, aes(depth, k600_1d)) + geom_point() + facet_wrap(~ ID, ncol=5)
-write_csv(gasdome_compiled, "01_Raw_data/GD/GasDome_compiled.csv")
-split<-gasdome_compiled %>% split(gasdome_compiled$ID)
+ggplot(GD, aes(depth, k600_1d)) + geom_point() + facet_wrap(~ ID, ncol=5)
+write_csv(GD, "01_Raw_data/GD/GasDome_compiled.csv")
+split<-GD %>% split(GD$ID)
 write.xlsx(split, file = '04_Output/rC_k600.xlsx')
 
 
 #organize data file##########
-gas<- read_csv("01_Raw_data/GD/raw/GasDome_07112024.dat",skip = 3)
+gas<- read_csv("01_Raw_data/GD/raw/GasDome_08012024.dat",skip = 3)
 gas<-gas[,c(1,5)]
 colnames(gas)[1] <- "Date"
 colnames(gas)[2] <- "CO2"
-gas<-gas %>%filter(Date>'2024-07-10')
+gas<-gas %>%filter(Date>'2024-07-31')
 
-write_csv(gas, "01_Raw_data/GD/raw/GasDome_07112024.csv")
+write_csv(gas, "01_Raw_data/GD/raw/GasDome_08012024.csv")
 
 
 
