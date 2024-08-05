@@ -1,0 +1,7 @@
+Site,Date,Species,Conc.,Conc_Raw,day,month,year,ID,chapter,Q,Qbase,Qsurficial,Q_daily,depth_daily,Water_press,Temp_PT,pH_daily
+9.Sam,2024-08-01,DIC,50.38,50.38,1,8,2024,9,long,NA,NA,NA,NA,NA,NA,NA,NA
+9.Sam,2024-08-01,DOC,25.69,25.69,1,8,2024,9,long,NA,NA,NA,NA,NA,NA,NA,NA
+5.3,2024-08-01,DIC,143.6,143.6,1,8,2024,5,long,NA,NA,NA,NA,NA,NA,NA,NA
+5.3,2024-08-01,DOC,135.8,135.8,1,8,2024,5,long,NA,NA,NA,NA,NA,NA,NA,NA
+6.2,2024-08-01,DIC,257.1,257.1,1,8,2024,6,long,NA,NA,NA,NA,NA,NA,NA,NA
+6.2,2024-08-01,DOC,248,248,1,8,2024,6,long,NA,NA,NA,NA,NA,NA,NA,NA

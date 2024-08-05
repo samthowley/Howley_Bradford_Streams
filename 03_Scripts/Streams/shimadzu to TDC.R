@@ -60,9 +60,7 @@ for(fil in file.names){
   runs<-runs[,c(6,1,2,7)]
   runs<-runs %>% rename('Conc'='Interpolated', 'Vial'='Vials') %>% mutate(Ran=mdy(Ran), Vial=as.character(Vial))
   results<-rbind(results, runs)
-  }
-
-
+}
 
 
 results<-results %>% mutate(day=day(Ran), month=month(Ran), year=year(Ran))
@@ -72,7 +70,7 @@ carbon<-together %>%
   rename('ID'='Site', 'Date'='Sample Date','Conc_Raw'='Conc') %>%
   mutate(Conc.= Conc_Raw*(1/DF), day=day(Date), month=month(Date), year=year(Date))%>%
   filter(Conc. != Inf)
-carbon$Conc.[carbon$Conc.<0]<-NA
+#carbon$Conc.[carbon$Conc.<0]<-NA
 
 x<-c("ID","Date",'Species',"Conc.","Conc_Raw",'day','month','year')
 carbon<-carbon[,x]
@@ -85,18 +83,28 @@ carbon<-carbon %>% mutate(ID=case_when(Site=='3'~'3',Site=='5'~'5',Site=='5a'~'5
                                     Site=='5GW5'~'5',Site=='5GW6'~'5',Site=='5GW7'~'5',Site=='6GW1'~'6',
                                     Site=='6GW2'~'6',Site=='6GW3'~'6',Site=='6GW4'~'6',Site=='6GW5'~'6',
                                     Site=='6GW6'~'6',Site=='9GW1'~'9',Site=='9GW2'~'9',Site=='9GW3'~'9',
-                                    Site=='9GW4'~'9'))
+                                    Site=='9GW4'~'9',Site=='5.1'~'5',Site=='5.2'~'5',Site=='5.3'~'5',
+                                    Site=='5.4'~'5',Site=='5.5'~'5',Site=='6.1'~'6',Site=='6.2'~'6',
+                                    Site=='6.3'~'6',Site=='6.4'~'6',Site=='6.5'~'6',Site=='6.6'~'6',
+                                    Site=='9.1'~'9',Site=='9.2'~'9',Site=='9.3'~'9',Site=='9.4'~'9',
+                                    Site=='9.5'~'9',Site=='9.6'~'9',Site=='9.Sam'~'9'))
 
 
 carbon<-carbon %>% mutate(chapter=case_when(Site=='3'~'stream',Site=='5'~'stream',Site=='5a'~'stream',
-                                       Site=='6'~'stream',Site=='6a'~'stream',Site=='7'~'stream',
-                                       Site=='9'~'stream',Site=='13'~'stream',Site=='15'~'stream',
+                                            Site=='6'~'stream',Site=='6a'~'stream',Site=='7'~'stream',
+                                            Site=='9'~'stream',Site=='13'~'stream',Site=='15'~'stream',
 
-                                       Site=='5GW1'~'RC',Site=='5GW2'~'RC',Site=='5GW3'~'RC',Site=='5GW4'~'RC',
-                                       Site=='5GW5'~'RC',Site=='5GW6'~'RC',Site=='5GW7'~'RC',Site=='6GW1'~'RC',
-                                       Site=='6GW2'~'RC',Site=='6GW3'~'RC',Site=='6GW4'~'RC',Site=='6GW5'~'RC',
-                                       Site=='6GW6'~'RC',Site=='9GW1'~'RC',Site=='9GW2'~'RC',Site=='9GW3'~'RC',
-                                       Site=='9GW4'~'RC'))
+                                            Site=='5GW1'~'RC',Site=='5GW2'~'RC',Site=='5GW3'~'RC',Site=='5GW4'~'RC',
+                                            Site=='5GW5'~'RC',Site=='5GW6'~'RC',Site=='5GW7'~'RC',Site=='6GW1'~'RC',
+                                            Site=='6GW2'~'RC',Site=='6GW3'~'RC',Site=='6GW4'~'RC',Site=='6GW5'~'RC',
+                                            Site=='6GW6'~'RC',Site=='9GW1'~'RC',Site=='9GW2'~'RC',Site=='9GW3'~'RC',
+                                            Site=='9GW4'~'RC',
+
+                                            Site=='5.1'~'long',Site=='5.2'~'long',Site=='5.3'~'long',
+                                            Site=='5.4'~'long',Site=='5.5'~'long',Site=='6.1'~'long',Site=='6.2'~'long',
+                                            Site=='6.3'~'long',Site=='6.4'~'long',Site=='6.5'~'long',Site=='6.6'~'long',
+                                            Site=='9.1'~'long',Site=='9.2'~'long',Site=='9.3'~'long',Site=='9.4'~'long',
+                                            Site=='9.5'~'long',Site=='9.6'~'long',Site=='9.Sam'~'long'))
 
 carbon$chapter[is.na(carbon$chapter)]<-'wetland'
 wetland<-filter(carbon, chapter=='wetland')
@@ -129,9 +137,13 @@ carbon <- carbon[!duplicated(carbon[c('ID','Date','Species')]),]
 
 stream<-filter(carbon, chapter=='stream')
 RC<-filter(carbon, chapter=='RC')
+long<-filter(carbon, chapter=='long')
 
-write_csv(RC, "04_Output/TC_RC.csv")
-write_csv(stream, "04_Output/TC_stream.csv")
+
+write_csv(RC, "04_Output/TDC_RC.csv")
+write_csv(stream, "04_Output/TDC_stream.csv")
+write_csv(long, "04_Output/TDC_long.csv")
+
 
 ggplot(stream, aes(x=depth_daily, y=Conc.,color=Species)) +
   geom_point()+facet_wrap(~ Site, ncol=5)
