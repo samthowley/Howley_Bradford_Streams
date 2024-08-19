@@ -131,6 +131,7 @@ ggplot(discharge, aes(Date)) +
   geom_line(aes(y=Qsurficial, color='runoff'))+
   geom_line(aes(y=Qbase, color='base'))+
   facet_wrap(~ ID, ncol=5)
+range(discharge$Date)
 ##########
 write_csv(discharge, "02_Clean_data/discharge.csv")
 q<-read_csv("02_Clean_data/discharge.csv")

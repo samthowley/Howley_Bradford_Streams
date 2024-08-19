@@ -10,9 +10,9 @@ library(seacarb)
 
 
 RClog<-read_xlsx('01_Raw_data/RC log.xlsx')
-RClog<- RClog%>% select(Date, ID, Site, WTdepth, CO2_mv)
+RClog<- RClog%>% select(Date, ID, Site, WTdepth, CO2_mv, pH, Temp)
 
-DC_RC<-read_csv('04_Output/TC_RC.csv')
+DC_RC<-read_csv('04_Output/TDC_RC.csv')
 
 DIC_RC<-DC_RC %>%filter(Species=='DIC') %>%rename("DIC_mgL"="Conc.") %>% select(Site, Date, DIC_mgL)
 DOC_RC<-DC_RC %>%filter(Species=='DOC') %>%rename("DOC_mgL"="Conc.") %>% select(Site, Date, DOC_mgL)
@@ -36,13 +36,13 @@ CO2 <- function(master) {
   master$pK1<- -log10(master$K1)
   master$pK2<- -log10(master$K2)
 
-  master$HCO3_molL<-master$DIC/12010
+  master$HCO3_molL<-master$DIC_mgL/61000
   master$CO2_molL<-master$HCO3_molL/(10^(master$pH-master$pK1))
 
   master$CO2_atm<-master$CO2_molL/master$KH
   master$CO2_ppm_inter<-master$CO2_atm*1000000
 
-  # master<-master[,c('Date', 'ID', 'Site', 'CO2_ppm_inter')]
+  master<-master %>% select(Date, ID, Site, CO2_ppm_inter, CO2_molL, HCO3_molL)
   return(master)}
 
 RCc<-read_csv("02_Clean_data/allC_RC.csv")
@@ -56,5 +56,11 @@ RCc<-left_join(RCc, discharge, by=c('Date','ID'))
 
 CO2_inter<-CO2(RCc)
 RCc<-left_join(RCc, CO2_inter, by=c('Date','ID','Site'))
+RCc <- RCc[!duplicated(RCc[c('Site','Date')]),]
 
-#write_csv(C_RC, "02_Clean_data/allC_RC.csv")
+
+
+ggplot(RCc, aes(x=depth, y=DOC_mgL, color=Site)) +
+  geom_point()+facet_wrap(~ ID, ncol=5)
+
+write_csv(C_RC, "02_Clean_data/allC_RC.csv")

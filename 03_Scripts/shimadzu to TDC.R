@@ -21,7 +21,7 @@ vials<-data.frame()
 for(fil in file.names){
   vial<-VialID(fil)
   vials<-rbind(vials, vial)}
-vials<- vials %>% mutate(day=day(Ran),month=month(Ran), year=year(Ran), `Sample Date`=mdy(`Sample Date`))
+vials<- vials %>% mutate(`Sample Date`=mdy(`Sample Date`))
 
 results<-data.frame()
 file.names <- list.files(path="01_Raw_data/Shimadzu/results",pattern=".csv", full.names=TRUE)
@@ -33,6 +33,7 @@ for(fil in file.names){
   results<-rbind(results, runs)}
 file.names <- list.files(path="01_Raw_data/Shimadzu/dat files", pattern=".txt", full.names=TRUE)
 for(fil in file.names){
+
   runs<-read_csv(fil, skip=10)
   runs<- runs %>% filter(`Anal.`=='NPOC') %>% rename('Ran'="Date / Time" )
   runs<-runs[c(9,12,13)]
@@ -60,22 +61,14 @@ for(fil in file.names){
   runs<-runs[,c(6,1,2,7)]
   runs<-runs %>% rename('Conc'='Interpolated', 'Vial'='Vials') %>% mutate(Ran=mdy(Ran), Vial=as.character(Vial))
   results<-rbind(results, runs)
-  }
+}
 
-
-
-
-results<-results %>% mutate(day=day(Ran), month=month(Ran), year=year(Ran))
-together<-left_join(vials,results,by=c('Vial','day','month','year'))
+together<-left_join(vials,results,by=c('Vial','Ran'))
 
 carbon<-together %>%
   rename('ID'='Site', 'Date'='Sample Date','Conc_Raw'='Conc') %>%
-  mutate(Conc.= Conc_Raw*(1/DF), day=day(Date), month=month(Date), year=year(Date))%>%
-  filter(Conc. != Inf)
-carbon$Conc.[carbon$Conc.<0]<-NA
-
-x<-c("ID","Date",'Species',"Conc.","Conc_Raw",'day','month','year')
-carbon<-carbon[,x]
+  mutate(Conc.= Conc_Raw*(1/DF))%>%
+  filter(Conc. != Inf) %>% select(Date, ID, Species, Conc., Conc_Raw)
 
 carbon<-rename(carbon, 'Site'='ID')
 carbon<-carbon %>% mutate(ID=case_when(Site=='3'~'3',Site=='5'~'5',Site=='5a'~'5a',
@@ -85,66 +78,64 @@ carbon<-carbon %>% mutate(ID=case_when(Site=='3'~'3',Site=='5'~'5',Site=='5a'~'5
                                     Site=='5GW5'~'5',Site=='5GW6'~'5',Site=='5GW7'~'5',Site=='6GW1'~'6',
                                     Site=='6GW2'~'6',Site=='6GW3'~'6',Site=='6GW4'~'6',Site=='6GW5'~'6',
                                     Site=='6GW6'~'6',Site=='9GW1'~'9',Site=='9GW2'~'9',Site=='9GW3'~'9',
-                                    Site=='9GW4'~'9'))
+                                    Site=='9GW4'~'9',Site=='5.1'~'5',Site=='5.2'~'5',Site=='5.3'~'5',
+                                    Site=='5.4'~'5',Site=='5.5'~'5',Site=='6.1'~'6',Site=='6.2'~'6',
+                                    Site=='6.3'~'6',Site=='6.4'~'6',Site=='6.5'~'6',Site=='6.6'~'6',
+                                    Site=='9.1'~'9',Site=='9.2'~'9',Site=='9.3'~'9',Site=='9.4'~'9',
+                                    Site=='9.5'~'9',Site=='9.6'~'9',Site=='9.Sam'~'9'))
 
 
 carbon<-carbon %>% mutate(chapter=case_when(Site=='3'~'stream',Site=='5'~'stream',Site=='5a'~'stream',
-                                       Site=='6'~'stream',Site=='6a'~'stream',Site=='7'~'stream',
-                                       Site=='9'~'stream',Site=='13'~'stream',Site=='15'~'stream',
+                                            Site=='6'~'stream',Site=='6a'~'stream',Site=='7'~'stream',
+                                            Site=='9'~'stream',Site=='13'~'stream',Site=='15'~'stream',
 
-                                       Site=='5GW1'~'RC',Site=='5GW2'~'RC',Site=='5GW3'~'RC',Site=='5GW4'~'RC',
-                                       Site=='5GW5'~'RC',Site=='5GW6'~'RC',Site=='5GW7'~'RC',Site=='6GW1'~'RC',
-                                       Site=='6GW2'~'RC',Site=='6GW3'~'RC',Site=='6GW4'~'RC',Site=='6GW5'~'RC',
-                                       Site=='6GW6'~'RC',Site=='9GW1'~'RC',Site=='9GW2'~'RC',Site=='9GW3'~'RC',
-                                       Site=='9GW4'~'RC'))
+                                            Site=='5GW1'~'RC',Site=='5GW2'~'RC',Site=='5GW3'~'RC',Site=='5GW4'~'RC',
+                                            Site=='5GW5'~'RC',Site=='5GW6'~'RC',Site=='5GW7'~'RC',Site=='6GW1'~'RC',
+                                            Site=='6GW2'~'RC',Site=='6GW3'~'RC',Site=='6GW4'~'RC',Site=='6GW5'~'RC',
+                                            Site=='6GW6'~'RC',Site=='9GW1'~'RC',Site=='9GW2'~'RC',Site=='9GW3'~'RC',
+                                            Site=='9GW4'~'RC',
+
+                                            Site=='5.1'~'long',Site=='5.2'~'long',Site=='5.3'~'long',
+                                            Site=='5.4'~'long',Site=='5.5'~'long',Site=='6.1'~'long',Site=='6.2'~'long',
+                                            Site=='6.3'~'long',Site=='6.4'~'long',Site=='6.5'~'long',Site=='6.6'~'long',
+                                            Site=='9.1'~'long',Site=='9.2'~'long',Site=='9.3'~'long',Site=='9.4'~'long',
+                                            Site=='9.5'~'long',Site=='9.6'~'long',Site=='9.Sam'~'long'))
 
 carbon$chapter[is.na(carbon$chapter)]<-'wetland'
 wetland<-filter(carbon, chapter=='wetland')
 
 write_csv(wetland, "04_Output/TC_wetland.csv")
 
-# alkalinity <- read_csv("02_Clean_data/alkalinity.csv")
-# alkalinity<-alkalinity %>% mutate(day=day(Date), month=month(Date), year=year(Date))
-# alkalinity<-alkalinity[,-1]
-# check<-left_join(carbon, alkalinity, by=c('day','month','year','ID'))
-# check <- check[!duplicated(check[c('ID','Date','Species')]),]
-# write_csv(check, "check.csv")
+file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
+file.names<-file.names[c(5,6,8)]
+data <- lapply(file.names,function(x) {read_csv(x)})
+library(plyr)
+bgc<-join_all(data, by=c('Date','ID'), type='left')
+detach("package:plyr", unload = TRUE)
+bgc<-bgc %>%mutate(Date=as.Date(Date))%>%group_by(Date,ID)%>%
+  mutate(depth=mean(depth, na.rm=T), pH=mean(pH, na.rm=T), Q==mean(Q, na.rm=T)) %>%
+           select(Date,ID,depth,pH,Q)
 
-
-discharge <- read_csv("02_Clean_data/discharge.csv")
-discharge<-discharge %>% mutate(day=day(Date), month=month(Date), year=year(Date))
-discharge<-discharge %>% group_by(ID,day, month,year) %>% mutate(Q_daily=mean(Q, na.rm=T))
-discharge<-discharge[,c('ID','Q_daily', 'Q_ID','day','month','year')]
-
-depth <- read_csv("02_Clean_data/depth.csv")
-depth<-depth %>% mutate(day=day(Date), month=month(Date), year=year(Date))
-depth<-depth %>% group_by(ID,day, month,year) %>% mutate(depth_daily=mean(depth, na.rm=T))
-depth<-depth[,c("day","month","year","depth_daily",'Water_press',"Temp_PT",'ID')]
-
-pH <- read_csv("02_Clean_data/pH_cleaned.csv")
-pH<-pH %>% mutate(day=day(Date), month=month(Date), year=year(Date))
-pH<-pH %>% group_by(ID,day, month,year) %>% mutate(pH_daily=mean(pH, na.rm=T))
-pH<-pH[,c("day","month","year","pH_daily",'ID')]
-
-
-carbon<-left_join(carbon, discharge,by=c('day','month','year','ID'))
-carbon<-left_join(carbon, depth,by=c('day','month','year','ID'))
-carbon<-left_join(carbon, pH,by=c('day','month','year','ID'))
-
+carbon<-left_join(carbon, bgc,by=c('Date','ID'))
 
 carbon<- carbon %>% filter(ID != '9a',ID != '9b', ID!='14')
 carbon <- carbon[!duplicated(carbon[c('Site','Date','Species')]),]
+range(carbon$Date, na.rm=T)
 
 stream<-filter(carbon, chapter=='stream')
 RC<-filter(carbon, chapter=='RC')
+long<-filter(carbon, chapter=='long')
 
-write_csv(RC, "04_Output/TC_RC.csv")
-write_csv(stream, "04_Output/TC_stream.csv")
 
-ggplot(stream, aes(x=depth_daily, y=Conc.,color=Species)) +
+write_csv(RC, "04_Output/TDC_RC.csv")
+write_csv(stream, "04_Output/TDC_stream.csv")
+write_csv(long, "04_Output/TDC_long.csv")
+
+
+ggplot(stream, aes(x=depth, y=Conc.,color=Species)) +
   geom_point()+facet_wrap(~ Site, ncol=5)
 
-ggplot(RC, aes(x=depth_daily, y=Conc.,color=Species)) +
+ggplot(RC, aes(x=depth, y=Conc.,color=Species)) +
   geom_point()+facet_wrap(~ Site, ncol=5)
 
 

@@ -33,31 +33,30 @@ POC<-POC[,keep_POC]
 POC<-POC %>% rename('Date'='Sampled', 'POC_mgL'='mg/L')
 POC<-POC[POC$ID %in% c("6","5a","7","9","5","6a","13","15","3"), ]
 
-
-DC_strm<-read_csv('04_Output/TC_stream.csv')
-DIC_strm<-filter(DC_strm, Species=='DIC')
-DIC_strm<-rename(DIC_strm, "DIC"="Conc.")
-DIC_strm<-DIC_strm[,c("ID","Date","DIC" )]
-
-
-DOC_strm<-filter(DC_strm, Species=='DOC')
-DOC_strm<-rename(DOC_strm, "DOC"="Conc.")
-
+DC_strm<-read_csv('04_Output/TDC_stream.csv')
+DIC_strm<-DC_strm %>% filter(Species=='DIC') %>% rename("DIC"="Conc.") %>% select(ID, Date, DIC, depth, pH, Q)
+DOC_strm<-DC_strm %>% filter(Species=='DOC') %>% rename("DOC"="Conc.") %>% select(ID, Date, DOC)
 DC<-left_join(DOC_strm, DIC_strm, by=c("ID","Date"))
 
 alkalinity<-read_csv("02_Clean_data/alkalinity.csv")
 alkalinity<-alkalinity %>%mutate(Date=as.Date(Date))%>%
-  group_by(ID, Date) %>% mutate(alk_avg=mean(DIC_mgL_int, na.rm = T))
+  group_by(ID, Date) %>% mutate(alk_avg=mean(DIC_mgL_int, na.rm = T))%>%
+  select(Date, ID, alk_avg)
+DC<-left_join(DC, alkalinity, by=c('Date', 'ID'))
+DC <- DC[complete.cases(DC[ , c('DOC')]), ]
+DC <- DC[!duplicated(DC[c('ID','Date')]),]
 
-DC$DIC <- ifelse(is.na(DC$DIC), alkalinity$alk_avg, DC$DIC)
+DC <- DC %>%group_by(Date, ID) %>%
+  mutate(DIC = ifelse(is.na(DIC), alk_avg, DIC))
 
 totDC<-left_join(DC,POC, by=c("ID","Date"))
-totDC<-totDC %>% select(ID, Date,POC_mgL,DIC,DOC, Q_daily, Qsurficial, Qbase)
-write_csv(totDC, "04_Output/stream_sampledC.csv")
+totDC<-totDC %>% select(ID,Date,POC_mgL,DIC,DOC, depth, pH, Q)
+totDC <- totDC[rev(order(as.Date(totDC$Date, format="%m/%d/%Y"))),]
 
-#####################
+write_csv(totDC, "04_Output/stream_sampledC.csv")
+###################
 #####sensor C#####
-####################
+##################
 #Reactor Pathway##########
 
 Q<-Q %>% mutate(Date=as.Date(Date)) %>% group_by(ID, Date) %>% mutate(Q=mean(Q, na.rm=T))
@@ -85,7 +84,7 @@ CO2<-CO2 %>% mutate(CO2chimney_mmol= (CO2obs_mol-CO2resp_molL)*1000, CO2reactor_
 
 ggplot(CO2, aes(Q))+
   geom_point(aes(y=CO2chimney_mmol, color = "chimney")) +geom_point(aes(y=CO2reactor_mmol, color="pathway"))+
-  facet_wrap(~ ID, ncol=3)
+  facet_wrap(~ ID, ncol=3)+theme(legend.position = "bottom")
 
 write_csv(CO2, "04_Output/chimney_reactor.csv")
 
@@ -102,16 +101,18 @@ CO2_obs<- CO2_obs %>% rename('CO2'='CO2_daily') %>%CO2mol() %>%select(Date,ID,CO
 
 totC<-left_join(CO2_obs, totDC, by=c("ID",'Date'))
 totC<-totC %>%fill(CO2obs_mol, .direction = "up")
-totC <- totC[!duplicated(totC[c('ID','Date')]),]
 
-totC<-totC %>% mutate(CO2_mgL=CO2obs_mol*12010) %>%mutate(DIC_total_mgL=CO2_mgL+DIC) %>%
-  rename('DOC_mgL'='DOC')%>% filter(DIC<200) %>% filter(DOC<200)
+totC<-totC %>% mutate(CO2_mgL=CO2obs_mol*44010) %>%
+  mutate(DIC_total_mgL=CO2_mgL+DIC) %>% rename('DOC_mgL'='DOC')%>%
+  filter(DIC<500) %>% filter(DOC_mgL<500)
 totC <- totC[complete.cases(totC[ , c('DOC_mgL')]), ]
+totC <- totC[rev(order(as.Date(totC$Date, format="%m/%d/%Y"))),]
 
-ggplot(totC, aes(Q_daily))+
+ggplot(totC, aes(Q))+
   geom_point(aes(y=DIC_total_mgL, color= "DIC")) +
   geom_point(aes(y=DOC_mgL, color='DOC')) +
   geom_point(aes(y=POC_mgL, color='POC')) +facet_wrap(~ ID, ncol=3)
+range(totC$Date)
 
 write_csv(totC, "02_Clean_data/allC_stream.csv")
 

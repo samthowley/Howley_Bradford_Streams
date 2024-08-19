@@ -82,7 +82,7 @@ CO2<-CO2[,y]
 ##############
 ggplot(CO2, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=4)
 write_csv(CO2, "02_Clean_data/CO2_cleaned.csv")
-
+CO2<-read_csv("02_Clean_data/CO2_cleaned.csv")
 test <- read_csv("01_Raw_data/Lily Box/dat/5_Bradford_LB_05302024.dat", skip=1)
 test<-test[-c(1,2),-c(2,3,5,6)]
 test<-test %>% rename('Date'='TIMESTAMP', 'Eosense'='CO2High', 'Vaisala'='CO2')
