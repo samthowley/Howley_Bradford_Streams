@@ -25,7 +25,6 @@ dim<-read_csv('02_Clean_data/stream area.csv')
 CO2_obs<-read_csv("02_Clean_data/CO2_cleaned.csv")
 CO2_obs<-CO2_obs %>%mutate(Date=as.Date(Date)) %>% group_by(ID, Date) %>% mutate(CO2_daily=mean(CO2, na.rm=T))
 
-
 #sample C##########
 POC<-read_xlsx('01_Raw_data/POC.xlsx')
 keep_POC<-c("ID","Sampled","mg/L")
@@ -53,7 +52,11 @@ totDC<-left_join(DC,POC, by=c("ID","Date"))
 totDC<-totDC %>% select(ID,Date,POC_mgL,DIC,DOC, depth, pH, Q)
 totDC <- totDC[rev(order(as.Date(totDC$Date, format="%m/%d/%Y"))),]
 
-write_csv(totDC, "04_Output/stream_sampledC.csv")
+ggplot(totDC, aes(Q))+
+  geom_point(aes(y=DIC, color= "DIC")) +
+  geom_point(aes(y=DOC, color='DOC')) +facet_wrap(~ ID, ncol=3)
+
+qwrite_csv(totDC, "04_Output/stream_sampledC.csv")
 ###################
 #####sensor C#####
 ##################

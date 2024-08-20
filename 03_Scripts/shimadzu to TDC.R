@@ -58,9 +58,12 @@ for(fil in file.names){
 file.names <- list.files(path="01_Raw_data/Shimadzu/csv files", pattern=".csv", full.names=TRUE)
 for(fil in file.names){
   runs<-read_csv(fil)
-  runs<-runs[,c(6,1,2,7)]
-  runs<-runs %>% rename('Conc'='Interpolated', 'Vial'='Vials') %>% mutate(Ran=mdy(Ran), Vial=as.character(Vial))
-  results<-rbind(results, runs)
+  DIC<-runs %>%select(`IC Interpolation`,Vial,Ran)%>%mutate(Ran=mdy(Ran),Species='DIC', Vial=as.character(Vial))%>%
+    rename('Conc'='IC Interpolation')
+  DOC<-runs %>%select(TOC,Vial,Ran)%>%mutate(Ran=mdy(Ran),Species='DIC', Vial=as.character(Vial))%>%
+    rename('Conc'='TOC')
+  complete<-rbind(DIC,DOC)
+  results<-rbind(results, complete)
 }
 
 together<-left_join(vials,results,by=c('Vial','Ran'))
