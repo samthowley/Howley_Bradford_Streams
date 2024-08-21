@@ -14,11 +14,15 @@ RClog<- RClog%>% select(Date, ID, Site, WTdepth, CO2_mv, pH, Temp)
 
 DC_RC<-read_csv('04_Output/TDC_RC.csv')
 
+RC_dim <- read_excel("01_Raw_data/RC log.xlsx",sheet = "Sheet1")
+RC_dim<-RC_dim%>%select(Site,`Distance (ft)`,Distance_m)
+
 DIC_RC<-DC_RC %>%filter(Species=='DIC') %>%rename("DIC_mgL"="Conc.") %>% select(Site, Date, DIC_mgL)
 DOC_RC<-DC_RC %>%filter(Species=='DOC') %>%rename("DOC_mgL"="Conc.") %>% select(Site, Date, DOC_mgL)
 
 C_RC<-left_join(RClog,DIC_RC , by=c("Site","Date"))
 C_RC<-left_join(C_RC, DOC_RC, by=c("Site","Date"))
+C_RC<-left_join(C_RC, RC_dim, by=c("Site"))
 
 write_csv(C_RC, "02_Clean_data/allC_RC.csv")
 
@@ -60,7 +64,12 @@ RCc <- RCc[!duplicated(RCc[c('Site','Date')]),]
 
 
 
-ggplot(RCc, aes(x=depth, y=DOC_mgL, color=Site)) +
-  geom_point()+facet_wrap(~ ID, ncol=5)
+a<-ggplot(RCc, aes(x=Distance_m, y=DOC_mgL, color=Q))+
+  scale_color_gradient(low = "blue", high = "red")+
+  geom_point()+facet_wrap(~ ID, ncol=5)+ggtitle('River Corridor')
+b<-ggplot(RCc, aes(x=Distance_m, y=DIC_mgL, color=Q))+
+  scale_color_gradient(low = "blue", high = "red")+
+  geom_point()+facet_wrap(~ ID, ncol=5)+ggtitle('River Corridor')
+plot_grid(a,b,ncol=1)
 
 write_csv(C_RC, "02_Clean_data/allC_RC.csv")

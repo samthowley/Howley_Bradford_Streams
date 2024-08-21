@@ -7,7 +7,6 @@ library(readxl)
 library(lubridate)
 library(cowplot)
 
-
 VialID <- function(sample) {
   sample <- read_csv(fil)
   sample$Date<-mdy(sample$'Sample Date')
@@ -115,15 +114,15 @@ data <- lapply(file.names,function(x) {read_csv(x)})
 library(plyr)
 bgc<-join_all(data, by=c('Date','ID'), type='left')
 detach("package:plyr", unload = TRUE)
+
 bgc<-bgc %>%mutate(Date=as.Date(Date))%>%group_by(Date,ID)%>%
   mutate(depth=mean(depth, na.rm=T), pH=mean(pH, na.rm=T), Q==mean(Q, na.rm=T)) %>%
            select(Date,ID,depth,pH,Q)
 
 carbon<-left_join(carbon, bgc,by=c('Date','ID'))
 
-carbon<- carbon %>% filter(ID != '9a',ID != '9b', ID!='14')
+carbon<- carbon %>% filter(ID != '9a',ID != '9b', ID!='14', Conc.<200)
 carbon <- carbon[!duplicated(carbon[c('Site','Date','Species')]),]
-range(carbon$Date, na.rm=T)
 
 stream<-filter(carbon, chapter=='stream')
 RC<-filter(carbon, chapter=='RC')
@@ -134,13 +133,24 @@ write_csv(RC, "04_Output/TDC_RC.csv")
 write_csv(stream, "04_Output/TDC_stream.csv")
 write_csv(long, "04_Output/TDC_long.csv")
 
+RC<-read.csv("04_Output/TDC_RC.csv")
+stream<-read.csv("04_Output/TDC_stream.csv")
+long<-read.csv("04_Output/TDC_long.csv")
 
-ggplot(stream, aes(x=depth, y=Conc.,color=Species)) +
-  geom_point()+facet_wrap(~ Site, ncol=5)
+long<-long %>% mutate(location=case_when(Site=='5.1'~'1',Site=='5.2'~'2',Site=='5.3'~'3',
+                                            Site=='5.4'~'4',Site=='5.5'~'5',Site=='6.1'~'1',Site=='6.2'~'2',
+                                            Site=='6.3'~'3',Site=='6.4'~'4',Site=='6.5'~'5',Site=='6.6'~'6',
+                                            Site=='9.1'~'1',Site=='9.2'~'2',Site=='9.3'~'3',Site=='9.4'~'4',
+                                            Site=='9.5'~'5',Site=='9.6'~'6',Site=='9.Sam'~'7'))%>%
+  mutate(location=as.numeric(location))
 
-ggplot(RC, aes(x=depth, y=Conc.,color=Species)) +
-  geom_point()+facet_wrap(~ Site, ncol=5)
 
+
+ggplot(stream, aes(x=Q, y=Conc.,color=Species)) +
+  geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")
+
+ggplot(long, aes(x=location, y=Conc.,color=Species)) +
+  geom_point(size=2)+facet_wrap(~ ID, ncol=5)+ylab("longitudinal sampling")
 
 #check#####
 TOC <- read_csv("01_Raw_data/Shimadzu/dat files/duds/2024_07_11_Howley_TOC_STREAMS_norm.txt",

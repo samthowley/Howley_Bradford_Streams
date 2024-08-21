@@ -51,10 +51,15 @@ DC <- DC %>%group_by(Date, ID) %>%
 totDC<-left_join(DC,POC, by=c("ID","Date"))
 totDC<-totDC %>% select(ID,Date,POC_mgL,DIC,DOC, depth, pH, Q)
 totDC <- totDC[rev(order(as.Date(totDC$Date, format="%m/%d/%Y"))),]
+totDC$POC_mgL[totDC$POC_mgL>60]<-NA
 
 ggplot(totDC, aes(Q))+
   geom_point(aes(y=DIC, color= "DIC")) +
   geom_point(aes(y=DOC, color='DOC')) +facet_wrap(~ ID, ncol=3)
+
+ggplot(totDC, aes(Q,y=POC_mgL, color=ID))+
+  geom_point() #+facet_wrap(~ ID, ncol=3)
+
 
 qwrite_csv(totDC, "04_Output/stream_sampledC.csv")
 ###################
@@ -87,7 +92,7 @@ CO2<-CO2 %>% mutate(CO2chimney_mmol= (CO2obs_mol-CO2resp_molL)*1000, CO2reactor_
 
 ggplot(CO2, aes(Q))+
   geom_point(aes(y=CO2chimney_mmol, color = "chimney")) +geom_point(aes(y=CO2reactor_mmol, color="pathway"))+
-  facet_wrap(~ ID, ncol=3)+theme(legend.position = "bottom")
+  facet_wrap(~ ID, ncol=3, scale='free')+theme(legend.position = "bottom")
 
 write_csv(CO2, "04_Output/chimney_reactor.csv")
 
