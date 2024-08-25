@@ -19,17 +19,27 @@ clean_DG <- function(DG) {
   DG1<-DG %>%filter(time>start & time< end)
   return(DG1)}
 
-DG <- read_csv("01_Raw_data/DG/raw/03252024.csv",
+DG <- read_csv("01_Raw_data/DG/raw/08232024.csv",
                skip = 1)
 
-start<-'15:29:00'
-end<-'15:40:00'
+start<-'13:18:30'
+end<-'13:28:00'
 
 DG1<-clean_DG(DG)
 ggplot(DG1, aes(Date,LowSpC)) + geom_line()
 
-write_csv(DG1, '01_Raw_data/DG/seperated/03252024_9.csv')
+write_csv(DG1, '01_Raw_data/DG/seperated/08232024_9.csv')
 
+###### compile ####
+DG_all<-data.frame()
+file.names <- list.files(path="01_Raw_data/DG/seperated", pattern=".csv", full.names=TRUE)
+for(i in file.names){
+  DG<-read_csv(i)
+  DG$ID<-strsplit(file_path_sans_ext(i), '_')[[1]][4]
+  DG_all<-rbind(DG_all, DG)
+}
+range(DG_all$Date)
+write_csv(DG_all, "01_Raw_data/DG/compiled_DG.csv")
 #extract DG#####
 notes<- read_csv("01_Raw_data/DG/Streams_dilution_gauging.csv",
                  col_types = cols(Date = col_date(format = "%m/%d/%Y")))
@@ -85,7 +95,8 @@ DG<-DG %>%mutate(hr=hour(Date), day=day(Date),month=month(Date), yr=year(Date))
 depth <- read_csv("02_Clean_data/depth.csv")
 depth<-depth %>%mutate(hr=hour(Date), day=day(Date),month=month(Date), yr=year(Date))
 depth<- depth %>% group_by(ID, day, month, yr) %>% mutate(depth_mean=mean(depth, na.rm=T))
-depth[order(depth$ID,ymd_hms(depth$Date)),]
+range(depth$Date, na.rm = T)
+
 
 DG_rC<-left_join(DG, depth, by=c('ID', 'hr','day', 'month', 'yr'))
 DG_rC <- DG_rC[!duplicated(DG_rC[c( 'date','ID')]),]
@@ -94,8 +105,8 @@ DG_rC<-DG_rC[,x]
 
 DG_rC<- DG_rC %>% mutate(logQ=log10(Q),logh=log10(depth_mean))
 
-ggplot(DG_rC, aes(depth_mean)) +
-  geom_point(aes(y=Q))+facet_wrap(~ ID, ncol=5)
+ggplot(DG_rC, aes(logh)) +
+  geom_point(aes(y=logQ))+facet_wrap(~ ID, ncol=5)
 
 
 split<-DG_rC %>% split(DG_rC$ID)
@@ -136,7 +147,7 @@ range(discharge$Date)
 write_csv(discharge, "02_Clean_data/discharge.csv")
 q<-read_csv("02_Clean_data/discharge.csv")
 range(q$Date)
-# ##### combined all data ####
+###### compile ####
 DG_all<-data.frame()
 file.names <- list.files(path="01_Raw_data/DG/seperated", pattern=".csv", full.names=TRUE)
 for(i in file.names){

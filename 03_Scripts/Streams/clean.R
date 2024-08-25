@@ -7,7 +7,7 @@ library(weathermetrics)
 library(tools)
 library(cowplot)
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2022-11-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-08-01 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2024-08-24 00:00", tz="UTC"),by="hour")))
 
 clean_DO <- function(fil) {
   DO <- read_csv(fil,skip= 1)
@@ -97,8 +97,7 @@ file.names <- list.files(path="01_Raw_data/HOBO Excels/SpC", pattern=".csv", ful
 SpC_all<-data.frame()
 for(i in file.names){
   SpC<-clean_SpC(i)
-  SpC_all<-rbind(SpC_all, SpC)
-}
+  SpC_all<-rbind(SpC_all, SpC)}
 
 SpC_all$SpC[SpC_all$SpC>600]<-NA
 SpC_all$Temp_SpC[SpC_all$Temp_SpC<0]<-NA
@@ -110,7 +109,6 @@ range(SpC_all$Date,na.rm=T)
 
 write_csv(SpC_all, "02_Clean_data/SpC_cleaned.csv")
 
-#range(SpC_all$Date, na.rm=T)
 ###pH#####
 file.names <- list.files(path="01_Raw_data/HOBO Excels/pH", pattern=".xlsx", full.names=TRUE)
 pH_all<-data.frame()

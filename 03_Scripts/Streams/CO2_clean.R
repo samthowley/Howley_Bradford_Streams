@@ -7,7 +7,7 @@ library(weathermetrics)
 library(tools)
 library(cowplot)
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-12-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-08-01 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2024-08-24 00:00", tz="UTC"),by="hour")))
 theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
                              axis.text.y = element_text(size = 17, angle=0),
                              axis.title =element_text(size = 17, angle=0),
@@ -81,7 +81,9 @@ CO2<-CO2[,y]
 
 ##############
 ggplot(CO2, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=4)
+range(CO2$Date, na.rm=T)
 write_csv(CO2, "02_Clean_data/CO2_cleaned.csv")
+
 CO2<-read_csv("02_Clean_data/CO2_cleaned.csv")
 test <- read_csv("01_Raw_data/Lily Box/dat/5_Bradford_LB_05302024.dat", skip=1)
 test<-test[-c(1,2),-c(2,3,5,6)]
