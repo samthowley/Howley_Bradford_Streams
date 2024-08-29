@@ -61,7 +61,7 @@ ggplot(totDC, aes(Q,y=POC_mgL, color=ID))+
   geom_point() #+facet_wrap(~ ID, ncol=3)
 
 
-qwrite_csv(totDC, "04_Output/stream_sampledC.csv")
+write_csv(totDC, "04_Output/stream_sampledC.csv")
 ###################
 #####sensor C#####
 ##################
