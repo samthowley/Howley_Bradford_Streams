@@ -54,6 +54,7 @@ for(fil in file.names){
   parsed$Ran<-mdy_hms(parsed$Ran)
   parsed<-parsed[,-1]
   results<-rbind(results, parsed)}
+
 file.names <- list.files(path="01_Raw_data/Shimadzu/csv files", pattern=".csv", full.names=TRUE)
 for(fil in file.names){
   runs<-read_csv(fil)

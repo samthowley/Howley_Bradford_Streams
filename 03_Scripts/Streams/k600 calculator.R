@@ -37,15 +37,15 @@ GasDome <- function(gas,stream) {
   gas$SchmidtCO2hi<-1742-91.24*gas$Temp_C+2.208*gas$Temp_C^2-0.0219*gas$Temp_C^3
 
   gas<-gas %>% select(-day, -month, -yr, -hour) %>%
-    mutate(pCO2_water=CO2water/1000000, day=as.Date(Date),pCO2_air= (500/1000000))
+    mutate(pCO2_water=CO2water/1000000, day=as.Date(Date),pCO2_air= (min(CO2dome)/1000000))
 
   diffuse<-lm(CO2dome ~ Date, data = gas)
   gas$slope<-coef(diffuse)[2]
 
-  gas$deltaCO2_atm<- (abs(gas$slope)*6/1000000) #change in CO2 during float
+  gas$deltaCO2_atm<- (abs(gas$slope)/1000000) #change in CO2 during float
 
   gas$n<-(gas$deltaCO2_atm*domeVol_L/R/gas$Temp_K)
-  gas$FCO2<-gas$n/domeFoot_m2*60
+  gas$FCO2<-gas$n/domeFoot_m2*10
   gas$KH<-0.034*exp(2400*((1/gas$Temp_K)-(1/298.15)))
   gas$KH_1000<-gas$KH*1000
 
@@ -58,7 +58,7 @@ GasDome <- function(gas,stream) {
   (gas$k600_1d<- as.numeric(gas$k600_md/gas$depth))
 
   gas <- gas[!duplicated(gas[c('k600_1d','day')]),]
-  # gas<-gas%>% select(Date,ID,depth,Q,Temp_C,KO2_1d,KCO2_1d,k600_1d,k600_md,pCO2_water,pCO2_air)
+  gas<-gas%>% select(Date,ID,depth,Q,Temp_C,KO2_1d,KCO2_1d,k600_1d,pCO2_water,pCO2_air)
 
   return(gas)
 }
