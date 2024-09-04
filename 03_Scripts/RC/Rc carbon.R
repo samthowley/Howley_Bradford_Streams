@@ -8,9 +8,8 @@ library(lubridate)
 library(cowplot)
 library(seacarb)
 
-
 RClog<-read_xlsx('01_Raw_data/RC log.xlsx')
-RClog<- RClog%>% select(Date, ID, Site, WTdepth, CO2_mv, pH, Temp)
+RClog<- RClog%>%rename("WTdepth"="Wtdepth (m)") %>% select(Date, ID, Site, WTdepth, CO2_mv, pH, Temp)
 
 DC_RC<-read_csv('04_Output/TDC_RC.csv')
 
@@ -63,13 +62,34 @@ RCc<-left_join(RCc, CO2_inter, by=c('Date','ID','Site'))
 RCc <- RCc[!duplicated(RCc[c('Site','Date')]),]
 
 
+theme_set(theme(axis.text.x = element_text(size = 17, angle=0),
+                axis.text.y = element_text(size = 17, angle=0),
+                axis.title.y =element_text(size = 17, color = "black"),
+                axis.title.x =element_text(size = 17),
+                plot.title = element_text(size = 17),
+                legend.position = "none",
+                panel.background = element_rect(fill = 'white'),
+                axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
+                axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black")))
 
 a<-ggplot(RCc, aes(x=Distance_m, y=DOC_mgL, color=Q))+
   scale_color_gradient(low = "blue", high = "red")+
-  geom_point()+facet_wrap(~ ID, ncol=5)+ggtitle('River Corridor')
+  geom_point()+facet_wrap(~ ID, ncol=5, scales = "free")+ggtitle('River Corridor')
 b<-ggplot(RCc, aes(x=Distance_m, y=DIC_mgL, color=Q))+
   scale_color_gradient(low = "blue", high = "red")+
-  geom_point()+facet_wrap(~ ID, ncol=5)+ggtitle('River Corridor')
+  geom_point()+facet_wrap(~ ID, ncol=5, scales='free')+ggtitle('River Corridor')
 plot_grid(a,b,ncol=1)
+
+(a<-ggplot(data=RCc, aes(x=Qbase)) +
+    geom_point(aes(y=DOC_mgL),color='blue',size=3)+
+    geom_point(aes(y=DIC_mgL),color='orange',size=3)+
+    facet_wrap(~ Site, ncol=5)+ ggtitle('Rver Corridor'))
+
+(a<-ggplot(data=RCc, aes(x=WTdepth, color=Distance_m)) +
+    scale_color_gradient(low = "blue", high = "red")+
+    geom_point(aes(y=DOC_mgL),size=3)+
+    #geom_point(aes(y=DIC_mgL),size=3)+
+    facet_wrap(~ Site, ncol=5, scales='free')+ ggtitle('River Corridor'))
+
 
 write_csv(C_RC, "02_Clean_data/allC_RC.csv")

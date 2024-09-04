@@ -22,43 +22,41 @@ stream<-read_csv('master.csv')
 stream<-stream%>%select(Date, ID,depth, Q, CO2,Temp)%>%fill(CO2, .direction="up")
 
 GasDome <- function(gas,stream) {
-  stream<-stream %>% mutate(day=day(Date), hour=hour(Date), month=month(Date), yr=year(Date))%>%fill(Temp)%>%
-    rename(CO2water=CO2)
-  stream<-stream[,-1]
+  stream<-stream %>%  rename("CO2_enviro"='CO2')%>% mutate(day=day(Date), hour=hour(Date), month=month(Date),yr=year(Date))%>%
+    select(CO2_enviro,Temp,depth,Q,day, hour,month,yr,ID)
 
+  gas<-gas %>% mutate(day=day(Date), hour=hour(Date), month=month(Date),yr=year(Date))
+  gas<-left_join(gas,stream, by=c('hour', 'day', 'month', 'yr', 'ID'), relationship = "many-to-many")
 
-  gas<-gas %>% mutate(day=day(Date),hour=hour(Date),month=month(Date),yr=year(Date))%>%rename(CO2dome=CO2)
-  gas<-left_join(gas, stream,by=c('hour', 'day', 'month', 'yr', 'ID'), relationship = "many-to-many")
+  gas<-gas%>%mutate(Temp_F=mean(Temp, na.rm=T))%>% mutate(Temp_C=fahrenheit.to.celsius(Temp_F))%>%
+    mutate(Temp_K=Temp_C+273.15,SchmidtO2hi=1568-86.04*Temp_C+2.142*Temp_C^2-0.0216*Temp_C^3,
+           SchmidtCO2hi=1742-91.24*Temp_C+2.208*Temp_C^2-0.0219*Temp_C^3)
 
-  gas$Temp_F<-mean(gas$Temp, na.rm=T)
-  gas$Temp_C<-fahrenheit.to.celsius(gas$Temp_F)
-  gas$Temp_K<-gas$Temp_C+273.15
-  gas$SchmidtO2hi<-1568-86.04*gas$Temp_C+2.142*gas$Temp_C^2-0.0216*gas$Temp_C^3
-  gas$SchmidtCO2hi<-1742-91.24*gas$Temp_C+2.208*gas$Temp_C^2-0.0219*gas$Temp_C^3
+  gas<-gas %>%
+    mutate(pCO2_water=CO2_enviro/1000000, day=as.Date(Date),
+           pCO2_air=max(gas$CO2, na.rm=T)/1000000, sec=second(Date))%>%mutate(
+             sec_cumulative=cumsum(sec))
 
-  gas<-gas %>% select(-day, -month, -yr, -hour) %>%
-    mutate(pCO2_water=CO2water/1000000, day=as.Date(Date),pCO2_air= (min(CO2dome)/1000000))
-
-  diffuse<-lm(CO2dome ~ Date, data = gas)
+  diffuse<-lm(CO2~ sec_cumulative, data = gas) #CO2 ppm/sec
   gas$slope<-coef(diffuse)[2]
 
   gas$deltaCO2_atm<- (abs(gas$slope)/1000000) #change in CO2 during float
 
-  gas$n<-(gas$deltaCO2_atm*domeVol_L/R/gas$Temp_K)
-  gas$FCO2<-gas$n/domeFoot_m2*10
+  gas$n<-(gas$deltaCO2_atm*15.466)/0.085/gas$Temp_K #CO2 mol/sec
+
+  gas$FCO2<-(gas$n/domeFoot_m2)*60*60 #mol/m^2/h
   gas$KH<-0.034*exp(2400*((1/gas$Temp_K)-(1/298.15)))
-  gas$KH_1000<-gas$KH*1000
+  gas$KH_1000<-gas$KH*1000 #mol/m^3/atm
 
-  gas$KCO2_md<-(gas$FCO2/gas$KH_1000/(gas$pCO2_water-gas$pCO2_air))*24 #m/d
-  gas$kO2<-gas$KCO2_md*(gas$SchmidtCO2hi/gas$SchmidtO2hi)^(-2/3)
-  gas$k600_md<- gas$KCO2_md*(600/gas$SchmidtCO2hi)^(-2/3) #m/d
+  gas$KCO2_dh<-gas$FCO2/gas$KH_1000/(gas$pCO2_air-gas$pCO2_water)#m/h
+  gas$kO2_dh<-gas$KCO2_dh*(gas$SchmidtCO2hi/gas$SchmidtO2hi)^(-2/3)#m/h
+  gas$k600_dh<- gas$KCO2_dh*(600/gas$SchmidtCO2hi)^(-2/3) #m/h
 
-  (gas$KO2_1d<-gas$kO2/gas$depth)
-  (gas$KCO2_1d<-gas$KCO2_md/gas$depth)
-  (gas$k600_1d<- as.numeric(gas$k600_md/gas$depth))
+  gas$KO2_1d<-(gas$kO2_dh/gas$depth)*24
+  gas$KCO2_1d<-(gas$KCO2_dh/gas$depth)*24
+  gas$k600_1d<- (gas$k600_dh/gas$depth)*24
 
-  gas <- gas[!duplicated(gas[c('k600_1d','day')]),]
-  gas<-gas%>% select(Date,ID,depth,Q,Temp_C,KO2_1d,KCO2_1d,k600_1d,pCO2_water,pCO2_air)
+  gas<-gas%>% select(day,ID,CO2,CO2_enviro,depth,Q,k600_1d)
 
   return(gas)
 }
@@ -73,8 +71,9 @@ for(i in file.names){
   gas$ID<-strsplit(file_path_sans_ext(i), '_')[[1]][5]
   gas<-GasDome(gas,stream)
   gasdome<-rbind(gasdome, gas)}
-gasdome<-gasdome %>% mutate(k600_1d=abs(k600_1d)) %>% filter(depth>0)
-range(gasdome$Date)
+
+gasdome <- gasdome[!duplicated(gasdome[ ,c('ID','day')]), ]
+gasdome<-gasdome %>% mutate(k600_1d=abs(k600_1d))
 write_csv(gasdome, "01_Raw_data/GD/GasDome_compiled.csv")
 
 split<-gasdome %>% split(gasdome$ID)

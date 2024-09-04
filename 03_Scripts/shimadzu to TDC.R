@@ -122,7 +122,7 @@ bgc<-bgc %>%mutate(Date=as.Date(Date))%>%group_by(Date,ID)%>%
 
 carbon<-left_join(carbon, bgc,by=c('Date','ID'))
 
-carbon<- carbon %>% filter(ID != '9a',ID != '9b', ID!='14', Conc.<200)
+carbon<- carbon %>% filter(ID != '9a',ID != '9b', ID!='14')
 carbon <- carbon[!duplicated(carbon[c('Site','Date','Species')]),]
 
 stream<-filter(carbon, chapter=='stream')

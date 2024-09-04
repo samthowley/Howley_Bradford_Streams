@@ -37,21 +37,22 @@ DIC_strm<-DC_strm %>% filter(Species=='DIC') %>% rename("DIC"="Conc.") %>% selec
 DOC_strm<-DC_strm %>% filter(Species=='DOC') %>% rename("DOC"="Conc.") %>% select(ID, Date, DOC)
 DC<-left_join(DOC_strm, DIC_strm, by=c("ID","Date"))
 
+totDC<-left_join(DC,POC, by=c("ID","Date"))
+totDC<-totDC %>% select(ID,Date,POC_mgL,DIC,DOC, depth, pH, Q)
+totDC <- totDC[rev(order(as.Date(totDC$Date, format="%m/%d/%Y"))),]
+totDC$POC_mgL[totDC$POC_mgL>200]<-NA
+
 alkalinity<-read_csv("02_Clean_data/alkalinity.csv")
 alkalinity<-alkalinity %>%mutate(Date=as.Date(Date))%>%
   group_by(ID, Date) %>% mutate(alk_avg=mean(DIC_mgL_int, na.rm = T))%>%
   select(Date, ID, alk_avg)
-DC<-left_join(DC, alkalinity, by=c('Date', 'ID'))
-DC <- DC[complete.cases(DC[ , c('DOC')]), ]
-DC <- DC[!duplicated(DC[c('ID','Date')]),]
 
-DC <- DC %>%group_by(Date, ID) %>%
+totDC<-left_join(totDC, alkalinity, by=c('Date', 'ID'))
+totDC <- totDC[complete.cases(totDC[ , c('DOC')]), ]
+totDC <- totDC[!duplicated(totDC[c('ID','Date')]),]
+
+totDC <- totDC %>%group_by(Date, ID) %>%
   mutate(DIC = ifelse(is.na(DIC), alk_avg, DIC))
-
-totDC<-left_join(DC,POC, by=c("ID","Date"))
-totDC<-totDC %>% select(ID,Date,POC_mgL,DIC,DOC, depth, pH, Q)
-totDC <- totDC[rev(order(as.Date(totDC$Date, format="%m/%d/%Y"))),]
-totDC$POC_mgL[totDC$POC_mgL>60]<-NA
 
 ggplot(totDC, aes(Q))+
   geom_point(aes(y=DIC, color= "DIC")) +
