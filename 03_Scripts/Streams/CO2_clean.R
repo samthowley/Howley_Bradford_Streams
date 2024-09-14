@@ -81,11 +81,12 @@ for(i in file.names){
   CO2<-rbind(CO2, LB)
   CO2 <- CO2[!duplicated(CO2[c('Date','ID')]),]}
 
-##############
 CO2$CO2[CO2$CO2 < 600] <- NA
 ggplot(CO2, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=4, scales = "free")
 range(CO2$Date, na.rm=T)
 write_csv(CO2, "02_Clean_data/CO2_cleaned.csv")
+
+##############
 
 CO2<-read_csv("02_Clean_data/CO2_cleaned.csv")
 test <- read_csv("01_Raw_data/Lily Box/dat/5_Bradford_LB_05302024.dat", skip=1)
