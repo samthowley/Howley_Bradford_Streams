@@ -19,16 +19,19 @@ clean_DG <- function(DG) {
   DG1<-DG %>%filter(time>start & time< end)
   return(DG1)}
 
-DG <- read_csv("01_Raw_data/DG/raw/08232024.csv",
-               skip = 1)
+DG <- read_csv("01_Raw_data/DG/raw/09132024.csv", skip = 1)
 
-start<-'13:18:30'
-end<-'13:28:00'
+start<-'13:36:00'
+end<-'15:09:00'
 
 DG1<-clean_DG(DG)
+
+# cumulative_seconds <- seq(5, length.out = 73, by = 5)
+# DG1<-DG1 %>% mutate(Date=Date+cumulative_seconds)
+
 ggplot(DG1, aes(Date,LowSpC)) + geom_line()
 
-write_csv(DG1, '01_Raw_data/DG/seperated/08232024_9.csv')
+write_csv(DG1, '01_Raw_data/DG/seperated/09132024_9.csv')
 
 ###### compile ####
 DG_all<-data.frame()
@@ -106,7 +109,7 @@ DG_rC<-DG_rC[,x]
 DG_rC<- DG_rC %>% mutate(logQ=log10(Q),logh=log10(depth_mean))
 
 ggplot(DG_rC, aes(logh)) +
-  geom_point(aes(y=logQ))+facet_wrap(~ ID, ncol=5)
+  geom_point(aes(y=logQ))+facet_wrap(~ ID, ncol=5, scales='free')
 
 
 split<-DG_rC %>% split(DG_rC$ID)
@@ -141,20 +144,9 @@ discharge<-discharge %>% group_by(ID) %>% mutate(Qsurficial=Q-Qbase)
 ggplot(discharge, aes(Date)) +
   geom_line(aes(y=Qsurficial, color='runoff'))+
   geom_line(aes(y=Qbase, color='base'))+
-  facet_wrap(~ ID, ncol=5)
+  facet_wrap(~ ID, ncol=5, scales = 'free')
 range(discharge$Date)
 ##########
 write_csv(discharge, "02_Clean_data/discharge.csv")
 q<-read_csv("02_Clean_data/discharge.csv")
 range(q$Date)
-###### compile ####
-DG_all<-data.frame()
-file.names <- list.files(path="01_Raw_data/DG/seperated", pattern=".csv", full.names=TRUE)
-for(i in file.names){
-DG<-read_csv(i)
- DG$ID<-strsplit(file_path_sans_ext(i), '_')[[1]][4]
-DG_all<-rbind(DG_all, DG)
-}
-unique(DG_all$ID)
-write_csv(DG_all, "01_Raw_data/DG/compiled_DG.csv")
-
