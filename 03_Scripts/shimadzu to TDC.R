@@ -147,7 +147,7 @@ long<-long %>% mutate(location=case_when(Site=='5.1'~'1',Site=='5.2'~'2',Site=='
 
 
 
-ggplot(stream, aes(x=Q, y=Conc.,color=Species)) +
+ggplot(stream, aes(x=depth, y=Conc.,color=Species)) +
   geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")
 
 ggplot(long, aes(x=location, y=Conc.,color=Species)) +
