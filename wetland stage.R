@@ -3,7 +3,8 @@ library(tidyverse)
 library(readxl)
 
 #compile PT####
-file.names <- list.files(path="Z:/Bradford_Forest_Project/Wetlands/Wetland_H20_level/For R", pattern=".csv", full.names=TRUE)
+file.names <- list.files(path="Z:/Bradford_Forest_Project/Wetlands/Wetland_H20_level/For R",
+                         pattern=".csv", full.names=TRUE)
 PT_all<-data.frame()
 for(fil in file.names){
   PT <- read_csv(fil,col_types = cols(`#` = col_skip()),skip = 1)

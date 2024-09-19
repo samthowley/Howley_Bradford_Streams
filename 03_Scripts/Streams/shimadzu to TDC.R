@@ -133,11 +133,13 @@ carbon<-left_join(carbon, pH,by=c('day','month','year','ID'))
 
 
 carbon<- carbon %>% filter(ID != '9a',ID != '9b', ID!='14')
-carbon <- carbon[!duplicated(carbon[c('ID','Date','Species')]),]
+carbon <- carbon[!duplicated(carbon[c('Site','Date','Species')]),]
 
 stream<-filter(carbon, chapter=='stream')
-RC<-filter(carbon, chapter=='RC')
-long<-filter(carbon, chapter=='long')
+RC<-carbon %>% filter(chapter=='RC') %>% select(Site, Date, Species, Conc., Q,
+                                                Qbase, Qsurficial)
+long<-filter(carbon, chapter=='long')%>% select(Site, Date, Species, Conc., Q,
+                                                Qbase, Qsurficial, depth_daily)
 
 
 write_csv(RC, "04_Output/TDC_RC.csv")
@@ -148,7 +150,7 @@ write_csv(long, "04_Output/TDC_long.csv")
 ggplot(stream, aes(x=depth_daily, y=Conc.,color=Species)) +
   geom_point()+facet_wrap(~ Site, ncol=5)
 
-ggplot(RC, aes(x=depth_daily, y=Conc.,color=Species)) +
+ggplot(RC, aes(x=Q, y=Conc.,color=Species)) +
   geom_point()+facet_wrap(~ Site, ncol=5)
 
 
