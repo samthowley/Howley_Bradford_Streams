@@ -7,7 +7,7 @@ library(weathermetrics)
 library(tools)
 library(cowplot)
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2022-11-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-08-01 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2024-09-14 00:00", tz="UTC"),by="hour")))
 
 clean_DO <- function(fil) {
   DO <- read_csv(fil,skip= 1)
@@ -18,10 +18,6 @@ clean_DO <- function(fil) {
   DO$Date <- mdy_hms(DO$Date)
   DO<-left_join(DO, samplingperiod, by='Date')
   DO$ID<-strsplit(file_path_sans_ext(i), '_')[[1]][6]
-  #DO<-DO %>% mutate(min=minute(Date)) %>% filter(min==0) %>% filter(DO>0)
-  #DO<-DO[,-5]
-  # for(i in 1:nrow(DO)){if(DO$DO[i]<=0 | DO$DO[i]>=6.8) { DO$DO[i]<- NA}
-  #   else {DO$DO[i]<- DO$DO[i]-0 }} #remove hours out of the water and erraneous days
   return(DO)}
 MiniDot_DO<-function(fil){
   DO <- read_csv(i,skip= 8)
@@ -93,6 +89,7 @@ DO_all$DO[DO_all$DO>10]<-NA
 
 DO_all<- DO_all[!duplicated(DO_all[c('Date','ID')]),]
 ggplot(DO_all, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=4)
+range(DO_all$Date)
 
 write_csv(DO_all, "02_Clean_data/DO_cleaned.csv")
 ####SpC####
@@ -100,9 +97,7 @@ file.names <- list.files(path="01_Raw_data/HOBO Excels/SpC", pattern=".csv", ful
 SpC_all<-data.frame()
 for(i in file.names){
   SpC<-clean_SpC(i)
-  SpC_all<-rbind(SpC_all, SpC)
-}
-
+  SpC_all<-rbind(SpC_all, SpC)}
 
 SpC_all$SpC[SpC_all$SpC>600]<-NA
 SpC_all$Temp_SpC[SpC_all$Temp_SpC<0]<-NA
@@ -110,9 +105,10 @@ SpC_all$Temp_SpC[SpC_all$Temp_SpC>30]<-NA
 
 SpC_all <- SpC_all[!duplicated(SpC_all[c('Date','ID')]),]
 ggplot(SpC_all, aes(Date, SpC)) + geom_line() + facet_wrap(~ ID, ncol=4)
+range(SpC_all$Date,na.rm=T)
+
 write_csv(SpC_all, "02_Clean_data/SpC_cleaned.csv")
 
-#range(SpC_all$Date, na.rm=T)
 ###pH#####
 file.names <- list.files(path="01_Raw_data/HOBO Excels/pH", pattern=".xlsx", full.names=TRUE)
 pH_all<-data.frame()
@@ -125,6 +121,8 @@ pH_all <- pH_all[!duplicated(pH_all[c('Date','ID')]),]
 pH_all$pH[pH_all$pH>8]<-NA
 ggplot(pH_all, aes(Date, pH)) + geom_line() + geom_hline(yintercept=8)+
   facet_wrap(~ ID, ncol=4)
+range(pH_all$Date,na.rm=T)
+
 write_csv(pH_all, "02_Clean_data/pH_cleaned.csv")
 
 ####Compile####
@@ -151,8 +149,9 @@ ggplot(master, aes(x=Date)) + geom_line(aes(y=DO))+facet_wrap(~ ID, ncol=5)
 
 master<-master[,c("Date","depth","ID","Q","Qbase","CO2","DO","pH","SpC","Temp_PT","Water_press")]
 master<-rename(master, 'Temp'="Temp_PT")
+range(master$Date)
+
 write_csv(master, "master.csv")
 
-range(master$Date)
 #TEST##########
 write_csv(X5_Bradford_LB_05302024, "test.csv")

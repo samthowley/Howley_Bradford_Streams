@@ -5,7 +5,13 @@ library(readxl)
 library(seacarb)
 library(weathermetrics)
 
-master<-read_csv('master.csv')
+file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
+file.names<-file.names[c(5,6,8,4)]
+data <- lapply(file.names,function(x) {read_csv(x)})
+library(plyr)
+master<-join_all(data, by=c('Date','ID'), type='left')
+detach("package:plyr", unload = TRUE)
+master<-master %>% rename('Temp'='Temp_PT')
 
 HCO3 <- function(master) {
   master <- master[complete.cases(master[ , c('Temp','CO2','pH','Water_press')]), ]
@@ -45,4 +51,6 @@ DIC<-DIC  %>% group_by(ID, Date) %>% mutate(DIC_mmol_int= CO2_mmolL+CO3_mmolL+HC
 y<-c("Date",'ID','CO2_molL','HCO3_molL','CO3_molL','DIC_mmol_int',"CO2_mgL","HCO3_mgL","CO3_mgL",'DIC_mgL_int')
 DIC<-DIC[,y]
 DIC <- DIC[complete.cases(DIC[ , c('CO2_molL')]), ]
+range(DIC$Date)
+
 write_csv(DIC, "02_Clean_data/alkalinity.csv")

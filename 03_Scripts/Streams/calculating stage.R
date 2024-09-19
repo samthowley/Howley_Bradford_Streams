@@ -4,10 +4,11 @@ library(readxl)
 
 ###calc stage#####
 PT<-read_csv('01_Raw_data/PT/compiled_PT.csv')
+range(PT$Date, na.rm = T)
 PT<-PT %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 baro<-read_csv('01_Raw_data/PT/compiled_baro.csv')
+range(baro$Date, na.rm = T)
 baro<-baro %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
-
 baro<-baro[,-1]
 master<-left_join(PT, baro, by=c('region','hr', 'day', 'mnth', 'yr'))
 
@@ -138,7 +139,8 @@ master <- master %>% filter(ID=='13' & depth> -0.10|
                               ID=='3'| ID=='6a'|ID=='7'|ID=='15')
 
 
-ggplot(master, aes(x=Date)) + geom_line(aes(y=depth))+facet_wrap(~ ID, ncol=5)
+ggplot(master, aes(x=Date)) + geom_line(aes(y=depth))+facet_wrap(~ ID, ncol=5)+
+  geom_hline(yintercept = 0)
 
 master<-master[, c("Date","Temp_PT","depth","ID","Water_press")]
 range(master$Date)
@@ -194,7 +196,7 @@ for(fil in file.names){
 baro_all<-baro_all %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 baro_all<-baro_all[,-1]
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2021-03-29 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-07-31 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2024-09-14 00:00", tz="UTC"),by="hour")))
 samplingperiod<- samplingperiod %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 baro_all<-left_join(baro_all, samplingperiod, by=c('hr', 'day', 'mnth', 'yr'))
 
@@ -209,12 +211,9 @@ coalesce$PTbaro_5[coalesce$PTbaro_5 >16 ] <- NA
 coalesce$PTbaro_5 <- ifelse(is.na(coalesce$PTbaro_5), coalesce$PTbaro_6a, coalesce$PTbaro_5)
 coalesce$PTbaro_6a <- ifelse(is.na(coalesce$PTbaro_6a), coalesce$PTbaro_5, coalesce$PTbaro_6a)
 
-baro_5<-coalesce[,c(7,1)]
-baro_5<-baro_5 %>% rename('PTbaro'='PTbaro_5')%>%mutate(ID='5',region='S')
-baro_6a<-coalesce[,c(7,8)]
-baro_6a<-rename(baro_6a, 'PTbaro'='PTbaro_6a')%>%mutate(ID='5',region='N')
+baro_5<-coalesce %>%select(Date,PTbaro_5)%>% rename('PTbaro'='PTbaro_5')%>%mutate(region='S')
+baro_6a<-coalesce %>% select(Date,PTbaro_6a)%>%rename('PTbaro'='PTbaro_6a')%>%mutate(region='N')
 compile_baro<-rbind(baro_6a, baro_5)
-compile_baro<-compile_baro[,-3]
 
 ggplot(compile_baro, aes(Date, PTbaro)) +
   geom_line() + facet_wrap(~ region, ncol=5)+
