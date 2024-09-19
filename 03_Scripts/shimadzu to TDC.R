@@ -15,8 +15,8 @@ VialID <- function(sample) {
   sample<-sample[,c(1:6)]
   return(sample)} #function for cleaning data
 
-file.names <- list.files(path="01_Raw_data/Shimadzu/ID", pattern=".csv", full.names=TRUE)
 vials<-data.frame()
+file.names <- list.files(path="01_Raw_data/Shimadzu/ID", pattern=".csv", full.names=TRUE)
 for(fil in file.names){
   vial<-VialID(fil)
   vials<-rbind(vials, vial)}
@@ -30,6 +30,7 @@ for(fil in file.names){
   runs<-runs %>% rename('Conc'='Result(NPOC)') %>%mutate(Species='DOC')
   runs<-runs[,-2]
   results<-rbind(results, runs)}
+
 file.names <- list.files(path="01_Raw_data/Shimadzu/dat files", pattern=".txt", full.names=TRUE)
 for(fil in file.names){
 
@@ -39,6 +40,7 @@ for(fil in file.names){
   runs$Ran<-mdy_hms(runs$Ran)
   runs<-runs %>% rename('Conc'='Result(NPOC)') %>%mutate(Species='DOC')
   results<-rbind(results, runs)}
+
 file.names <- list.files(path="01_Raw_data/Shimadzu/dat files/TOC runs", pattern=".txt", full.names=TRUE)
 for(fil in file.names){
   runs<-read_csv(fil, skip=10)
@@ -50,7 +52,11 @@ for(fil in file.names){
   DIC<-runs[,c('Sample Name',"Result(TC)","Vial","Ran")]
   DIC<- DIC %>% rename('Conc'="Result(TC)")%>%mutate(Species='DIC')
 
-  parsed<-rbind(DIC, DOC)
+  NPOC<-runs[,c('Sample Name',"Result(NPOC)","Vial","Ran")]
+  NPOC<- NPOC %>% rename('Conc'="Result(NPOC)")%>%mutate(Species='NPOC')
+  NPOC <- NPOC[complete.cases(NPOC$Conc), ]
+
+  parsed<-rbind(DIC, DOC, NPOC)
   parsed$Ran<-mdy_hms(parsed$Ran)
   parsed<-parsed[,-1]
   results<-rbind(results, parsed)}
