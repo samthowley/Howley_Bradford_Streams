@@ -75,7 +75,8 @@ totDC<-left_join(totDC, dim, by=c('ID', 'Date'))
 
 ggplot(totDC, aes(Q))+
   geom_point(aes(y=DIC, color= "DIC")) +
-  geom_point(aes(y=DOC, color='DOC')) +
+  #geom_point(aes(y=DOC, color='DOC')) +
+  #geom_point(aes(y=POC_mgL, color='POC')) +
   scale_x_log10()+scale_y_log10()+
   facet_wrap(~ ID, ncol=3, scales='free')
 

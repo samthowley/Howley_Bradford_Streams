@@ -105,8 +105,12 @@ carbon<-carbon %>% mutate(chapter=case_when(Site=='3'~'stream',Site=='5'~'stream
                                             Site=='9GW4'~'RC',
 
                                             Site=='5.1'~'long',Site=='5.2'~'long',Site=='5.3'~'long',
-                                            Site=='5.4'~'long',Site=='5.5'~'long',Site=='6.1'~'long',Site=='6.2'~'long',
-                                            Site=='6.3'~'long',Site=='6.4'~'long',Site=='6.5'~'long',Site=='6.6'~'long',
+                                            Site=='5.4'~'long',Site=='5.5'~'long',Site=='5.6'~'long'
+
+                                            Site=='6.1'~'long',Site=='6.2'~'long',
+                                            Site=='6.3'~'long',Site=='3.1'~'long',Site=='3.2'~'long',Site=='3.3'~'long',
+                                            Site=='3.4'~'long',
+
                                             Site=='9.1'~'long',Site=='9.2'~'long',Site=='9.3'~'long',Site=='9.4'~'long',
                                             Site=='9.5'~'long',Site=='9.6'~'long',Site=='9.Sam'~'long'))
 
@@ -143,14 +147,6 @@ write_csv(long, "04_Output/TDC_long.csv")
 RC<-read.csv("04_Output/TDC_RC.csv")
 stream<-read.csv("04_Output/TDC_stream.csv")
 long<-read.csv("04_Output/TDC_long.csv")
-
-long<-long %>% mutate(location=case_when(Site=='5.1'~'1',Site=='5.2'~'2',Site=='5.3'~'3',
-                                            Site=='5.4'~'4',Site=='5.5'~'5',Site=='6.1'~'1',Site=='6.2'~'2',
-                                            Site=='6.3'~'3',Site=='6.4'~'4',Site=='6.5'~'5',Site=='6.6'~'6',
-                                            Site=='9.1'~'1',Site=='9.2'~'2',Site=='9.3'~'3',Site=='9.4'~'4',
-                                            Site=='9.5'~'5',Site=='9.6'~'6',Site=='9.Sam'~'7'))%>%
-  mutate(location=as.numeric(location))
-
 
 
 ggplot(stream, aes(x=depth, y=Conc.,color=Species)) +

@@ -8,6 +8,24 @@ library(lubridate)
 library(cowplot)
 library(seacarb)
 
+#Edit dims######
+depth<-read_csv('02_Clean_data/depth.csv')
+Q<-read_csv('02_Clean_data/discharge.csv')
+
+depth<-depth %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>% mutate(depth=mean(depth, na.rm = T)) %>%
+  select(Date, ID, depth)%>% filter(depth>0)
+depth <- depth[!duplicated(depth[c( 'Date','ID')]),]
+
+Q<-Q %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>%
+  mutate(Q=mean(Q, na.rm = T),Qbase=mean(Qbase, na.rm = T),Qsurficial=mean(Qsurficial, na.rm = T)) %>%
+  select(Date, ID, Q,Qbase,Qsurficial) %>% filter(Q>1)
+Q <- Q[!duplicated(Q[c('Date','ID')]),]
+
+dim<-left_join(depth, Q, by=c('ID', 'Date'))
+dim<-dim %>% filter(ID=='6'| ID=='5'| ID=='9')
+#RC Carbon#########
+
+
 RClog<-read_xlsx('01_Raw_data/RC log.xlsx')
 RClog<- RClog%>%rename("WTdepth"="Wtdepth (m)") %>% select(Date, ID, Site, WTdepth, CO2_mv, pH, Temp)
 
@@ -22,8 +40,23 @@ DOC_RC<-DC_RC %>%filter(Species=='DOC') %>%rename("DOC_mgL"="Conc.") %>% select(
 C_RC<-left_join(RClog,DIC_RC , by=c("Site","Date"))
 C_RC<-left_join(C_RC, DOC_RC, by=c("Site","Date"))
 C_RC<-left_join(C_RC, RC_dim, by=c("Site"))
+C_RC<-C_RC %>% mutate(ID=as.character(ID), CO2_mv=as.numeric(CO2_mv)) %>%
+  separate(Site, into = c("Stream", "Well"), sep = "GW")
+
+C_RC<-left_join(C_RC, dim, by=c("ID", 'Date'))
 
 write_csv(C_RC, "02_Clean_data/allC_RC.csv")
+
+
+ggplot(data=C_RC, aes(x=Distance_m, color=Qbase)) +
+  scale_color_gradient(low = "blue", high = "red")+
+  #geom_point(aes(y=DOC_mgL))+
+  #geom_point(aes(y=DIC_mgL),size=2)+
+  geom_point(aes(y=CO2_mv),size=2)+
+  theme(legend.position = "bottom")+
+  facet_wrap(~ Stream, scales='free')+ ggtitle('River Corridor')
+
+names(C_RC)
 
 ###Interpolating CO2######
 CO2 <- function(master) {
