@@ -128,8 +128,8 @@ bgc<-bgc %>%mutate(Date=as.Date(Date))%>%group_by(Date,ID)%>%
 
 carbon<-left_join(carbon, bgc,by=c('Date','ID'))
 
-carbon<- carbon %>% filter(ID != '9a',ID != '9b', ID!='14')
-carbon <- carbon[!duplicated(carbon[c('Site','Date','Species')]),]
+carbon<- carbon %>% filter(ID != '9a',ID != '9b', ID!='14') %>% mutate(mmol= Conc./44.01)
+carbon <-carbon[!duplicated(carbon[c('Site','Date','Species')]),]
 
 stream<-filter(carbon, chapter=='stream')
 RC<-filter(carbon, chapter=='RC')
@@ -153,7 +153,7 @@ long<-long %>% mutate(location=case_when(Site=='5.1'~'1',Site=='5.2'~'2',Site=='
 
 
 
-ggplot(stream, aes(x=depth, y=Conc.,color=Species)) +
+ggplot(stream, aes(x=depth, y=mmol,color=Species)) +
   geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")
 
 ggplot(long, aes(x=location, y=Conc.,color=Species)) +
