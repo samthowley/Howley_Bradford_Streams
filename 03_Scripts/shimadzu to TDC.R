@@ -105,7 +105,7 @@ carbon<-carbon %>% mutate(chapter=case_when(Site=='3'~'stream',Site=='5'~'stream
                                             Site=='9GW4'~'RC',
 
                                             Site=='5.1'~'long',Site=='5.2'~'long',Site=='5.3'~'long',
-                                            Site=='5.4'~'long',Site=='5.5'~'long',Site=='5.6'~'long'
+                                            Site=='5.4'~'long',Site=='5.5'~'long',Site=='5.6'~'long',
 
                                             Site=='6.1'~'long',Site=='6.2'~'long',
                                             Site=='6.3'~'long',Site=='3.1'~'long',Site=='3.2'~'long',Site=='3.3'~'long',
@@ -139,7 +139,7 @@ stream<-filter(carbon, chapter=='stream')
 RC<-filter(carbon, chapter=='RC')
 long<-filter(carbon, chapter=='long')
 
-
+str(long)
 write_csv(RC, "04_Output/TDC_RC.csv")
 write_csv(stream, "04_Output/TDC_stream.csv")
 write_csv(long, "04_Output/TDC_long.csv")
