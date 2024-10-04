@@ -104,44 +104,29 @@ write_csv(totC, "02_Clean_data/allC_stream.csv")
 
 #Chimney Pathway#####
 
-dim_CO2<-dim %>% mutate(day=day(Date), month=month(Date), year=year(Date))%>%select(-Date)
+dim_CO2<-dim %>% mutate(day=as.Date(Date))%>%select(-Date)
 dim_CO2<-dim_CO2[,-1]
 
 CO2<-left_join(CO2_hourly,length, by=c('ID'))
-CO2<-CO2%>% mutate(day=day(Date), month=month(Date), year=year(Date),hour=hour(Date))
-CO2<-left_join(CO2,dim_CO2, by=c('day','month','year','ID'))
-CO2 <- CO2[!duplicated(CO2[c('ID','day','month','year','hour')]),]
+CO2<-CO2%>% mutate(day=as.Date(Date))
+CO2<-left_join(CO2,dim_CO2, by=c('day','ID'))
 CO2 <- CO2[complete.cases(CO2[ , c('CO2','Q')]), ]
+CO2 <- CO2 %>%group_by(day) %>%filter(n() > 22) %>% ungroup()
 
 CO2<-CO2mol(CO2)
-CO2_diff<-CO2 %>%arrange(ID,Date)%>%
-  mutate(CO2_mgL=CO2obs_mol*44.01*1000)%>%group_by(ID)%>%
-  mutate(CO2_diff = CO2_mgL-lead(CO2_mgL))#%>%
-  #mutate(CO2_flux=CO2_diff*length*width/(Q*60*60))#%>%
-#select(Date,ID,CO2_flux)
+CO2_diff<-CO2 %>%filter(depth>0)%>%arrange(ID,Date)%>%
+  mutate(CO2_mgL=CO2obs_mol*44.01*1000, area=width*depth)%>%mutate(u=Q/area)%>%
+  group_by(ID)%>%
+  #mutate(CO2_diff = CO2_mgL-lag(CO2_mgL))%>%
+  mutate(CO2_flux=(CO2_mgL*u)/24)%>%select(day,Date,ID,CO2_flux, depth, Q)
 
-CO2<-left_join(CO2,resp, by=c('Date','ID'))
-CO2<-CO2mol(CO2)
+resp<-resp %>% mutate(ER=abs(ER))%>%rename("day"="Date")%>% select(day,ID,ER)
 
-CO2<-CO2 %>%mutate(CO2_mgL=CO2obs_mol*44.01*1000)%>%
-  mutate(CO2_diff = CO2obs_mol-lag(CO2obs_mol))%>%
-  mutate(CO2_flux=CO2_diff*length*width/(Q*60*60))#%>%
-  #select(Date,ID,CO2_flux)
+pathway<-left_join(resp, CO2_diff, by=c('day','ID'))
 
-CO2<-left_join(CO2,resp, by=c('Date','ID'))
-
-CO2<-CO2 %>% mutate(CO2chimney= (CO2_flux-ER)) %>%
-  select(Date, ID, CO2chimney_mmol, CO2reactor_mmol, depth, Qsurficial, Qbase, Q, KH)
-
-resp<-left_join(resp,dim, by=c('Date','ID'))
-resp <- resp[!duplicated(resp[c('ID','Date')]),]
-resp<-left_join(resp,length, by=c('ID'))
-
-resp<-resp %>% mutate(ER=abs(ER)) #%>%mutate(O2_mgL=abs(ER*length*width)/(Q*60*60))%>%mutate(CO2resp_molL=O2_mgL/32000)# not right...
-
-ggplot(CO2, aes(Date))+
-  geom_point(aes(y=ER, color = "ER")) +
-  geom_point(aes(y=CO2_flux, color="CO2flux"))+
+ggplot(pathway, aes(Q))+
+  geom_area(aes(y=ER, color = "ER"),alpha=0.5) +
+  geom_area(aes(y=CO2_flux, color="CO2flux"),alpha=0.5)+
   facet_wrap(~ ID, ncol=3, scale='free')+theme(legend.position = "bottom")
 
 write_csv(CO2, "04_Output/chimney_reactor.csv")
