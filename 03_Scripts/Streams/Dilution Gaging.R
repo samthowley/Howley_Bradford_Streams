@@ -107,9 +107,9 @@ x<-c("date","ID","Q","u_mean" ,"depth_mean","m_0","m_1")
 DG_rC<-DG_rC[,x]
 
 DG_rC<- DG_rC %>% mutate(logQ=log10(Q),logh=log10(depth_mean))
-
-ggplot(DG_rC, aes(logh)) +
-  geom_point(aes(y=logQ))+facet_wrap(~ ID, ncol=5, scales='free')
+#
+# ggplot(DG_rC, aes(logh)) +
+#   geom_point(aes(y=logQ))+facet_wrap(~ ID, ncol=5, scales='free')
 
 
 split<-DG_rC %>% split(DG_rC$ID)
@@ -136,15 +136,15 @@ x<-c("Date","ID","Q")
 depth<-depth[,x]
 
 discharge <- depth %>% group_by(ID) %>%
-  mutate(Qbase = gr_baseflow(Q, method = 'jakeman',a = 0.925, passes = 3)) %>%filter(Qbase>0)
+  mutate(Qbase = gr_baseflow(Q, method = 'jakeman',a = 0.925, passes = 3))
 
 discharge<-discharge %>% group_by(ID) %>% mutate(Qsurficial=Q-Qbase)
 
-
-ggplot(discharge, aes(Date)) +
-  geom_line(aes(y=Qsurficial, color='runoff'))+
-  geom_line(aes(y=Qbase, color='base'))+
-  facet_wrap(~ ID, ncol=5, scales = 'free')
+#
+# ggplot(discharge, aes(Date)) +
+#   geom_line(aes(y=Qsurficial, color='runoff'))+
+#   geom_line(aes(y=Qbase, color='base'))+
+#   facet_wrap(~ ID, ncol=5, scales = 'free')
 range(discharge$Date)
 ##########
 write_csv(discharge, "02_Clean_data/discharge.csv")

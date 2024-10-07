@@ -7,7 +7,7 @@ library(weathermetrics)
 library(tools)
 library(cowplot)
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2022-11-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-09-14 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2024-10-05 00:00", tz="UTC"),by="hour")))
 
 clean_DO <- function(fil) {
   DO <- read_csv(fil,skip= 1)
@@ -88,10 +88,11 @@ DO_all$DO[DO_all$DO>10]<-NA
 
 
 DO_all<- DO_all[!duplicated(DO_all[c('Date','ID')]),]
-ggplot(DO_all, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=4)
+#ggplot(DO_all, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=4)
 range(DO_all$Date)
 
 write_csv(DO_all, "02_Clean_data/DO_cleaned.csv")
+
 ####SpC####
 file.names <- list.files(path="01_Raw_data/HOBO Excels/SpC", pattern=".csv", full.names=TRUE)
 SpC_all<-data.frame()
