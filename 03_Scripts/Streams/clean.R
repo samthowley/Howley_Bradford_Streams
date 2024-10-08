@@ -155,4 +155,6 @@ range(master$Date)
 write_csv(master, "master.csv")
 
 #TEST##########
-write_csv(X5_Bradford_LB_05302024, "test.csv")
+peek<-read_csv("master.csv")
+peekCO2<-peek %>% filter(Date>'2023-11-01')
+ggplot(peekCO2, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=4)

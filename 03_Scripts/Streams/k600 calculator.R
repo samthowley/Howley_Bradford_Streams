@@ -22,7 +22,9 @@ stream<-read_csv('master.csv')
 stream<-stream%>%select(Date, ID,depth, Q, CO2,Temp)%>%fill(CO2, .direction="up")
 
 GasDome <- function(gas,stream) {
-  stream<-stream %>%  rename("CO2_enviro"='CO2')%>% mutate(day=day(Date), hour=hour(Date), month=month(Date),yr=year(Date))%>%
+
+  stream<-stream %>%  rename("CO2_enviro"='CO2')%>% mutate(day=day(Date), hour=hour(Date), month=month(Date),yr=year(Date), date=as.Date(Date))%>%
+    group_by(date,ID)%>%mutate(depth=mean(depth, na.rm=T), Q=mean(Q, na.rm=T), Temp=mean(Temp, na.rm=T))%>%
     select(CO2_enviro,Temp,depth,Q,day, hour,month,yr,ID)
 
   gas<-gas %>% mutate(day=day(Date), hour=hour(Date), month=month(Date),yr=year(Date))
@@ -56,7 +58,7 @@ GasDome <- function(gas,stream) {
   gas$KCO2_1d<-(gas$KCO2_dh/gas$depth)*24
   gas$k600_1d<- (gas$k600_dh/gas$depth)*24
 
-  gas<-gas%>% select(day,ID,CO2,CO2_enviro,depth,Q,k600_1d)
+  gas<-gas%>% select(day,ID,CO2,CO2_enviro,depth,Q,Temp,k600_1d)
 
   return(gas)
 }
@@ -84,7 +86,7 @@ gas<- read_csv("01_Raw_data/GD/raw/GasDome_08012024.dat",skip = 3)
 gas<-gas[,c(1,5)]
 colnames(gas)[1] <- "Date"
 colnames(gas)[2] <- "CO2"
-gas<-gas %>%filter(Date>'2024-07-31')
+gas<-gas %>% mutate(CO2=CO2*4.2) %>%filter(Date>'2024-07-30' & Date< '2024-08-02')%>%filter(CO2>100)
 
 write_csv(gas, "01_Raw_data/GD/raw/GasDome_08012024.csv")
 

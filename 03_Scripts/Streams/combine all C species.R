@@ -66,8 +66,8 @@ ggplot(totDC, aes(Q))+
   scale_x_log10()+scale_y_log10()+
   facet_wrap(~ ID, ncol=3, scales='free')
 
-site<-totDC %>% filter(ID=='6')
-ggtern(data=totDC,aes(DOC,DIC,POC_mgL, colour = Q))+scale_color_gradient(low = "blue", high = "red") +
+site<-totDC %>% filter(ID=='5')
+ggtern(data=site,aes(DOC,DIC,POC_mgL, colour = Q))+scale_color_gradient(low = "blue", high = "red") +
   geom_point(size=2) +labs(x="DOC_mgL",y="DIC_mgL",z="POC_mgL")+facet_wrap(~ ID, ncol=3, scales='free')
 
 
