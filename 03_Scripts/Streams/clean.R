@@ -119,9 +119,8 @@ for(fil in file.names){
   }
 pH_all <- pH_all[!duplicated(pH_all[c('Date','ID')]),]
 
-pH_all$pH[pH_all$pH>8]<-NA
-ggplot(pH_all, aes(Date, pH)) + geom_line() + geom_hline(yintercept=8)+
-  facet_wrap(~ ID, ncol=4)
+
+ggplot(pH_all, aes(Date, pH)) + geom_line() + geom_hline(yintercept=8)+facet_wrap(~ ID, ncol=4)
 range(pH_all$Date,na.rm=T)
 
 write_csv(pH_all, "02_Clean_data/pH_cleaned.csv")
@@ -156,5 +155,5 @@ write_csv(master, "master.csv")
 
 #TEST##########
 peek<-read_csv("master.csv")
-peekCO2<-peek %>% filter(Date>'2023-11-01')
+peekCO2<-peek `%>% filter(Date>'2023-11-01')
 ggplot(peekCO2, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=4)

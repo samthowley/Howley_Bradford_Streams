@@ -10,23 +10,9 @@ library(weathermetrics)
 library(ggtern)
 library(ggpmisc)
 
-CO2mol <- function(CO2) {
-  CO2$Temp_C<-fahrenheit.to.celsius(CO2$Temp_PT)
-  CO2$Temp_K<-CO2$Temp_C+273.15
-  CO2$exp<-2400*((1/CO2$Temp_K)-(1/298.15))
-  CO2$KH<-0.034*2.178^(CO2$exp)#mol/L/atm
-
-  CO2$CO2_atm<-CO2$CO2/1000000
-  CO2$CO2obs_mol<-CO2$CO2_atm*CO2$KH
-  return(CO2)}
-
-resp<-read_csv('04_Output/master_metabolism.csv')
 depth<-read_csv('02_Clean_data/depth.csv')
 Q<-read_csv('02_Clean_data/discharge.csv')
 length<-read_csv('02_Clean_data/stream area.csv')
-
-CO2_hourly<-read_csv("02_Clean_data/CO2_cleaned.csv")
-CO2_obs<-CO2_hourly %>%mutate(Date=as.Date(Date)) %>% group_by(ID, Date) %>% mutate(CO2_daily=mean(CO2, na.rm=T))
 
 #Edit dims######
 depth<-depth %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>% mutate(depth=mean(depth, na.rm = T)) %>%
@@ -62,7 +48,7 @@ totDC<-left_join(totDC, dim, by=c('ID', 'Date'))
 
 ggplot(totDC, aes(Q))+
   geom_point(aes(y=DIC, color= "DIC")) +
-  geom_point(aes(y=DOC, color='DOC')) +
+  #geom_point(aes(y=DOC, color='DOC')) +
   scale_x_log10()+scale_y_log10()+
   facet_wrap(~ ID, ncol=3, scales='free')
 
@@ -72,117 +58,3 @@ ggtern(data=site,aes(DOC,DIC,POC_mgL, colour = Q))+scale_color_gradient(low = "b
 
 
 write_csv(totDC, "04_Output/stream_sampledC.csv")
-####Combining Sensor C and sampled C######
-
-CO2_obs<-CO2_obs[,c('Date','ID','CO2_daily')]
-CO2_obs<-left_join(CO2_obs, dim, c('Date','ID'))
-CO2_obs <- CO2_obs[!duplicated(CO2_obs[c('Date','ID')]),]
-
-CO2_obs<- CO2_obs %>% rename('CO2'='CO2_daily') %>%CO2mol() %>%
-  select(Date,ID,CO2obs_mol,KH) %>%
-  rename('CO2_mol'='CO2obs_mol')%>%mutate(CO2_mgL=CO2_mol*44.01, CO2_mmol=CO2_mol*1000)%>%
-  arrange(Date)%>%group_by(ID, Date)%>%
-  fill(CO2_mgL,.direction=c('up'))
-
-totC<-left_join(totDC,CO2_obs, by=c("ID",'Date'))
-
-totC<-totC %>% filter(DIC<500) %>% filter(DOC<500)
-totC <- totC[rev(order(as.Date(totC$Date, format="%m/%d/%Y"))),]
-
-ggplot(totC, aes(Q))+
-  #geom_point(aes(y=DIC, color= "DIC")) +
-  geom_point(aes(y=DOC, color='DOC')) +
-  #geom_point(aes(y=POC_mgL, color='POC')) +
-  facet_wrap(~ ID, ncol=3)
-range(totC$Date)
-
-write_csv(totC, "02_Clean_data/allC_stream.csv")
-
-
-#Reactor Pathway##########
-
-
-#Chimney Pathway#####
-
-dim_CO2<-dim %>% mutate(day=as.Date(Date))%>%select(-Date)
-dim_CO2<-dim_CO2[,-1]
-
-CO2<-left_join(CO2_hourly,length, by=c('ID'))
-CO2<-CO2%>% mutate(day=as.Date(Date))
-CO2<-left_join(CO2,dim_CO2, by=c('day','ID'))
-CO2 <- CO2[complete.cases(CO2[ , c('CO2','Q')]), ]
-CO2 <- CO2 %>%group_by(day) %>%filter(n() > 22) %>% ungroup()
-
-CO2<-CO2mol(CO2)
-CO2_diff<-CO2 %>%filter(depth>0)%>%arrange(ID,Date)%>%
-  mutate(CO2_mgL=CO2obs_mol*44.01*1000, area=width*depth)%>%mutate(u=Q/area)%>%
-  group_by(ID)%>%
-  #mutate(CO2_diff = CO2_mgL-lag(CO2_mgL))%>%
-  mutate(CO2_flux=(CO2_mgL*u)/24)%>%select(day,Date,ID,CO2_flux, depth, Q)
-
-resp<-resp %>% mutate(ER=abs(ER))%>%rename("day"="Date")%>% select(day,ID,ER)
-
-pathway<-left_join(resp, CO2_diff, by=c('day','ID'))
-
-ggplot(pathway, aes(Q))+
-  geom_area(aes(y=ER, color = "ER"),alpha=0.5) +
-  geom_area(aes(y=CO2_flux, color="CO2flux"),alpha=0.5)+
-  facet_wrap(~ ID, ncol=3, scale='free')+theme(legend.position = "bottom")
-
-write_csv(CO2, "04_Output/chimney_reactor.csv")
-
-####Combining Sensor C and sampled C######
-
-CO2_obs<-CO2_obs[,c('Date','ID','CO2_daily')]
-CO2_obs<-left_join(CO2_obs, dim, c('Date','ID'))
-CO2_obs <- CO2_obs[!duplicated(CO2_obs[c('ID','Date')]),]
-
-CO2_obs<- CO2_obs %>% rename('CO2'='CO2_daily') %>%CO2mol() %>%select(Date,ID,CO2obs_mol,KH)
-
-totC<-left_join(CO2_obs, totDC, by=c("ID",'Date'))
-totC<-totC %>%fill(CO2obs_mol, .direction = "up")
-
-totC<-totC %>% mutate(CO2_mgL=CO2obs_mol*44010) %>% filter(DIC<500) %>% filter(DOC<500)
-totC <- totC[complete.cases(totC[ , c('DOC')]), ]
-totC <- totC[rev(order(as.Date(totC$Date, format="%m/%d/%Y"))),]
-unique(totC$ID)
-
-ggplot(totC, aes(Q))+
-  #geom_point(aes(y=DIC, color= "DIC")) +
-  geom_point(aes(y=DOC, color='DOC')) +
-  #geom_point(aes(y=POC_mgL, color='POC')) +
-  facet_wrap(~ ID, ncol=3)
-range(totC$Date)
-
-write_csv(totC, "02_Clean_data/allC_stream.csv")
-
-#CO2 quality check#####
-CO2 <- function(master) {
-  master <- master[complete.cases(master[ , c('pH','Water_press','Q')]), ]
-  master$Temp<-fahrenheit.to.celsius(master$Temp_pH)
-  master$Temp_K<- master$Temp+273.15
-
-  master$exp<-2400*((1/master$Temp_K)-(1/298.15))
-  master$KH<-0.034*2.178^(master$exp)#mol/L/atm
-
-  master$K1<-K1(S=0.01, T=master$Temp, P=master$Water_press)
-  master$K2<-K2(S=0.01, T=master$Temp, P=master$Water_press)
-
-  master$pK1<- -log10(master$K1)
-  master$pK2<- -log10(master$K2)
-
-  master$HCO3_molL<-master$DIC/12010
-  master$CO2_molL<-master$HCO3_molL/(10^(master$pH-master$pK1))
-
-  master$CO2_atm<-master$CO2_molL/master$KH
-  master$CO2_ppm_inter<-master$CO2_atm*1000000
-
-  master<-master[,c('Date', 'ID', 'Site','CO2_daily', 'CO2_ppm_inter')]
-  return(master)}
-
-pH<-read_csv('02_Clean_data/pH_cleaned.csv')
-pH<-pH %>% mutate(Date=as.Date(Date))%>%group_by(ID, Date) %>% mutate(pH_avg=mean(pH, na.rm=T))
-totC<-left_join(totC,pH, by=c('ID','Date'))
-totC <- totC[!duplicated(totC[c('ID','Date')]),]
-
-quality_c<-CO2(totC)

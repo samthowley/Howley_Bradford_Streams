@@ -31,7 +31,8 @@ GasDome <- function(gas,stream) {
   gas<-left_join(gas,stream, by=c('hour', 'day', 'month', 'yr', 'ID'), relationship = "many-to-many")
 
   gas<-gas%>%mutate(Temp_F=mean(Temp, na.rm=T))%>% mutate(Temp_C=fahrenheit.to.celsius(Temp_F))%>%
-    mutate(Temp_K=Temp_C+273.15,SchmidtO2hi=1568-86.04*Temp_C+2.142*Temp_C^2-0.0216*Temp_C^3,
+    mutate(Temp_K=Temp_C+273.15,
+           SchmidtO2hi=1568-86.04*Temp_C+2.142*Temp_C^2-0.0216*Temp_C^3,
            SchmidtCO2hi=1742-91.24*Temp_C+2.208*Temp_C^2-0.0219*Temp_C^3)
 
   gas<-gas %>%
@@ -58,7 +59,7 @@ GasDome <- function(gas,stream) {
   gas$KCO2_1d<-(gas$KCO2_dh/gas$depth)*24
   gas$k600_1d<- (gas$k600_dh/gas$depth)*24
 
-  gas<-gas%>% select(day,ID,CO2,CO2_enviro,depth,Q,Temp,k600_1d)
+  gas<-gas%>% select(day,ID,CO2,CO2_enviro,depth,Q,Temp,KCO2_1d,k600_1d)
 
   return(gas)
 }
@@ -75,7 +76,7 @@ for(i in file.names){
   gasdome<-rbind(gasdome, gas)}
 
 gasdome <- gasdome[!duplicated(gasdome[ ,c('ID','day')]), ]
-gasdome<-gasdome %>% mutate(k600_1d=abs(k600_1d))
+gasdome<-gasdome %>% mutate(k600_1d=abs(k600_1d), KCO2_1d=abs(KCO2_1d))
 write_csv(gasdome, "01_Raw_data/GD/GasDome_compiled.csv")
 
 split<-gasdome %>% split(gasdome$ID)
