@@ -8,6 +8,22 @@ library(lubridate)
 library(cowplot)
 library(seacarb)
 
+theme_set(theme(axis.text.x = element_text(size = 12),
+                axis.text.y = element_text(size = 17),
+                axis.title.y = element_text(size = 17, angle = 90),
+                axis.title.x = element_text(size = 17),
+                plot.title = element_text(size = 17),
+                legend.key.size = unit(0.5, 'cm'),
+                legend.text=element_text(size = 10),
+                legend.title =element_blank(),
+                legend.position ="bottom",
+                panel.grid.major.x = element_line(color = "black"),  # Customize x-axis major gridlines
+                panel.grid.minor.y = element_line(color = "black", linetype = "dashed"),
+                panel.background = element_rect(fill = 'white'),
+                axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "gray"),
+                axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "gray")))
+
+
 #Edit dims######
 depth<-read_csv('02_Clean_data/depth.csv')
 Q<-read_csv('02_Clean_data/discharge.csv')
@@ -47,17 +63,25 @@ C_RC<-left_join(C_RC, dim, by=c("ID", 'Date'))
 
 write_csv(C_RC, "02_Clean_data/allC_RC.csv")
 
+C_RC<-C_RC%>%filter(DOC_mgL< 180)%>%filter(DIC_mgL< 180)
 
-ggplot(data=C_RC, aes(x=Distance_m, color=Qbase)) +
+a<-ggplot(data=C_RC, aes(x=Distance_m, color=WTdepth)) +
   scale_color_gradient(low = "blue", high = "red")+
-  #geom_point(aes(y=DOC_mgL))+
-  #geom_point(aes(y=DIC_mgL),size=2)+
-  geom_point(aes(y=CO2_mv),size=2)+
+  geom_point(aes(y=DOC_mgL), size=2)+
+  ylab("DOC mg/L")+xlab(' ')+
+  #geom_point(aes(y=CO2_mv),size=2)+
   theme(legend.position = "bottom")+
   facet_wrap(~ Stream, scales='free')+ ggtitle('River Corridor')
 
-names(C_RC)
+b<-ggplot(data=C_RC, aes(x=Distance_m, color=WTdepth)) +
+  scale_color_gradient(low = "blue", high = "red")+
+  geom_point(aes(y=DIC_mgL), size=2)+
+  ylab("DIC mg/L")+xlab('Distance (m)')+
+  #geom_point(aes(y=CO2_mv),size=2)+
+  theme(legend.position = "bottom")+
+  facet_wrap(~ Stream, scales='free')
 
+plot_grid(a,b, ncol=1)
 ###Interpolating CO2######
 CO2 <- function(master) {
   master <- master[complete.cases(master[ , c('Temp','pH','Water_press','Q')]), ]

@@ -10,6 +10,21 @@ library(weathermetrics)
 library(ggtern)
 library(ggpmisc)
 
+theme_set(theme(axis.text.x = element_text(size = 10),
+                axis.text.y = element_text(size = 10),
+                axis.title.y = element_text(size = 17, angle = 90),
+                axis.title.x = element_text(size = 17),
+                plot.title = element_text(size = 17),
+                legend.key.size = unit(0.5, 'cm'),
+                legend.text=element_text(size = 12),
+                legend.title =element_blank(),
+                legend.position ="bottom",
+                panel.grid.major.x = element_line(color = "black"),  # Customize x-axis major gridlines
+                panel.grid.minor.y = element_line(color = "black", linetype = "dashed"),
+                panel.background = element_rect(fill = 'white'),
+                axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "gray"),
+                axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "gray")))
+
 CO2mol <- function(CO2) {
   CO2$Temp_C<-fahrenheit.to.celsius(CO2$Temp_PT)
   CO2$Temp_K<-CO2$Temp_C+273.15
@@ -67,6 +82,9 @@ ggplot(chimney, aes(Date))+
 write_csv(CO2, "04_Output/chimney_reactor.csv")
 
 #CO2 quality check#####
+
+CO2_hourly<-left_join(CO2_hourly, dim, by=c('Date', 'ID'))
+CO2_hourly<-CO2_hourly %>% filter(CO2>700) %>%filter(ID !='14')
 CO2 <- function(master) {
   master <- master[complete.cases(master[ , c('pH','Water_press','Q')]), ]
   master$Temp<-fahrenheit.to.celsius(master$Temp_pH)
@@ -90,9 +108,9 @@ CO2 <- function(master) {
   master<-master[,c('Date', 'ID', 'Site','CO2_daily', 'CO2_ppm_inter')]
   return(master)}
 
-pH<-read_csv('02_Clean_data/pH_cleaned.csv')
-pH<-pH %>% mutate(Date=as.Date(Date))%>%group_by(ID, Date) %>% mutate(pH_avg=mean(pH, na.rm=T))
-totC<-left_join(totC,pH, by=c('ID','Date'))
-totC <- totC[!duplicated(totC[c('ID','Date')]),]
-
-quality_c<-CO2(totC)
+ggplot(CO2_hourly, aes(x=Q))+
+  geom_point(aes(y=CO2), size=1.5, shape=1)+
+  #scale_color_gradient(high='red', low='blue')+
+  scale_x_log10()+#scale_y_log10()+
+  xlab(expression('Discharge'~m^3/s))+ylab(expression(CO[2]~'ppm'))+
+  facet_wrap(~ ID, ncol=3, scales='free')
