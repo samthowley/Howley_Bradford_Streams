@@ -15,7 +15,7 @@ theme_set(theme(axis.text.x = element_text(size = 12),
                 plot.title = element_text(size = 17),
                 legend.key.size = unit(0.5, 'cm'),
                 legend.text=element_text(size = 10),
-                legend.title =element_blank(),
+                legend.title =element_text(size = 10),
                 legend.position ="bottom",
                 panel.grid.major.x = element_line(color = "black"),  # Customize x-axis major gridlines
                 panel.grid.minor.y = element_line(color = "black", linetype = "dashed"),
@@ -40,10 +40,18 @@ Q <- Q[!duplicated(Q[c('Date','ID')]),]
 dim<-left_join(depth, Q, by=c('ID', 'Date'))
 dim<-dim %>% filter(ID=='6'| ID=='5'| ID=='9')
 #RC Carbon#########
-
+stream_C_long<-read_csv("04_Output/TDC_stream.csv")
+stream_C_DIC<-stream_C_long %>% filter(Species=='DIC')%>%rename(DIC_mgL=Conc., WTdepth=depth)%>%
+  mutate(Distance_m= -0.3, `Distance (ft)`= -0.9)%>%
+  select(Date,ID,Site,WTdepth,DIC_mgL,`Distance (ft)`,Distance_m)
+stream_C_DOC<-stream_C_long %>% filter(Species=='DOC')%>%rename(DOC_mgL=Conc.)%>%
+  select(Date,ID,DOC_mgL)
+Stream_C<-left_join(stream_C_DIC,stream_C_DOC)
+Stream_C<-Stream_C %>%select(Date,ID,WTdepth,DIC_mgL,DOC_mgL,`Distance (ft)`,Distance_m)%>%
+  filter(ID %in% c('5', '6', '9'))
 
 RClog<-read_xlsx('01_Raw_data/RC log.xlsx')
-RClog<- RClog%>%rename("WTdepth"="Wtdepth (m)") %>% select(Date, ID, Site, WTdepth, CO2_mv, pH, Temp)
+RClog<- RClog%>%rename("WTdepth"="Wtdepth (m)") %>% select(Date, ID, Site, WTdepth, CO2_mv, pH, Temp) #
 
 DC_RC<-read_csv('04_Output/TDC_RC.csv')
 
@@ -56,32 +64,49 @@ DOC_RC<-DC_RC %>%filter(Species=='DOC') %>%rename("DOC_mgL"="Conc.") %>% select(
 C_RC<-left_join(RClog,DIC_RC , by=c("Site","Date"))
 C_RC<-left_join(C_RC, DOC_RC, by=c("Site","Date"))
 C_RC<-left_join(C_RC, RC_dim, by=c("Site"))
-C_RC<-C_RC %>% mutate(ID=as.character(ID), CO2_mv=as.numeric(CO2_mv)) %>%
+C_RC<-C_RC %>% mutate(ID=as.character(ID), CO2_mv=as.numeric(CO2_mv)) %>% #
   separate(Site, into = c("Stream", "Well"), sep = "GW")
 
+
 C_RC<-left_join(C_RC, dim, by=c("ID", 'Date'))
+C_RC<-C_RC%>%select(Date,ID,WTdepth,DIC_mgL,DOC_mgL,`Distance (ft)`,Distance_m)
+C_RC<-rbind(C_RC, Stream_C)
+C_RC<-C_RC %>%mutate(DIC_mgL=as.numeric(DIC_mgL), DOC_mgL=as.numeric(DOC_mgL))
 
 write_csv(C_RC, "02_Clean_data/allC_RC.csv")
 
 C_RC<-C_RC%>%filter(DOC_mgL< 180)%>%filter(DIC_mgL< 180)
 
-a<-ggplot(data=C_RC, aes(x=Distance_m, color=WTdepth)) +
-  scale_color_gradient(low = "blue", high = "red")+
-  geom_point(aes(y=DOC_mgL), size=2)+
-  ylab("DOC mg/L")+xlab(' ')+
-  #geom_point(aes(y=CO2_mv),size=2)+
-  theme(legend.position = "bottom")+
-  facet_wrap(~ Stream, scales='free')+ ggtitle('River Corridor')
+range(C_RC$Distance_m)
+(a<-ggplot(data = C_RC, aes(x = Distance_m, group = Date)) +
+    #scale_color_gradient(low = "blue", high = "red") +
+    theme(legend.position = "bottom") + geom_vline(xintercept = 0, colour = "gray", size=1.5) +
+    geom_line(aes(y = DOC_mgL)) +
+    geom_point(aes(y = DOC_mgL), size = 2, shape=1) +
+    ylab("DOC mg/L") + xlab('Distance (m)')+ labs(color = "Water Table Depth (m)")+
+    facet_wrap(~ ID, scales = 'free') +
+    ggtitle('River Corridor'))
 
-b<-ggplot(data=C_RC, aes(x=Distance_m, color=WTdepth)) +
-  scale_color_gradient(low = "blue", high = "red")+
-  geom_point(aes(y=DIC_mgL), size=2)+
+(b<-ggplot(data=C_RC, aes(x=Distance_m, group = Date)) +
+  #scale_color_gradient(low = "blue", high = "red")+
+  geom_vline(xintercept = 0, colour = "gray", size=1.5) +
+  geom_point(aes(y=DIC_mgL), size = 2, shape=1)+
+  geom_line(aes(y = DIC_mgL)) +
   ylab("DIC mg/L")+xlab('Distance (m)')+
   #geom_point(aes(y=CO2_mv),size=2)+
   theme(legend.position = "bottom")+
-  facet_wrap(~ Stream, scales='free')
+  facet_wrap(~ ID, scales='free'))
 
 plot_grid(a,b, ncol=1)
+
+ggplot(data=C_RC, aes(x=WTdepth, group = Date)) +
+  geom_point(aes(y=DOC_mgL, color='DOC'), size = 2)+
+  geom_point(aes(y=DIC_mgL, color='DIC'), size = 2)+
+  ylab("mg/L")+xlab('Water Table Depth (m)')+
+  #geom_point(aes(y=CO2_mv),size=2)+
+  theme(legend.position = "bottom")+
+  facet_wrap(~ ID, scales='free')
+
 ###Interpolating CO2######
 CO2 <- function(master) {
   master <- master[complete.cases(master[ , c('Temp','pH','Water_press','Q')]), ]
