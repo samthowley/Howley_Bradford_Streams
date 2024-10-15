@@ -65,9 +65,9 @@ totDC<-left_join(totDC, dim, by=c('ID', 'Date'))
 
 totDC<-totDC%>%filter(Q>1)
 ggplot(totDC, aes(x=Q))+
-  geom_point(aes(y=DOC, color="DOC"),size=1.5)+
-  geom_point(aes(y=DIC, color= "DIC"), size=1.5)+
-  geom_point(aes(y=POC_mgL, color="POC"), size=1.5)+
+  geom_point(aes(y=DOC, color="DOC"),size=2, shape=1)+
+  geom_point(aes(y=DIC, color= "DIC"), size=2)+
+  geom_point(aes(y=POC_mgL, color="POC"), size=2)+
   scale_colour_manual(values = c("black", "#0000FF", "darkorange"))+
   scale_x_log10()+scale_y_log10()+
   xlab(expression('Discharge'~m^3/s))+ylab('mg/L')+
@@ -80,10 +80,10 @@ ggtern(data=site,aes(DOC,DIC,POC_mgL, colour = Q))+scale_color_gradient(low = "b
 write_csv(totDC, "04_Output/stream_sampledC.csv")
 
 #box plots#####
-
-POC<-totDC %>% select(Date,ID,Q,depth, POC_mmol)%>% rename(Conc=POC_mmol)%>%mutate(Species= 'POC')
-DIC<-totDC %>% select(Date,ID,Q,depth, DIC_mmol)%>% rename(Conc=DIC_mmol)%>%mutate(Species= 'DIC')
-DOC<-totDC %>% select(Date,ID,Q,depth, DOC_mmol)%>% rename(Conc=DOC_mmol)%>%mutate(Species= 'DOC')
+names(totDC)
+POC<-totDC %>% select(Date,ID,Q,depth, POC_mgL)%>% rename(Conc=POC_mgL)%>%mutate(Species= 'POC')
+DIC<-totDC %>% select(Date,ID,Q,depth, DIC)%>% rename(Conc=DIC)%>%mutate(Species= 'DIC')
+DOC<-totDC %>% select(Date,ID,Q,depth, DOC)%>% rename(Conc=DOC)%>%mutate(Species= 'DOC')
 
 long_C<- rbind(POC, DIC, DOC)
 
@@ -93,4 +93,4 @@ order <- c("5", "5a", "15", "9", '13', '6', '6a', '3', '7')
 ggplot(long_C, aes(x= factor(ID, levels=order), y=Conc, fill=Species))+
   scale_fill_manual(values=c('DIC'='black', 'DOC'='blue', POC='darkorange'))+
   geom_boxplot()+ ylab("mg/L")+xlab( 'ID')
-
+dev.new()

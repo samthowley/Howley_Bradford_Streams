@@ -33,11 +33,11 @@ for(i in file.names){
 CO2 <- CO2[!duplicated(CO2[c('Date','ID')]),]
 CO2<-CO2%>%mutate(Date=mdy_hm(Date))
 
-ggplot(CO2, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=4, scales = "free")
-
 file.names <- list.files(path="01_Raw_data/Lily Box/dat", pattern=".dat", full.names=TRUE)
 for(i in file.names){
   LB <- read_csv(i, skip= 1)
+  LB <- read_csv('01_Raw_data/Lily Box/dat/3_Bradford_3_10042024.dat', skip= 1)
+
   LB<-LB[-c(1:2),]
 
   columns_to_keep <- c("TIMESTAMP", "CO2High", "Eosense", 'CO2')
@@ -49,13 +49,49 @@ for(i in file.names){
   colnames(LB)[1] <- "Date"
   colnames(LB)[2] <- "CO2"
   LB$ID<-strsplit(basename(i), '_')[[1]][1]
-  LB<-LB %>% mutate(Date=ymd_hms(Date), CO2=as.numeric(CO2))
+  LB<-LB %>% mutate(Date=ymd_hms(Date))
   CO2<-rbind(CO2, LB)}
-  CO2 <- CO2[!duplicated(CO2[c('Date','ID')]),]
+CO2 <- CO2[!duplicated(CO2[c('Date','ID')]),]
+
+
+ggplot(LB, aes(Date, CO2))+geom_point()
+
+#clean######
+
+sites<-split(CO2,CO2$ID)
+#names(sites)
+s13<-sites[['13']]
+s15<-sites[['15']]
+s3<-sites[['3']]
+s5<-sites[['5']]
+s5a<-sites[['5a']]
+s6<-sites[['6']]
+s6a<-sites[['6a']]
+s7<-sites[['7']]
+s9<-sites[['9']]
+
+s5<-s5 %>% filter(CO2>2700 & CO2<9500)
+
+s6_post0724<-s6 %>%filter(Date>'2024-07-10')%>%mutate(CO2=CO2*6)
+s6_pre0724<-s6 %>%filter(Date<'2024-07-10')
+s6_edited<-rbind(s6_post0724,s6_pre0724)
+s6<-s6_edited %>% filter(CO2>5500 & CO2<25300)
+
+s3<-s3 %>%mutate(day=day(Date), month=month(Date), year=year(Date), hour=hour(Date))
+s3 <- s3[!duplicated(s3[c('day','month','year','hour')]),]
+
+ggplot(s3, aes(Date, CO2))+geom_point()+geom_hline(yintercept = 2000)
+
+range(s3$Date, na.rm=T)
+
+s5<-s5 %>% filter(CO2>200)
+
+
+
+
 
 CO2$CO2[CO2$CO2 < 600] <- NA
 CO2$CO2[CO2$CO2 > 20000] <- NA
-ggplot(CO2, aes(Date, CO2)) + geom_line()+ facet_wrap(~ ID, ncol=4, scales = "free")
 range(CO2$Date, na.rm=T)
 write_csv(CO2, "02_Clean_data/CO2_cleaned.csv")
 

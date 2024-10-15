@@ -13,7 +13,7 @@ library(weathermetrics)
 library('StreamMetabolism')
 #######
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2021-03-29 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-07-12 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2024-10-05 00:00", tz="UTC"),by="hour")))
 samplingperiod<-samplingperiod %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 
 bayes_name <- mm_name(type='bayes', pool_K600='normal', err_obs_iid=TRUE, err_proc_iid=TRUE)

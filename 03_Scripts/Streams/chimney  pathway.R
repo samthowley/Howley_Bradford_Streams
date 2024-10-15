@@ -59,7 +59,9 @@ resp<-resp %>% filter(ER< -3) %>% filter(GPP>0)%>%filter(ER>-20)%>%mutate(NEP=ab
 
 resp<-left_join(resp,dim, by=c('Date','ID'))
 KH<-resp %>%filter(depth>0)%>%  mutate(Temp_C=fahrenheit.to.celsius(Temp_PT)) %>%mutate(Temp_K=Temp_C+273.15)%>%mutate(
-  KH=0.034*exp(2400*((1/Temp_K)-(1/298.15))))
+  KH=0.034*exp(2400*((1/Temp_K)-(1/298.15))))%>%mutate(KH_g=KH*12*1000)
+
+ggplot(KH, aes(Date))+geom_point(aes(y=KH_g)) +ggtitle(expression(K[H]))+ylab(expression(mg/L*atm))
 
 KCO2<-KH %>%
   mutate(K600_m.d=K600_daily_mean*depth,
@@ -73,16 +75,17 @@ KCO2<-KH %>%
 CO2_hourly<-read_csv("02_Clean_data/CO2_cleaned.csv")
 CO2<-CO2_hourly%>% mutate(day=as.Date(Date))
 
+ggplot(CO2, aes(Date))+geom_point(aes(y=CO2))+ggtitle(expression(CO[2]~'ppm'))+
+  facet_wrap(~ ID, ncol=3, scale='free')
+
 chimney<-left_join(CO2,KCO2, by=c('day','ID'))
-chimney <- chimney %>%mutate(CO2=CO2*4.2) %>%mutate(CO2_flux=KCO2_d*(CO2-400)*KH*(1/10^6)*12*1000*depth)
+chimney <- chimney  %>%mutate(CO2=CO2*6)%>%mutate(CO2_flux=KCO2_d*(CO2-400)*KH*(1/10^6)*12*1000*depth)%>%
+  group_by(day,ID)%>%mutate(mean_CO2flux=mean(CO2_flux, na.rm = T))
 chimney <- chimney[complete.cases(chimney[ , c('CO2_flux')]), ]
 
-write_csv(chimney, "test.csv")
-
-
 ggplot(chimney, aes(Q))+
-  geom_point(aes(y=NEP, color = "reactor")) +
-  geom_point(aes(y=CO2_flux, color="CO2"))+scale_x_log10()+
+  geom_point(aes(y=NEP, color = "NEP")) +ylab(expression('g'/m^2/'day'))+
+  geom_point(aes(y=mean_CO2flux, color="total CO2"))+scale_x_log10()+
   facet_wrap(~ ID, ncol=3, scale='free')+theme(legend.position = "bottom")
 
 ggplot(chimney, aes(Q))+
