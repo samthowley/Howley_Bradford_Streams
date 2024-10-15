@@ -55,30 +55,34 @@ dim<-left_join(Q, depth, by=c('ID', 'Date'))
 #Chimney Pathway#####
 
 resp<-read_csv('04_Output/master_metabolism.csv')
-resp<-resp %>% filter(ER< -3) %>% filter(GPP>0)%>%filter(ER>-20)%>%mutate(NEP=GPP+ER)
+resp<-resp %>% filter(ER< -3) %>% filter(GPP>0)%>%filter(ER>-20)%>%mutate(NEP=abs(GPP+ER))
 
-KCO2<-left_join(resp,dim, by=c('Date','ID'))
-KCO2<-KCO2 %>% filter(depth>0)%>%
-  mutate(Temp_C=fahrenheit.to.celsius(Temp_PT)) %>%mutate(Temp_K=Temp_C+273.15)%>%
+resp<-left_join(resp,dim, by=c('Date','ID'))
+KH<-resp %>%filter(depth>0)%>%  mutate(Temp_C=fahrenheit.to.celsius(Temp_PT)) %>%mutate(Temp_K=Temp_C+273.15)%>%mutate(
+  KH=0.034*exp(2400*((1/Temp_K)-(1/298.15))))
 
-  mutate(K600_m.h=K600_daily_mean*depth/24, SchmidtCO2hi=1742-91.24*Temp_C+2.208*Temp_C^2-0.0219*Temp_C^3,
-         KH=0.034*exp(2400*((1/Temp_K)-(1/298.15))))%>%
+KCO2<-KH %>%
+  mutate(K600_m.d=K600_daily_mean*depth,
+         SchmidtCO2hi=1742-91.24*Temp_C+2.208*Temp_C^2-0.0219*Temp_C^3)%>%
 
-  mutate(KCO2_denominator=(600*SchmidtCO2hi)^(-2/3), KCO2_m.h=K600_m.h/KCO2_denominator) %>%
-
-  mutate(KCO2_d=(KCO2_m.h/24)*depth)%>% rename(day=Date) #%>% select(day, ID, reactor, Q, Qbase, depth, KCO2_d, KH)
+  mutate(KCO2_denominator=(600/SchmidtCO2hi)^(-2/3),
+         KCO2_m.d=K600_m.d*KCO2_denominator) %>%
+  mutate(KCO2_d=KCO2_m.d/depth)%>%
+  rename(day=Date) #%>% select(day, ID, reactor, Q, Qbase, depth, KCO2_d, KH)
 
 CO2_hourly<-read_csv("02_Clean_data/CO2_cleaned.csv")
 CO2<-CO2_hourly%>% mutate(day=as.Date(Date))
 
 chimney<-left_join(CO2,KCO2, by=c('day','ID'))
-chimney <- chimney[complete.cases(chimney[ , c('NEP')]), ]
-chimney <- chimney %>%mutate(CO2_flux=KCO2_d*(CO2-420)*KH*(1/10^6)*12*1000*depth)
+chimney <- chimney %>%mutate(CO2=CO2*4.2) %>%mutate(CO2_flux=KCO2_d*(CO2-400)*KH*(1/10^6)*12*1000*depth)
+chimney <- chimney[complete.cases(chimney[ , c('CO2_flux')]), ]
+
+write_csv(chimney, "test.csv")
 
 
-ggplot(chimney, aes(Date))+
-  geom_area(aes(y=reactor, color = "reactor"),alpha=0.5) +
-  geom_area(aes(y=CO2_flux, color="CO2"),alpha=0.5)+
+ggplot(chimney, aes(Q))+
+  geom_point(aes(y=NEP, color = "reactor")) +
+  geom_point(aes(y=CO2_flux, color="CO2"))+scale_x_log10()+
   facet_wrap(~ ID, ncol=3, scale='free')+theme(legend.position = "bottom")
 
 ggplot(chimney, aes(Q))+
@@ -86,7 +90,7 @@ ggplot(chimney, aes(Q))+
   facet_wrap(~ ID, ncol=3, scale='free')+theme(legend.position = "bottom")
 
 
-write_csv(CO2, "04_Output/chimney_reactor.csv")
+write_csv(chimney, "04_Output/chimney_reactor.csv")
 
 #CO2 quality check#####
 
