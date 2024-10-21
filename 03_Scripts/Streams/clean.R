@@ -6,7 +6,7 @@ library(lubridate)
 library(weathermetrics)
 library(tools)
 library(cowplot)
-samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2022-11-06 00:00", tz="UTC"),
+samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
                                             to=as.POSIXct("2024-10-05 00:00", tz="UTC"),by="hour")))
 
 clean_DO <- function(fil) {
@@ -53,6 +53,7 @@ clean_pH <- function(i) {
   #pH<-filter(pH, pH<6.2) #remove hours out of water
   pH$ID<-strsplit(file_path_sans_ext(i), '_')[[1]][6]
   return(pH)}
+
 theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
                              axis.text.y = element_text(size = 17, angle=0),
                              axis.title =element_text(size = 17, angle=0),
@@ -87,6 +88,7 @@ DO_all$Temp_DO[DO_all$Temp_DO<0]<-NA
 DO_all$DO[DO_all$DO>10]<-NA
 
 
+DO_all<-left_join(samplingperiod, DO_all)
 DO_all<- DO_all[!duplicated(DO_all[c('Date','ID')]),]
 #ggplot(DO_all, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=4)
 range(DO_all$Date)
@@ -101,9 +103,27 @@ for(i in file.names){
   SpC_all<-rbind(SpC_all, SpC)}
 
 SpC_all$SpC[SpC_all$SpC>600]<-NA
-SpC_all$Temp_SpC[SpC_all$Temp_SpC<0]<-NA
-SpC_all$Temp_SpC[SpC_all$Temp_SpC>30]<-NA
+SpC_all$SpC[SpC_all$SpC<25]<-NA
 
+sites<-split(SpC_all,SpC_all$ID)
+s13<-sites[['13']]
+s15<-sites[['15']]# not working :()
+s3<-sites[['3']] #npt working :()
+s5<-sites[['5']]
+s5a<-sites[['5a']]
+s6<-sites[['6']]
+s6a<-sites[['6a']]
+s7<-sites[['7']]
+s9<-sites[['9']]
+
+s6<-s6 %>% filter(SpC<135 & SpC>50)
+s6a<-s6a %>% filter(SpC<135)
+s7<-s7 %>% filter(SpC<200 & SpC>80)
+s9<-s9 %>% filter(SpC>35)
+
+SpC_all<-rbind(s5,s5a,s15,s3,s7,s6,s6a,s9,s13)
+
+SpC_all<-left_join(samplingperiod,SpC_all)
 SpC_all <- SpC_all[!duplicated(SpC_all[c('Date','ID')]),]
 ggplot(SpC_all, aes(Date, SpC)) + geom_line() + facet_wrap(~ ID, ncol=4)
 range(SpC_all$Date,na.rm=T)
@@ -119,22 +139,78 @@ for(fil in file.names){
   }
 pH_all <- pH_all[!duplicated(pH_all[c('Date','ID')]),]
 
+#depth<-read_csv('02_Clean_data/depth.csv')
+#pH_all<-left_join(pH_all, depth, by=c('Date','ID'))
 
-ggplot(pH_all, aes(Date, pH)) + geom_line() + geom_hline(yintercept=8)+facet_wrap(~ ID, ncol=4)
+sites<-split(pH_all,pH_all$ID)
+s13<-sites[['13']]
+s15<-sites[['15']]# not working :()
+s3<-sites[['3']] #npt working :()
+s5<-sites[['5']]
+s5a<-sites[['5a']]
+s6<-sites[['6']]
+s6a<-sites[['6a']]
+s7<-sites[['7']]
+s9<-sites[['9']]
+
+s13<-s13 %>%filter(pH>4.5)
+# a<-ggplot(s13, aes(Date, pH)) + geom_line()+geom_hline(yintercept = 4.5)
+# b<-ggplot(s13, aes(Date, depth)) + geom_line()
+# plot_grid(a,b, ncol=1)
+
+s15<-s15 %>% filter(pH<6 & pH>2.87)
+# a<-ggplot(s15, aes(Date, pH)) + geom_line()
+# b<-ggplot(s15, aes(Date, depth)) + geom_line()
+# plot_grid(a,b, ncol=1)
+
+s3<-s3%>% filter(pH<4)
+# a<-ggplot(s3, aes(Date, pH)) + geom_line()
+# b<-ggplot(s3, aes(Date, depth)) + geom_line()
+# plot_grid(a,b, ncol=1)
+
+s5<-s5%>% filter(pH>3.3)
+# a<-ggplot(s5, aes(Date, pH)) + geom_line()+geom_hline(yintercept = 3.3)
+# b<-ggplot(s5, aes(Date, depth)) + geom_line()
+# plot_grid(a,b, ncol=1)
+
+# a<-ggplot(s5a, aes(Date, pH)) + geom_line()+geom_hline(yintercept = 3.3)
+# b<-ggplot(s5a, aes(Date, depth)) + geom_line()
+# plot_grid(a,b, ncol=1)
+
+s6<-s6%>% filter(pH<5 & pH>3.5)
+# a<-ggplot(s6, aes(Date, pH)) + geom_line()+geom_hline(yintercept = 3.5)
+# b<-ggplot(s6, aes(Date, depth)) + geom_line()
+# plot_grid(a,b, ncol=1)
+
+s7<-s7%>%filter(pH<6)
+# a<-ggplot(s7, aes(Date, pH)) + geom_line()+geom_hline(yintercept = 3.3)
+# b<-ggplot(s7, aes(Date, depth)) + geom_line()
+# plot_grid(a,b, ncol=1)
+
+s9<-s9%>%filter(pH<9)
+# a<-ggplot(s9, aes(Date, pH)) + geom_line()+geom_hline(yintercept = 3.3)
+# b<-ggplot(s9, aes(Date, depth)) + geom_line()
+# plot_grid(a,b, ncol=1)
+
+pH_all<-rbind(s5,s5a,s15,s7,s3,s6,s6a,s9,s13)
+pH_all<-left_join(samplingperiod,pH_all)
+pH_all <- pH_all[!duplicated(pH_all[c('Date','ID')]),]
+
+ggplot(pH_all, aes(Date, pH)) + geom_line()+facet_wrap(~ ID, ncol=4, scales='free')
 range(pH_all$Date,na.rm=T)
 
 write_csv(pH_all, "02_Clean_data/pH_cleaned.csv")
 
 ####Compile####
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
-file.names<-file.names[c(5,4,6,7,8,9,1)]
+file.names<-file.names[c(1,5,4,6,7,8,9)]
 
 data <- lapply(file.names,function(x) {read_csv(x)})
 library(plyr)
 master<-join_all(data, by=c('Date','ID'), type='left')
 
 master<-master %>%  mutate(min = minute(Date)) %>% filter(min==0) %>%
-  filter(Date> "2021-11-16")
+  filter(Date> "2021-11-16")%>% filter(depth>0)
 master <- master[!duplicated(master[c('Date','ID')]),]
 detach("package:plyr", unload = TRUE)
 
