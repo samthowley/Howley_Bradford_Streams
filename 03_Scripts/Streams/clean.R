@@ -90,7 +90,7 @@ DO_all$DO[DO_all$DO>10]<-NA
 
 DO_all<-left_join(samplingperiod, DO_all)
 DO_all<- DO_all[!duplicated(DO_all[c('Date','ID')]),]
-#ggplot(DO_all, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=4)
+ggplot(DO_all, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=4)
 range(DO_all$Date)
 
 write_csv(DO_all, "02_Clean_data/DO_cleaned.csv")
@@ -203,14 +203,13 @@ write_csv(pH_all, "02_Clean_data/pH_cleaned.csv")
 
 ####Compile####
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
-file.names<-file.names[c(1,5,4,6,7,8,9)]
+file.names<-file.names[c(5,6,7,9,8,4)]
 
 data <- lapply(file.names,function(x) {read_csv(x)})
 library(plyr)
 master<-join_all(data, by=c('Date','ID'), type='left')
 
-master<-master %>%  mutate(min = minute(Date)) %>% filter(min==0) %>%
-  filter(Date> "2021-11-16")%>% filter(depth>0)
+master<-master %>%filter(depth>0)%>%filter(Date>'2023-10-05')
 master <- master[!duplicated(master[c('Date','ID')]),]
 detach("package:plyr", unload = TRUE)
 
@@ -225,11 +224,9 @@ ggplot(master, aes(x=Date)) + geom_line(aes(y=DO))+facet_wrap(~ ID, ncol=5)
 
 master<-master[,c("Date","depth","ID","Q","Qbase","CO2","DO","pH","SpC","Temp_PT","Water_press")]
 master<-rename(master, 'Temp'="Temp_PT")
-range(master$Date)
 
 write_csv(master, "master.csv")
 
 #TEST##########
 peek<-read_csv("master.csv")
-peekCO2<-peek `%>% filter(Date>'2023-11-01')
 ggplot(peekCO2, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=4)

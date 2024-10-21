@@ -6,7 +6,7 @@ library(lubridate)
 library(weathermetrics)
 library(tools)
 library(cowplot)
-samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-12-06 00:00", tz="UTC"),
+samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
                                             to=as.POSIXct("2024-10-05 00:00", tz="UTC"),by="hour")))
 theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
                              axis.text.y = element_text(size = 17, angle=0),
@@ -74,9 +74,8 @@ for(i in file.names){
   LB<-LB %>% mutate(Date=ymd_hms(Date),CO2=as.numeric(CO2))
   CO2<-rbind(CO2, LB)}
 
-depth<-read_csv('02_Clean_data/depth.csv')
-
-CO2<-left_join(CO2,depth, by=c('Date','ID'))
+# depth<-read_csv('02_Clean_data/depth.csv')
+# CO2<-left_join(CO2,depth, by=c('Date','ID'))
 #clean######
 
 sites<-split(CO2,CO2$ID)
@@ -91,34 +90,52 @@ s7<-sites[['7']]
 s9<-sites[['9']]
 
 s5<-s5 %>%filter(CO2>2000 & CO2<15000)#%>%filter(Date<'2023-10-01')
-a<-ggplot(s5, aes(Date, CO2))+geom_line()+ggtitle('Stream 5')
-b<-ggplot(s5, aes(Date, depth))+geom_line()+ggtitle('Stream 5')
+# a<-ggplot(s5, aes(Date, CO2))+geom_line()+ggtitle('Stream 5')
+# b<-ggplot(s5, aes(Date, depth))+geom_line()+ggtitle('Stream 5')
 #plot_grid(a,b,ncol=1)
 
-s6_post0724<-s6 %>%filter(Date>'2024-07-10')%>%mutate(CO2=CO2*6)
-s6_pre0724<-s6 %>%filter(Date<'2024-07-10')
-s6_edited<-rbind(s6_post0724,s6_pre0724)
-s6<-s6_edited %>% filter(CO2>5500 & CO2<25300)
-a<-ggplot(s6_edited, aes(Date, CO2))+geom_line()
-b<-ggplot(s6_edited, aes(Date, depth))+geom_line()
-#plot_grid(a,b,ncol=1)
-
-s9<-s9 %>% filter(CO2>1900)
-a<-ggplot(s9, aes(Date, CO2))+geom_line()
-b<-ggplot(s9, aes(Date, depth))+geom_line()
-#plot_grid(a,b,ncol=1)
-
-s7<-s7 %>% filter(CO2>1000 )
-a<-ggplot(s7, aes(Date, CO2))+geom_line()
-b<-ggplot(s7, aes(Date, depth))+geom_line()
-plot_grid(a,b,ncol=1)
-
-s6a<-s6a %>% filter(CO2>3000& CO2<21000)
-#ggplot(test, aes(Date, CO2))+geom_point()+geom_hline(yintercept = 21000)
 
 s5a<-s5a %>% filter(CO2>3500)
 #ggplot(s5a, aes(Date, CO2))+geom_line()+geom_hline(yintercept = 3500)
-CO2<-rbind(s5,s5a,s15,s6a,s6,s7,s3,s13)
+
+s15<-s15 %>% filter(CO2>500)
+#ggplot(s15, aes(Date, CO2))+geom_line()+geom_hline(yintercept = 400)
+
+s7<-s7%>% filter(CO2>1200)
+# a<-ggplot(s7, aes(Date, CO2))+geom_point()+geom_hline(yintercept=1100)
+# b<-ggplot(s7, aes(Date, depth))+geom_line()
+# plot_grid(a,b,ncol=1)
+
+s3<-s3 %>% filter(CO2>2000)
+s3_1<-s3 %>% filter(Date<'2023-10-01')%>% filter(CO2>8000)
+s3_2<-s3 %>% filter(Date>'2023-10-01')
+s3<-rbind(s3_1,s3_2)
+# ggplot(s3, aes(Date, CO2))+geom_point()
+# plot_grid(a,b,ncol=1)
+
+s6_post0724<-s6 %>%filter(Date>'2024-07-10')%>%mutate(CO2=CO2*6)
+s6_pre0724<-s6 %>%filter(Date<'2024-07-10')%>%filter(CO2>0)
+s6_edited<-rbind(s6_post0724,s6_pre0724)
+# s6<-s6_edited %>% filter(CO2>5500 & CO2<25300)
+# a<-ggplot(s6_edited, aes(Date, CO2))+geom_line()
+# b<-ggplot(s6_edited, aes(Date, depth))+geom_line()
+# plot_grid(a,b,ncol=1)
+
+s6a<-s6a %>% filter(CO2>3000& CO2<21000)
+#ggplot(s6a, aes(Date, CO2))+geom_point()+geom_hline(yintercept = 3000)
+
+s9<-s9 %>%  filter(CO2>1000)
+# a<-ggplot(s9, aes(Date, CO2))+geom_line()+geom_hline(yintercept = 1000)
+# b<-ggplot(s9, aes(Date, depth))+geom_line()
+# plot_grid(a,b,ncol=1)
+
+s13<-s13 %>%  filter(CO2<15000)
+# a<-ggplot(s13, aes(Date, CO2))+geom_line()+geom_hline(yintercept = 1000)
+# b<-ggplot(s13, aes(Date, depth))+geom_line()
+# plot_grid(a,b,ncol=1)
+
+
+CO2<-rbind(s5,s5a,s15,s6a,s6,s7,s3,s13,s9)
 
 write_csv(CO2, "02_Clean_data/CO2_cleaned.csv")
 
