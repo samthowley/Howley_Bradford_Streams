@@ -224,6 +224,7 @@ ggplot(master, aes(x=Date)) + geom_line(aes(y=DO))+facet_wrap(~ ID, ncol=5)
 
 master<-master[,c("Date","depth","ID","Q","Qbase","CO2","DO","pH","SpC","Temp_PT","Water_press")]
 master<-rename(master, 'Temp'="Temp_PT")
+range(master$Date)
 
 write_csv(master, "master.csv")
 
