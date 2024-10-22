@@ -17,13 +17,22 @@ temp<-master %>% mutate(Temp=fahrenheit.to.celsius(Temp_DO)) %>%mutate(Temp_K=Te
 
 KH<-temp %>% mutate(exp=2400*((1/Temp_K)-(1/298.15))) %>%mutate(KH=0.034*2.178^(exp))
 
-mols<-KH %>%mutate(CO2_atm=CO2/10^6) %>% mutate(CO2_molL=CO2_atm*KH, DO_molL=DO/32)
+mols<-KH %>%
+  mutate(CO2_atm=CO2/10^6) %>% mutate(CO2_molL=CO2_atm*KH, DO_molL=DO/32, Q=Q/35.3147)%>%
+  filter(ID %in% c('5','5a','6a','7'))
 
-debby<-mols%>% filter(Date>'2024-07-28' & Date<'2024-08-13')%>%mutate(hurricane='Debby')
-helene<-mols%>% filter(Date>'2024-09-19' & Date<'2024-10-03')%>%mutate(hurricane='Helene')
-idalia<-mols%>% filter(Date>'2023-09-20' & Date<'2023-10-01')%>%mutate(hurricane='Idalia')
+debby<-mols%>% filter(Date>'2024-07-28' & Date<'2024-09-01')%>%mutate(hurricane='Debby')
+helene<-mols%>% filter(Date>'2024-09-23' & Date<'2024-10-04')%>%mutate(hurricane='Helene')
+idalia<-mols%>% filter(Date>'2023-09-20' & Date<'2023-10-09')%>%mutate(hurricane='Idalia')
 hurricanes<-rbind(debby, helene, idalia)
 
+
+# ggplot(helene, aes(Date, color=hurricane))+
+#   geom_line(aes(y=CO2),size=2, shape=1)+
+#   ggtitle("DO mg/L")+
+#   xlab(expression('Discharge'~ft^3))+
+#   facet_wrap(~ ID, ncol=3, scale='free')+
+#   theme(legend.position = "bottom")
 
 ggplot(hurricanes, aes(Q, color=hurricane))+
   geom_point(aes(y=DO),size=2, shape=1)+
@@ -42,10 +51,24 @@ ggplot(hurricanes, aes(Q, color=hurricane))+
 master<-mols %>% mutate(hurricanes= case_when(
   Date>'2024-07-28' & Date<'2024-08-13'~'Debby',
   Date>'2024-09-19' & Date<'2024-10-03'~"Helene",
-  Date>'2023-09-20' & Date<'2023-10-01'~"Idalia"))%>%
-  filter(ID %in% c('5','6','6a','9','7'))
+  Date>'2023-09-20' & Date<'2023-10-01'~"Idalia"), day=as.Date(Date))
 
-ggplot(master, aes(x=CO2_molL,y=DO_molL, color=hurricanes))+
+metabolism <- read_csv("04_Output/master_metabolism.csv")
+k600<-metabolism%>%select(Date, ID, K600_daily_mean) %>% rename(k600_1.d=K600_daily_mean, day=Date)
+master.k600<-left_join(master, k600, by=c('day','ID'))
+
+ks<-master.k600 %>%
+  mutate(K600_m.d=k600_1.d*depth,
+         SchmidtCO2hi=1742-91.24*Temp+2.208*Temp^2-0.0219*Temp^3,
+         SchmidtO2hi=1568-86.04*Temp+2.142*Temp^2-0.0216*Temp^3)%>%
+  mutate(KCO2_m.d=K600_m.d/((600/SchmidtCO2hi)^(-2/3))) %>%
+  mutate(KO2_m.d=KCO2_m.d/((SchmidtCO2hi/SchmidtO2hi)^(-2/3)))#%>% select(day, ID, reactor, Q, Qbase, depth, KCO2_d, KH)
+
+flux<-ks%>%
+  mutate(CO2_flux=KCO2_m.d*(CO2-400)*KH*(1/10^6)*44*1000,
+         O2_flux=((DO-300)/1000)*KO2_m.d)
+
+ggplot(flux, aes(x=CO2_flux,y=O2_flux, color=hurricanes))+
   geom_point(size=2, shape=1)+
   ggtitle("O2-CO2")+
   #xlab(expression('Discharge'~ft^3))+
