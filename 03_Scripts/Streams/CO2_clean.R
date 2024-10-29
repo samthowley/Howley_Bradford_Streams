@@ -7,7 +7,7 @@ library(weathermetrics)
 library(tools)
 library(cowplot)
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-10-05 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2024-10-26 00:00", tz="UTC"),by="hour")))
 theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
                              axis.text.y = element_text(size = 17, angle=0),
                              axis.title =element_text(size = 17, angle=0),
@@ -136,6 +136,8 @@ s13<-s13 %>%  filter(CO2<15000)
 
 
 CO2<-rbind(s5,s5a,s15,s6a,s6,s7,s3,s13,s9)
+range(CO2$Date, na.rm=T)
+ggplot(CO2, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=4)
 
 write_csv(CO2, "02_Clean_data/CO2_cleaned.csv")
 

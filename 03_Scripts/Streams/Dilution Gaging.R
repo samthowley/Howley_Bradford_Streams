@@ -41,7 +41,7 @@ for(i in file.names){
   DG$ID<-strsplit(file_path_sans_ext(i), '_')[[1]][4]
   DG_all<-rbind(DG_all, DG)
 }
-range(DG_all$Date)
+range(DG_all$Date, na.rm = F)
 write_csv(DG_all, "01_Raw_data/DG/compiled_DG.csv")
 #extract DG#####
 notes<- read_csv("01_Raw_data/DG/Streams_dilution_gauging.csv",

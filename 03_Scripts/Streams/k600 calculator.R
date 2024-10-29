@@ -83,13 +83,13 @@ split<-gasdome %>% split(gasdome$ID)
 write.xlsx(split, file = '04_Output/rC_k600.xlsx')
 
 #organize data file##########
-gas<- read_csv("01_Raw_data/GD/raw/GasDome_08012024.dat",skip = 3)
+gas<- read_csv("01_Raw_data/GD/raw/GasDome_10252024.dat",skip = 3)
 gas<-gas[,c(1,5)]
 colnames(gas)[1] <- "Date"
 colnames(gas)[2] <- "CO2"
-gas<-gas %>% mutate(CO2=CO2*4.2) %>%filter(Date>'2024-07-30' & Date< '2024-08-02')%>%filter(CO2>100)
+gas<-gas %>% mutate(CO2=CO2*6) %>%filter(Date>'2024-10-23' )%>%filter(CO2>100)
 
-write_csv(gas, "01_Raw_data/GD/raw/GasDome_08012024.csv")
+write_csv(gas, "01_Raw_data/GD/raw/GasDome_10252024.csv")
 
 
 
