@@ -27,26 +27,25 @@ idalia<-mols%>% filter(Date>'2023-09-20' & Date<'2023-10-09')%>%mutate(hurricane
 hurricanes<-rbind(debby, helene, idalia)
 
 
-# ggplot(helene, aes(Date, color=hurricane))+
-#   geom_line(aes(y=CO2),size=2, shape=1)+
-#   ggtitle("DO mg/L")+
-#   xlab(expression('Discharge'~ft^3))+
-#   facet_wrap(~ ID, ncol=3, scale='free')+
-#   theme(legend.position = "bottom")
-
-ggplot(hurricanes, aes(Q, color=hurricane))+
+a<-ggplot(hurricanes, aes(Q, color=hurricane))+
   geom_point(aes(y=DO),size=2, shape=1)+
-  ggtitle("DO mg/L")+
-  xlab(expression('Discharge'~ft^3))+
-  facet_wrap(~ ID, ncol=3, scale='free')+
+  geom_path(aes(y=DO),alpha=0.5)+
+  ggtitle("DO mg/L")+scale_x_log10()+
+  xlab(expression('Discharge'~m^3))+
+  facet_wrap(~ ID, ncol=4, scale='free')+
+  theme(legend.position = "none")
+
+b<-ggplot(hurricanes, aes(Q, color=hurricane))+
+  geom_point(aes(y=CO2_molL),size=2, shape=1)+
+  geom_path(aes(y=CO2_molL),alpha=0.5)+
+  ggtitle("CO2 mol/L")+scale_x_log10()+
+  xlab(expression('Discharge'~m^3))+
+  facet_wrap(~ ID, ncol=4, scale='free')+
   theme(legend.position = "bottom")
 
-ggplot(hurricanes, aes(Q, color=hurricane))+
-  geom_point(aes(y=CO2_molL),size=2, shape=1)+
-  ggtitle("CO2 mol/L")+
-  xlab(expression('Discharge'~ft^3))+
-  facet_wrap(~ ID, ncol=3, scale='free')+
-  theme(legend.position = "bottom")
+plot_grid(a,b, ncol=1)
+
+
 
 master<-mols %>% mutate(hurricanes= case_when(
   Date>'2024-07-28' & Date<'2024-08-13'~'Debby',
@@ -66,13 +65,38 @@ ks<-master.k600 %>%
 
 flux<-ks%>%
   mutate(CO2_flux=KCO2_m.d*(CO2-400)*KH*(1/10^6)*44*1000,
-         O2_flux=((DO-300)/1000)*KO2_m.d)
+         O2_flux=((DO-300)/1000)*KO2_m.d,
+         Q=Q*0.0283168)%>%filter(Date>'2023-09-10')
 
-ggplot(flux, aes(x=CO2_flux,y=O2_flux, color=hurricanes))+
+only_hurricanes<-flux %>% filter(hurricanes != is.na(NA))
+ggplot(only_hurricanes, aes(x=CO2_flux,y=O2_flux, color=hurricanes))+
   geom_point(size=2, shape=1)+
   ggtitle("O2-CO2")+
   #xlab(expression('Discharge'~ft^3))+
-  facet_wrap(~ ID, ncol=3, scale='free')+
+  facet_wrap(~ ID, ncol=4, scale='free')+
   theme(legend.position = "bottom")
 
+
+a<-ggplot(flux, aes(x=Date,y=depth, color=hurricanes))+
+  geom_line()+ylab("m")+
+  facet_wrap(~ ID, ncol=4, scale='free')+
+  theme(legend.position = "none")
+b<-ggplot(flux, aes(x=Date,y=Q, color=hurricanes))+
+  geom_line()+ylab(expression(m^3/sec))+
+  #xlab(expression('Discharge'~ft^3))+
+  facet_wrap(~ ID, ncol=4, scale='free')+
+  theme(legend.position = "bottom")
+plot_grid(a,b, ncol=1)
+
+
+a<-ggplot(test, aes(x=Date,y=CO2, color=hurricanes))+
+  geom_line()+ylab("CO2 ppm")+
+  facet_wrap(~ ID, ncol=4, scale='free')+
+  theme(legend.position = "none")
+b<-ggplot(test, aes(x=Date,y=DO, color=hurricanes))+
+  geom_line()+ylab("DO mg/L")+
+  #xlab(expression('Discharge'~ft^3))+
+  facet_wrap(~ ID, ncol=4, scale='free')+
+  theme(legend.position = "bottom")
+plot_grid(a,b, ncol=1)
 

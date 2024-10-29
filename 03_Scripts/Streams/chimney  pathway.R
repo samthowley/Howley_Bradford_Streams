@@ -72,9 +72,6 @@ KCO2<-KH %>%
 CO2_hourly<-read_csv("02_Clean_data/CO2_cleaned.csv")
 CO2<-CO2_hourly%>% mutate(day=as.Date(Date))
 
-ggplot(CO2, aes(Date))+geom_point(aes(y=CO2))+ggtitle(expression(CO[2]~'ppm'))+
-  facet_wrap(~ ID, ncol=3, scale='free')
-
 chimney<-left_join(CO2,KCO2, by=c('day','ID'))
 chimney <- chimney  %>%
   mutate(CO2_flux=KCO2_m.d*(CO2-400)*KH*(1/10^6)*44*1000)%>%

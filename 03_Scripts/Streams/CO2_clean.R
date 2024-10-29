@@ -6,7 +6,7 @@ library(lubridate)
 library(weathermetrics)
 library(tools)
 library(cowplot)
-samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
+samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2024-05-06 00:00", tz="UTC"),
                                             to=as.POSIXct("2024-10-26 00:00", tz="UTC"),by="hour")))
 theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
                              axis.text.y = element_text(size = 17, angle=0),
@@ -142,4 +142,25 @@ ggplot(CO2, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=4)
 write_csv(CO2, "02_Clean_data/CO2_cleaned.csv")
 
 ##############
-peek<-CO2 %>%filter(Date>'2024-09-01')
+peek<-read_csv("02_Clean_data/CO2_cleaned.csv")
+depth<-read_csv("02_Clean_data/depth.csv")
+discharge<-read_csv("02_Clean_data/discharge.csv")
+discharge<-discharge%>% mutate(Q=0.0283168*Q)
+
+CO2<-left_join(peek, depth, by=c('Date', 'ID'))
+CO2<-left_join(CO2, discharge, by=c('Date', 'ID'))
+
+north<-CO2%>%filter(ID %in% c('5','5a','15','7'))
+south<-CO2%>%filter(ID %in% c('3','6','6a','9','13'))
+
+a<-ggplot(north, aes(Date, depth)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab("m")
+b<-ggplot(north, aes(Date, Q)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab(expression(m^3/sec))
+c<-ggplot(north, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab(expression(CO[2]~ppm))
+plot_grid(a,b,c, ncol=1)
+
+
+a<-ggplot(south, aes(Date, depth)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab("m")
+b<-ggplot(south, aes(Date, Q)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab(expression(m^3/sec))
+c<-ggplot(south, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab(expression(CO[2]~ppm))
+plot_grid(a,b,c, ncol=1)
+

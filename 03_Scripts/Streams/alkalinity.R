@@ -34,8 +34,22 @@ DIC<-KH %>%
          CO3_mgL=CO3_molL*60*1000)%>%
   mutate(DIC_mgL=CO2_mgL+CO3_mgL+HCO3_mgL)%>%
   mutate(DIC_mmol= (CO2_molL+CO3_molL+HCO3_molL)*1000)%>%
-  select(Date,ID,CO2_mgL,HCO3_mgL,CO3_mgL)
+  select(Date,ID,pH, CO2, DIC_mgL,CO2_mgL,HCO3_mgL,CO3_mgL)
 
 ggplot(DIC, aes(x=Date)) + geom_point(aes(y=DIC_mgL))+facet_wrap(~ ID, ncol=5, scale='free')
 
 write_csv(DIC, "02_Clean_data/alkalinity.csv")
+
+north<-DIC%>%filter(ID %in% c('5','5a','15','7'))
+south<-DIC%>%filter(ID %in% c('3','6','6a','9','13'))
+
+a<-ggplot(north, aes(x=Date)) + geom_point(aes(y=CO2))+facet_wrap(~ ID, ncol=5, scale='free')
+b<-ggplot(north, aes(x=Date)) + geom_point(aes(y=pH))+facet_wrap(~ ID, ncol=5, scale='free')
+c<-ggplot(north, aes(x=Date)) + geom_point(aes(y=DIC_mgL))+facet_wrap(~ ID, ncol=5, scale='free')
+plot_grid(a,b,c, ncol=1)
+
+
+a<-ggplot(south, aes(x=Date)) + geom_point(aes(y=CO2))+facet_wrap(~ ID, ncol=5, scale='free')
+b<-ggplot(south, aes(x=Date)) + geom_point(aes(y=pH))+facet_wrap(~ ID, ncol=5, scale='free')
+c<-ggplot(south, aes(x=Date)) + geom_point(aes(y=DIC_mgL))+facet_wrap(~ ID, ncol=5, scale='free')
+plot_grid(a,b,c, ncol=1)

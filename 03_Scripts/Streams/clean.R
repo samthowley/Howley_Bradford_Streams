@@ -230,4 +230,16 @@ write_csv(master, "master.csv")
 
 #TEST##########
 peek<-read_csv("master.csv")
-ggplot(peekCO2, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=4)
+
+north<-peek%>%filter(ID %in% c('5','5a','15','7'))
+south<-peek%>%filter(ID %in% c('3','6','6a','9','13'))
+
+a<-ggplot(north, aes(Date, depth)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab("m")
+b<-ggplot(north, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab("DO mg/L")
+c<-ggplot(north, aes(Date, pH)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab('pH')
+plot_grid(a,b,c, ncol=1)
+
+a<-ggplot(south, aes(Date, depth)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab("m")
+b<-ggplot(south, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab("DO mg/L")
+c<-ggplot(south, aes(Date, pH)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab('pH')
+plot_grid(a,b,c, ncol=1)

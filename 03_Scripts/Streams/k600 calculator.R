@@ -76,7 +76,7 @@ for(i in file.names){
   gasdome<-rbind(gasdome, gas)}
 
 gasdome <- gasdome[!duplicated(gasdome[ ,c('ID','day')]), ]
-gasdome<-gasdome %>% mutate(k600_1d=abs(k600_1d), KCO2_1d=abs(KCO2_1d))
+gasdome<-gasdome %>% mutate(k600_1d=abs(k600_1d), KCO2_1d=abs(KCO2_1d), logQ=log10(Q))
 write_csv(gasdome, "01_Raw_data/GD/GasDome_compiled.csv")
 
 split<-gasdome %>% split(gasdome$ID)
