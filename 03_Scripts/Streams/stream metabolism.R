@@ -13,7 +13,7 @@ library(weathermetrics)
 library('StreamMetabolism')
 #constants######
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2021-03-29 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-10-05 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2024-10-26 00:00", tz="UTC"),by="hour")))
 samplingperiod<-samplingperiod %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 
 

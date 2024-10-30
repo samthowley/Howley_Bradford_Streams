@@ -45,7 +45,7 @@ ggplot(flux, aes(x=CO2_flux,y=O2_flux, color=Q))+
   facet_wrap(~ ID, ncol=5, scale='free')+
   theme(legend.position = "bottom")
 
-  ggplot(flux, aes(x=Q,y=o2co2))+ ylab(expression(O[2]:CO[2]))+
+   ggplot(flux, aes(x=Q,y=o2co2))+ ylab(expression(O[2]:CO[2]))+
   geom_point(shape=1)+
     facet_wrap(~ ID, ncol=5, scale='free')+
     theme(legend.position = "bottom")
