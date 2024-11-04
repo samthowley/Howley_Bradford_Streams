@@ -90,9 +90,9 @@ s7<-sites[['7']]
 s9<-sites[['9']]
 
 s5<-s5 %>%filter(CO2>2000 & CO2<15000)#%>%filter(Date<'2023-10-01')
-# a<-ggplot(s5, aes(Date, CO2))+geom_line()+ggtitle('Stream 5')
-# b<-ggplot(s5, aes(Date, depth))+geom_line()+ggtitle('Stream 5')
-#plot_grid(a,b,ncol=1)
+a<-ggplot(s5, aes(Date, CO2))+geom_line()+ggtitle('Stream 5')
+b<-ggplot(s5, aes(Date, depth))+geom_line()+ggtitle('Stream 5')
+plot_grid(a,b,ncol=1)
 
 
 s5a<-s5a %>% filter(CO2>3500)
