@@ -106,12 +106,27 @@ DG_rC <- DG_rC[!duplicated(DG_rC[c( 'date','ID')]),]
 x<-c("date","ID","Q","u_mean" ,"depth_mean","m_0","m_1")
 DG_rC<-DG_rC[,x]
 
-DG_rC<- DG_rC %>% mutate(logQ=log10(Q),logh=log10(depth_mean))
+test<- DG_rC %>% mutate(logQ=log10(Q),logh=log10(depth_mean)) %>%
+  mutate(Q = if_else(ID=='5a' & depth_mean< 0.5, NA, Q))%>%
+  mutate(Q = if_else(ID=='6a' & depth_mean> 300, NA, Q))%>%
+  mutate(Q = if_else(ID=='6a' & depth_mean<0.3 & Q>50, NA, Q))%>%
+  filter(ID!='14')
+
 #
-# ggplot(DG_rC, aes(logh)) +
-#   geom_point(aes(y=logQ))+facet_wrap(~ ID, ncol=5, scales='free')
+ggplot(test, aes(x=depth_mean,y=Q)) +
+  scale_x_log10()+scale_y_log10() +
+  geom_point()+ geom_smooth(method = "lm", se = FALSE, color = "blue")+
+  facet_wrap(~ ID, ncol=3, scales='free')+
+  ylab(expression(Discharge~(m^3/sec)))+xlab("Depth (m)")+
+  ggtitle("Dilution Gaging Rating Curves")
 
-
+ggplot(DG_rC, aes(x = logh)) +
+  geom_point(aes(y = logQ), size = 2, color = "grey") +  # Use a neutral color for base points
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +  # Adjust method as needed
+  facet_wrap(~ ID, ncol = 5, scales = 'free') +
+  labs(x = "Log Height", y = "Log Q") +  # Add axis labels
+  theme_minimal() +  # Optional: Use a minimal theme for better aesthetics
+  theme(legend.position = "bottom")
 split<-DG_rC %>% split(DG_rC$ID)
 write.xlsx(split, file = '04_Output/rC_DG.xlsx')
 
@@ -149,4 +164,8 @@ range(discharge$Date)
 ##########
 write_csv(discharge, "02_Clean_data/discharge.csv")
 q<-read_csv("02_Clean_data/discharge.csv")
-range(q$Date)
+
+q<- q %>% filter(ID!=14)
+ggplot(q, aes(Date))+scale_y_log10() +
+    geom_line(aes(y=Q))+
+    facet_wrap(~ ID, ncol=3, scales = 'free')+ylab(expression(Discharge~ft^3/sec))

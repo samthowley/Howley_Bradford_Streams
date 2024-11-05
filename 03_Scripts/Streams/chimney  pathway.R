@@ -78,10 +78,15 @@ chimney <- chimney  %>%
   group_by(day,ID)%>%mutate(mean_CO2flux=mean(CO2_flux, na.rm = T))
 chimney <- chimney[complete.cases(chimney[ , c('CO2_flux')]), ]
 
+chimney$ID <- factor(chimney$ID , levels=c('5','5a','15','7','3','6','6a','9','13'))
+
 ggplot(chimney, aes(Q))+
   geom_point(aes(y=NEP, color = "NEP")) +ylab(expression('g'/m^2/'day'))+
   geom_point(aes(y=mean_CO2flux, color="total CO2"))+scale_x_log10()+
-  facet_wrap(~ ID, ncol=3, scale='free')+theme(legend.position = "bottom")
+  facet_wrap(~ ID, ncol=3, scale='free')+theme(legend.position = "bottom")+
+  xlab(expression(Discharge~m^3/sec))+
+  ggtitle('Reactor-Chimney Carbon')
+
 
 ggplot(chimney, aes(Q))+
   geom_point(aes(y=NEP),size=2)+ggtitle("NEP")+ylab(expression(O[2]~'g'/m^2/'day'))+xlab(expression('Discharge'~m^3))+
