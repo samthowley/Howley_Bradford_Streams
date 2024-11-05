@@ -229,17 +229,27 @@ range(master$Date)
 write_csv(master, "master.csv")
 
 #TEST##########
-peek<-read_csv("master.csv")
+depth<-read_csv("02_Clean_data/depth.csv")
+depth<-depth %>% filter(ID!=14)
+ggplot(depth, aes(Date, depth)) + geom_line() + facet_wrap(~ ID, ncol=3)+
+  ylab("Depth (m)")
 
-north<-peek%>%filter(ID %in% c('5','5a','15','7'))
-south<-peek%>%filter(ID %in% c('3','6','6a','9','13'))
 
-a<-ggplot(north, aes(Date, depth)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab("m")
-b<-ggplot(north, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab("DO mg/L")
-c<-ggplot(north, aes(Date, pH)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab('pH')
-plot_grid(a,b,c, ncol=1)
 
-a<-ggplot(south, aes(Date, depth)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab("m")
-b<-ggplot(south, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab("DO mg/L")
-c<-ggplot(south, aes(Date, pH)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab('pH')
-plot_grid(a,b,c, ncol=1)
+
+O<-read_csv("02_Clean_data/DO_cleaned.csv")
+
+O$ID <- factor(O$ID , levels=c('5','5a','15','7','3','6','6a','9','13'))
+O<-O %>% filter(ID != '14')
+ggplot(O, aes(x=ID, y=DO)) +
+  geom_boxplot(fill='#A4A4A4', color="black")+
+  ylab('Dissolved Oxygen (mg/L)')
+
+CO2<-read_csv("02_Clean_data/CO2_cleaned.csv")
+CO2$ID <- factor(CO2$ID , levels=c('5','5a','15','7','3','6','6a','9','13'))
+CO2<-CO2 %>% filter(ID != '14')
+ggplot(CO2, aes(x=ID, y=CO2)) +
+  geom_boxplot(fill='#A4A4A4', color="black")+
+  ylab('CO2 (mg/L)')
+
+

@@ -34,21 +34,32 @@ ks<-mols %>%
   mutate(KO2_m.d=KCO2_m.d/((SchmidtCO2hi/SchmidtO2hi)^(-2/3)))#%>% select(day, ID, reactor, Q, Qbase, depth, KCO2_d, KH)
 
 flux<-ks%>%
-  mutate(CO2_flux=KCO2_m.d*(CO2-400)*KH*(1/10^6)*44*1000,
-         O2_flux=((DO-300)/1000)*KO2_m.d)%>% filter(ID != '14')%>%
+  mutate(CO2_flux=KCO2_m.d*(CO2-400)*KH*(1/10^6)*1000,
+         O2_flux=((DO-300)/1000)*KO2_m.d,
+         CO2_mol=(CO2-400)*(1/10^6)*KH,
+         DO_mol=DO/32000)%>% filter(ID != '14')%>%
   mutate(o2co2=O2_flux/CO2_flux)
 
 
 ggplot(flux, aes(x=CO2_flux,y=O2_flux, color=Q))+
   geom_point(shape=1)+ylab(expression(mol/m^2/day))+
   scale_color_gradient(high='red', low='blue')+
-  facet_wrap(~ ID, ncol=5, scale='free')+
+  facet_wrap(~ ID, ncol=3, scale='free')+
   theme(legend.position = "bottom")
 
-   ggplot(flux, aes(x=Q,y=o2co2))+ ylab(expression(O[2]:CO[2]))+
-  geom_point(shape=1)+
-    facet_wrap(~ ID, ncol=5, scale='free')+
-    theme(legend.position = "bottom")
+
+
+flux$ID <- factor(flux$ID , levels=c('5','5a','15','7','3','6','6a','9','13'))
+select<-flux %>% filter(ID %in% c(5,6,3)) %>% filter(DO>0)
+a<-ggplot(select, aes(x=Date, y=DO)) +
+  geom_point(fill='#A4A4A4', color="black")+
+  ylab('Dissolved Oxygen (mg/L)')+ facet_wrap(~ ID, ncol=3, scale='free')
+
+b<-ggplot(select, aes(x=Date, y=CO2)) +
+  geom_point(fill='#A4A4A4', color="black")+
+  ylab(expression(CO[2]~ppm))+ facet_wrap(~ ID, ncol=3, scale='free')
+plot_grid(a,b, ncol=1)
+
 
   hurricanes<-flux %>% mutate(hurricanes= case_when(
     Date>'2024-07-28' & Date<'2024-08-13'~'Debby',

@@ -155,7 +155,14 @@ master<-master %>% filter(Date> "2023-06-16") %>%filter(ER>-30)
 
 write_csv(master, "04_Output/master_metabolism.csv")
 
-a<-ggplot(master, aes(Date, ER)) + geom_line() + facet_wrap(~ ID, ncol=5)
+discharge <- read_csv("02_Clean_data/discharge.csv")
+discharge<-discharge %>% mutate(Date=as.Date(Date))
+metabolism<-read_csv("04_Output/master_metabolism.csv")
+metabolism<-left_join(metabolism, discharge, by=c('Date', 'ID'))
+select<-metabolism %>% filter(ID %in% c('5','6','9'))
+ggplot(select, aes(Q, ER)) + scale_x_log10()+
+  geom_point(aes(y=ER, color='ER'))+
+  geom_point(aes(y=GPP, color='GPP')) + facet_wrap(~ ID, ncol=3, scale='free')
 
 b<-ggplot(master,aes(x=ID,y=ER))+
   geom_boxplot(outlier.color="black")+
