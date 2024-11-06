@@ -235,7 +235,31 @@ ggplot(depth, aes(Date, depth)) + geom_line() + facet_wrap(~ ID, ncol=3)+
   ylab("Depth (m)")
 
 
+pH<-read_csv("02_Clean_data/pH_cleaned.csv")
+spc<-read_csv("02_Clean_data/SpC_cleaned.csv")
+do<-read_csv("02_Clean_data/DO_cleaned.csv")
+co2<-read_csv("02_Clean_data/CO2_cleaned.csv")
+master<-left_join(do, spc, by=c('ID', 'Date'))
+master<-left_join(master, pH, by=c('ID', 'Date'))
+master<-left_join(master, co2, by=c('ID', 'Date'))
+master<-master %>%filter(ID!=14)
+master$ID <- factor(master$ID , levels=c('5','5a','15','7','3','6','6a','9','13'))
 
+a<-ggplot(master, aes(x=ID, y=pH)) +
+  geom_boxplot(fill='#A4A4A4', color="black")+ylab('pH')+
+  theme(axis.title.x =element_blank())
+
+b<-ggplot(master, aes(x=ID, y=SpC)) +
+  geom_boxplot(fill='#A4A4A4', color="black")+ylab('SpC')+
+  theme(axis.title.x =element_blank())
+
+c<-ggplot(master, aes(x=ID, y=DO)) +
+  geom_boxplot(fill='#A4A4A4', color="black")+ylab('DO mg/L')+
+  theme(axis.title.x =element_blank())
+
+d<-ggplot(master, aes(x=ID, y=CO2)) +
+  geom_boxplot(fill='#A4A4A4', color="black")+ylab(expression(CO[2]~ppm))
+plot_grid(a,b,c,d, ncol=1, align='v')
 
 O<-read_csv("02_Clean_data/DO_cleaned.csv")
 

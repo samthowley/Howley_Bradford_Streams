@@ -40,16 +40,30 @@ flux<-ks%>%
          DO_mol=DO/32000)%>% filter(ID != '14')%>%
   mutate(o2co2=O2_flux/CO2_flux)
 
+flux$ID <- factor(flux$ID , levels=c('5','5a','15','7','3','6','6a','9','13'))
 
 ggplot(flux, aes(x=CO2_flux,y=O2_flux, color=Q))+
-  geom_point(shape=1)+ylab(expression(mol/m^2/day))+
+  geom_point(shape=1)+ylab(expression(O[2]~mol/m^2/day))+
+  xlab(expression(CO[2]~mol/m^2/day))+
   scale_color_gradient(high='red', low='blue')+
   facet_wrap(~ ID, ncol=3, scale='free')+
   theme(legend.position = "bottom")
 
 
+ggplot(flux, aes(x = CO2_flux, y = O2_flux, color = Q)) +
+  geom_point(shape = 1) +
+  ylab(expression(O[2]~mol/m^2/day)) +
+  xlab(expression(CO[2]~mol/m^2/day)) +
+  scale_color_gradient("Discharge (Q)", high = 'red', low = 'blue') +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +  # Adds regression lines
+  stat_poly_eq(aes(label = paste(..eq.label.., sep = "~~~~")),
+               formula = y ~ x, parse = TRUE,
+               label.x = "right", label.y = "top",
+               size=5) +  # Adds slope equation text
+  facet_wrap(~ ID, ncol = 3, scales = 'free') +
+  theme(legend.position = "bottom")
 
-flux$ID <- factor(flux$ID , levels=c('5','5a','15','7','3','6','6a','9','13'))
+
 select<-flux %>% filter(ID %in% c(5,6,3)) %>% filter(DO>0)
 a<-ggplot(select, aes(x=Date, y=DO)) +
   geom_point(fill='#A4A4A4', color="black")+

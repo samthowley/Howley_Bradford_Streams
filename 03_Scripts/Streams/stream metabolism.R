@@ -162,7 +162,8 @@ metabolism<-left_join(metabolism, discharge, by=c('Date', 'ID'))
 select<-metabolism %>% filter(ID %in% c('5','6','9'))
 ggplot(select, aes(Q, ER)) + scale_x_log10()+
   geom_point(aes(y=ER, color='ER'))+
-  geom_point(aes(y=GPP, color='GPP')) + facet_wrap(~ ID, ncol=3, scale='free')
+  geom_point(aes(y=GPP, color='GPP')) + facet_wrap(~ ID, ncol=3, scale='free')+
+  ylab(expression(O[2]~'g'/m^2/'day'))+xlab(expression(Discharge~m^3/sec))
 
 b<-ggplot(master,aes(x=ID,y=ER))+
   geom_boxplot(outlier.color="black")+

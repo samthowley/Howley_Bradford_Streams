@@ -74,8 +74,8 @@ for(i in file.names){
   LB<-LB %>% mutate(Date=ymd_hms(Date),CO2=as.numeric(CO2))
   CO2<-rbind(CO2, LB)}
 
-depth<-read_csv('02_Clean_data/depth.csv')
-CO2<-left_join(CO2,depth, by=c('Date','ID'))
+# depth<-read_csv('02_Clean_data/depth.csv')
+# CO2<-left_join(CO2,depth, by=c('Date','ID'))
 #clean######
 
 sites<-split(CO2,CO2$ID)
@@ -141,7 +141,7 @@ s13<-s13 %>%  filter(CO2<15000 & CO2>1400)
 
 CO2<-rbind(s5,s5a,s15,s6a,s6,s7,s3,s13,s9)
 range(CO2$Date, na.rm=T)
-ggplot(CO2, aes(Date, CO2)) + geom_point() + facet_wrap(~ ID, ncol=4)
+# ggplot(CO2, aes(Date, CO2)) + geom_point() + facet_wrap(~ ID, ncol=4)
 
 write_csv(CO2, "02_Clean_data/CO2_cleaned.csv")
 
