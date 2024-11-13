@@ -5,6 +5,7 @@ library(lubridate)
 library(weathermetrics)
 library(tools)
 library(cowplot)
+library(ggpmisc)
 
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
 file.names<-file.names[c(5,6,7,4)]
@@ -19,7 +20,11 @@ metabolism<-metabolism %>% select(K600_daily_mean, Date, ID) %>% rename(k600_1.d
 
 master.k600<-left_join(master, metabolism, c('day', 'ID'))
 
-temp<-master.k600 %>% mutate(Temp=fahrenheit.to.celsius(Temp_DO)) %>%mutate(Temp_K=Temp+273.15)
+temp<-master.k600 %>%
+  mutate(Temp_DO = if_else(Temp_DO > 60, fahrenheit.to.celsius(Temp_DO), Temp_DO)) %>%mutate(Temp_K=Temp_DO+273.15)
+
+ggplot(temp, aes(x=Date, y=Temp_DO)) +
+  geom_point()+ facet_wrap(~ ID, ncol=3, scale='free')
 
 KH<-temp %>% mutate(exp=2400*((1/Temp_K)-(1/298.15))) %>%mutate(KH=0.034*2.178^(exp))
 
@@ -28,19 +33,20 @@ mols<-KH %>%
 
 ks<-mols %>%
   mutate(K600_m.d=k600_1.d*depth,
-         SchmidtCO2hi=1742-91.24*Temp+2.208*Temp^2-0.0219*Temp^3,
-         SchmidtO2hi=1568-86.04*Temp+2.142*Temp^2-0.0216*Temp^3)%>%
+         SchmidtCO2hi=1742-91.24*Temp_DO+2.208*Temp_DO^2-0.0219*Temp_DO^3,
+         SchmidtO2hi=1568-86.04*Temp_DO+2.142*Temp_DO^2-0.0216*Temp_DO^3)%>%
   mutate(KCO2_m.d=K600_m.d/((600/SchmidtCO2hi)^(-2/3))) %>%
   mutate(KO2_m.d=KCO2_m.d/((SchmidtCO2hi/SchmidtO2hi)^(-2/3)))#%>% select(day, ID, reactor, Q, Qbase, depth, KCO2_d, KH)
 
 flux<-ks%>%
-  mutate(CO2_flux=KCO2_m.d*(CO2-400)*KH*(1/10^6)*1000,
-         O2_flux=((DO-300)/1000)*KO2_m.d,
-         CO2_mol=(CO2-400)*(1/10^6)*KH,
-         DO_mol=DO/32000)%>% filter(ID != '14')%>%
-  mutate(o2co2=O2_flux/CO2_flux)
+  mutate(CO2_flux=KCO2_m.d*(CO2-400)*KH*(1/10^6)*44.01,
+         O2_flux=((DO-300)*(1/10^3))*KO2_m.d) %>% filter(ID != '14')%>%
+  mutate(o2co2=O2_flux/CO2_flux)%>%
+  filter(complete.cases(CO2, DO, k600_1.d))%>% distinct()
 
 flux$ID <- factor(flux$ID , levels=c('5','5a','15','7','3','6','6a','9','13'))
+
+write_csv(flux, "fluxes.csv")
 
 ggplot(flux, aes(x=CO2_flux,y=O2_flux, color=Q))+
   geom_point(shape=1)+ylab(expression(O[2]~mol/m^2/day))+
