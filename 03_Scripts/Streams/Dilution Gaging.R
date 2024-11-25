@@ -6,6 +6,7 @@ library(openxlsx)
 library(lme4)
 library(mmand)
 library(grwat)
+library(ggpmisc)
 
 ###seperating DG######
 clean_DG <- function(DG) {
@@ -100,33 +101,25 @@ depth<-depth %>%mutate(hr=hour(Date), day=day(Date),month=month(Date), yr=year(D
 depth<- depth %>% group_by(ID, day, month, yr) %>% mutate(depth_mean=mean(depth, na.rm=T))
 range(depth$Date, na.rm = T)
 
-
 DG_rC<-left_join(DG, depth, by=c('ID', 'hr','day', 'month', 'yr'))
 DG_rC <- DG_rC[!duplicated(DG_rC[c( 'date','ID')]),]
 x<-c("date","ID","Q","u_mean" ,"depth_mean","m_0","m_1")
 DG_rC<-DG_rC[,x]
 
-test<- DG_rC %>% mutate(logQ=log10(Q),logh=log10(depth_mean)) %>%
+DG_rC<- DG_rC %>% mutate(logQ=log10(Q),logh=log10(depth_mean)) %>%
   mutate(Q = if_else(ID=='5a' & depth_mean< 0.5, NA, Q))%>%
   mutate(Q = if_else(ID=='6a' & depth_mean> 300, NA, Q))%>%
   mutate(Q = if_else(ID=='6a' & depth_mean<0.3 & Q>50, NA, Q))%>%
   filter(ID!='14')
 
-#
-ggplot(test, aes(x=depth_mean,y=Q)) +
-  scale_x_log10()+scale_y_log10() +
-  geom_point()+ geom_smooth(method = "lm", se = FALSE, color = "blue")+
-  facet_wrap(~ ID, ncol=3, scales='free')+
-  ylab(expression(Discharge~(m^3/sec)))+xlab("Depth (m)")+
-  ggtitle("Dilution Gaging Rating Curves")
-
-ggplot(DG_rC, aes(x = logh)) +
-  geom_point(aes(y = logQ), size = 2, color = "grey") +  # Use a neutral color for base points
+ggplot(DG_rC, aes(x = logh, y = logQ)) +
+  geom_point(size = 2, color = "grey") +  # Use a neutral color for base points
   geom_smooth(method = "lm", se = FALSE, color = "blue") +  # Adjust method as needed
   facet_wrap(~ ID, ncol = 5, scales = 'free') +
   labs(x = "Log Height", y = "Log Q") +  # Add axis labels
   theme_minimal() +  # Optional: Use a minimal theme for better aesthetics
   theme(legend.position = "bottom")
+
 split<-DG_rC %>% split(DG_rC$ID)
 write.xlsx(split, file = '04_Output/rC_DG.xlsx')
 

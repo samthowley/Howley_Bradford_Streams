@@ -7,7 +7,7 @@ library(weathermetrics)
 library(tools)
 library(cowplot)
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-10-26 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2024-11-26 00:00", tz="UTC"),by="hour")))
 
 clean_DO <- function(fil) {
   DO <- read_csv(fil,skip= 1)
@@ -125,7 +125,7 @@ SpC_all<-rbind(s5,s5a,s15,s3,s7,s6,s6a,s9,s13)
 
 SpC_all<-left_join(samplingperiod,SpC_all)
 SpC_all <- SpC_all[!duplicated(SpC_all[c('Date','ID')]),]
-ggplot(SpC_all, aes(Date, SpC)) + geom_line() + facet_wrap(~ ID, ncol=4)
+ggplot(SpC_all, aes(Date, SpC)) + geom_line() + facet_wrap(~ ID, ncol=4, scales='free')
 range(SpC_all$Date,na.rm=T)
 
 write_csv(SpC_all, "02_Clean_data/SpC_cleaned.csv")
