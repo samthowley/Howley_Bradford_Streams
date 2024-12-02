@@ -6,6 +6,45 @@ library(writexl)
 library(readxl)
 library(lubridate)
 library(cowplot)
+library(lme4)
+
+file.names <- list.files(path="01_Raw_data/Shimadzu/dat files", pattern=".txt", full.names=TRUE)
+for(fil in file.names){
+
+  runs<-read_csv(fil, skip=10)
+  results<-rbind(results, runs)}
+
+
+calibrations<-data.frame()
+file.names <- list.files(path="01_Raw_data/Shimadzu/dat files/detailed", pattern=".txt", full.names=TRUE)
+for(fil in file.names){
+
+  runs<-read_delim(fil,delim = "\t", escape_double = FALSE,
+                   trim_ws = TRUE, skip = 10)
+
+  cals<-runs %>% filter(`Sample Name` =='Untitled') %>%
+    mutate(Date= mdy_hms(`Date / Time`)) %>%mutate(day=as.Date(Date))%>%
+    select(`Anal.`, `Mean Area`, `Conc.`, day)%>%
+    rename(Anal=`Anal.`, Area=`Mean Area`, Conc=`Conc.`)%>%
+
+    group_by(day, Anal) %>%
+    summarise(model = list(lm(Area ~ Conc, data = cur_data())),.groups = "drop") %>%
+    mutate(coeffs = map(model, ~ broom::tidy(.x) %>%
+                          select(term, estimate) %>%
+                          pivot_wider(names_from = term, values_from = estimate))) %>%
+    unnest(cols = coeffs) %>% rename(intercept = `(Intercept)`, slope = Conc)
+  calibrations<-rbind(calibrations, cals)}
+
+
+
+
+
+
+
+
+
+
+
 
 VialID <- function(sample) {
   sample <- read_csv(fil)
