@@ -8,44 +8,6 @@ library(lubridate)
 library(cowplot)
 library(lme4)
 
-file.names <- list.files(path="01_Raw_data/Shimadzu/dat files", pattern=".txt", full.names=TRUE)
-for(fil in file.names){
-
-  runs<-read_csv(fil, skip=10)
-  results<-rbind(results, runs)}
-
-
-calibrations<-data.frame()
-file.names <- list.files(path="01_Raw_data/Shimadzu/dat files/detailed", pattern=".txt", full.names=TRUE)
-for(fil in file.names){
-
-  runs<-read_delim(fil,delim = "\t", escape_double = FALSE,
-                   trim_ws = TRUE, skip = 10)
-
-  cals<-runs %>% filter(`Sample Name` =='Untitled') %>%
-    mutate(Date= mdy_hms(`Date / Time`)) %>%mutate(day=as.Date(Date))%>%
-    select(`Anal.`, `Mean Area`, `Conc.`, day)%>%
-    rename(Anal=`Anal.`, Area=`Mean Area`, Conc=`Conc.`)%>%
-
-    group_by(day, Anal) %>%
-    summarise(model = list(lm(Area ~ Conc, data = cur_data())),.groups = "drop") %>%
-    mutate(coeffs = map(model, ~ broom::tidy(.x) %>%
-                          select(term, estimate) %>%
-                          pivot_wider(names_from = term, values_from = estimate))) %>%
-    unnest(cols = coeffs) %>% rename(intercept = `(Intercept)`, slope = Conc)
-  calibrations<-rbind(calibrations, cals)}
-
-
-
-
-
-
-
-
-
-
-
-
 VialID <- function(sample) {
   sample <- read_csv(fil)
   sample$Date<-mdy(sample$'Sample Date')
@@ -61,44 +23,66 @@ for(fil in file.names){
   vials<-rbind(vials, vial)}
 vials<- vials %>% mutate(`Sample Date`=mdy(`Sample Date`))
 
+
+
+calibrations<-data.frame()
 results<-data.frame()
-file.names <- list.files(path="01_Raw_data/Shimadzu/results",pattern=".csv", full.names=TRUE)
-for(fil in file.names){
-  runs<-read_csv(fil)
-  runs$Ran<-mdy(runs$Ran)
-  runs<-runs %>% rename('Conc'='Result(NPOC)') %>%mutate(Species='DOC')
-  runs<-runs[,-2]
-  results<-rbind(results, runs)}
 
-file.names <- list.files(path="01_Raw_data/Shimadzu/dat files", pattern=".txt", full.names=TRUE)
+file.names <- list.files(path="01_Raw_data/Shimadzu/dat files/detailed", pattern=".txt", full.names=TRUE)
 for(fil in file.names){
 
-  runs<-read_csv(fil, skip=10)
-  runs<- runs %>% filter(`Anal.`=='NPOC') %>% rename('Ran'="Date / Time" )
-  runs<-runs[c(9,12,13)]
-  runs$Ran<-mdy_hms(runs$Ran)
-  runs<-runs %>% rename('Conc'='Result(NPOC)') %>%mutate(Species='DOC')
-  results<-rbind(results, runs)}
+  runs<-read_delim(fil,delim = "\t", escape_double = FALSE,
+                   trim_ws = TRUE, skip = 10)
 
-file.names <- list.files(path="01_Raw_data/Shimadzu/dat files/TOC runs", pattern=".txt", full.names=TRUE)
-for(fil in file.names){
-  runs<-read_csv(fil, skip=10)
-  runs<- runs %>% filter(`Sample Name`!='Untitled') %>% rename('Ran'="Date / Time" )
+  cals<-runs %>% filter(`Sample Name` =='Untitled') %>%
+    mutate(Date= mdy_hms(`Date / Time`)) %>%mutate(day=as.Date(Date))%>%
+    select(`Anal.`, `Mean Area`, `Conc.`, day)%>%
+    rename(Analyte=`Anal.`, Area=`Mean Area`, Conc=`Conc.`)%>%
 
-  DOC<-runs[,c('Sample Name',"Result(TOC)","Vial","Ran")]
-  DOC<- DOC %>% rename('Conc'="Result(TOC)")%>%mutate(Species='DOC')
+    group_by(day, Analyte) %>%
+    summarise(model = list(lm(Area ~ Conc, data = cur_data())),.groups = "drop") %>%
+    mutate(coeffs = map(model, ~ broom::tidy(.x) %>%
+                          select(term, estimate) %>%
+                          pivot_wider(names_from = term, values_from = estimate))) %>%
+    unnest(cols = coeffs) %>% rename(intercept = `(Intercept)`, slope = Conc)%>%
+    select(day, Analyte, intercept, slope)%>% rename('Date'='day')
 
-  DIC<-runs[,c('Sample Name',"Result(TC)","Vial","Ran")]
-  DIC<- DIC %>% rename('Conc'="Result(TC)")%>%mutate(Species='DIC')
+  calibrations<-rbind(calibrations, cals)
 
-  NPOC<-runs[,c('Sample Name',"Result(NPOC)","Vial","Ran")]
-  NPOC<- NPOC %>% rename('Conc'="Result(NPOC)")%>%mutate(Species='NPOC')
-  NPOC <- NPOC[complete.cases(NPOC$Conc), ]
 
-  parsed<-rbind(DIC, DOC, NPOC)
-  parsed$Ran<-mdy_hms(parsed$Ran)
-  parsed<-parsed[,-1]
-  results<-rbind(results, parsed)}
+  result<-runs%>% filter(`Sample Name` != "Untitled", `Inj. No.` == 1)%>%
+    select(`Sample Name`, `Analysis(Inj.)`, `Mean Area`, `Mean Conc.`)%>%
+    rename("SampleID"="Sample Name", "Analyte"="Analysis(Inj.)", "Area"="Mean Area", "Conc"="Mean Conc.")%>%
+    separate(SampleID, into = c("Site", "Date","Rep"), sep = "_")%>%
+    mutate(Date=mdy(Date))
+
+  TC<-result %>%filter(Analyte=='TC')%>%select(Site, Date, Rep,Conc,Area)%>%
+    rename("TC.area"="Area", "TC.conc"="Conc")
+  IC<-result %>%filter(Analyte=='IC')%>%rename("IC"="Analyte")%>%select(Site, Date, Rep,Conc,Area)%>%
+    rename("IC.area"="Area", "IC.conc"="Conc")
+  NPOC<-result %>%filter(Analyte=='NPOC')%>%rename("NPOC"="Analyte")%>%select(Site, Date, Rep,Conc,Area)%>%
+    rename("NPOC.area"="Area", "NPOC.conc"="Conc")
+
+  TOC<-left_join(TC, IC, by=c("Site", "Date","Rep"))
+  TOC<-TOC %>% mutate(TOC=TC.conc-IC.conc)
+  combined<-left_join(TOC, NPOC, by=c("Site", "Date","Rep"))
+
+  results<-rbind(results, combined)
+  }
+
+IC_cals<-calibrations%>% filter(Analyte=='IC')
+TC_cals<-calibrations%>% filter(Analyte=='TC')
+NPOC_cals<-calibrations%>% filter(Analyte=='NPOC')
+
+
+dissolved<-results %>% filter(Rep == NA)
+particulate<-results %>% filter(Rep != is.na(Rep))
+
+
+
+
+
+
 
 file.names <- list.files(path="01_Raw_data/Shimadzu/csv files", pattern=".csv", full.names=TRUE)
 for(fil in file.names){
