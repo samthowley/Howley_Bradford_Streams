@@ -8,21 +8,15 @@ library(lubridate)
 library(cowplot)
 library(lme4)
 
-VialID <- function(sample) {
-  sample <- read_csv(fil)
-  sample$Date<-mdy(sample$'Sample Date')
-  sample$Ran<-mdy(sample$Ran)
-  sample$Vial<-as.character(sample$Vial)
-  sample<-sample[,c(1:6)]
-  return(sample)} #function for cleaning data
 
 vials<-data.frame()
 file.names <- list.files(path="01_Raw_data/Shimadzu/ID", pattern=".csv", full.names=TRUE)
 for(fil in file.names){
-  vial<-VialID(fil)
-  vials<-rbind(vials, vial)}
-vials<- vials %>% mutate(`Sample Date`=mdy(`Sample Date`))
+  sample <- read_csv(fil)
+  manipulate<-sample%>% mutate(Date=mdy(`Sample Date`), Ran=mdy(Ran), Vial=as.character(Vial))
+  manipulate<-manipulate[,c(1:6)]
 
+  vials<-rbind(vials, manipulate)}
 
 
 calibrations<-data.frame()
@@ -34,23 +28,26 @@ for(fil in file.names){
   runs<-read_delim(fil,delim = "\t", escape_double = FALSE,
                    trim_ws = TRUE, skip = 10)
 
-  cals<-runs %>% filter(`Sample Name` =='Untitled') %>%
+  cals<-runs %>% filter(`Sample Name` =='Untitled'| `Sample Name`=='NPOC_Saline_100mgL') %>%
     mutate(Date= mdy_hms(`Date / Time`)) %>%mutate(day=as.Date(Date))%>%
     select(`Anal.`, `Mean Area`, `Conc.`, day)%>%
     rename(Analyte=`Anal.`, Area=`Mean Area`, Conc=`Conc.`)%>%
 
     group_by(day, Analyte) %>%
-    summarise(model = list(lm(Area ~ Conc, data = cur_data())),.groups = "drop") %>%
+    summarise(model = list(lm(Conc ~Area , data = cur_data())),.groups = "drop") %>%
     mutate(coeffs = map(model, ~ broom::tidy(.x) %>%
                           select(term, estimate) %>%
-                          pivot_wider(names_from = term, values_from = estimate))) %>%
-    unnest(cols = coeffs) %>% rename(intercept = `(Intercept)`, slope = Conc)%>%
-    select(day, Analyte, intercept, slope)%>% rename('Date'='day')
+                          pivot_wider(names_from = term, values_from = estimate)), r_squared = map_dbl(model, ~ summary(.x)$r.squared)  # Extract R-squared
+  ) %>%
+  unnest(cols = coeffs) %>%
+  rename(intercept = `(Intercept)`, slope = Area) %>%
+  select(day, Analyte, intercept, slope, r_squared) %>%
+  rename(Date = day)
 
   calibrations<-rbind(calibrations, cals)
 
 
-  result<-runs%>% filter(`Sample Name` != "Untitled", `Inj. No.` == 1)%>%
+  result<-runs%>% filter(`Sample Name` != "Untitled"| `Sample Name`=='NPOC_Saline_100mgL', `Inj. No.` == 1)%>%
     select(`Sample Name`, `Analysis(Inj.)`, `Mean Area`, `Mean Conc.`)%>%
     rename("SampleID"="Sample Name", "Analyte"="Analysis(Inj.)", "Area"="Mean Area", "Conc"="Mean Conc.")%>%
     separate(SampleID, into = c("Site", "Date","Rep"), sep = "_")%>%
@@ -58,52 +55,60 @@ for(fil in file.names){
 
   TC<-result %>%filter(Analyte=='TC')%>%select(Site, Date, Rep,Conc,Area)%>%
     rename("TC.area"="Area", "TC.conc"="Conc")
+
   IC<-result %>%filter(Analyte=='IC')%>%rename("IC"="Analyte")%>%select(Site, Date, Rep,Conc,Area)%>%
     rename("IC.area"="Area", "IC.conc"="Conc")
+
   NPOC<-result %>%filter(Analyte=='NPOC')%>%rename("NPOC"="Analyte")%>%select(Site, Date, Rep,Conc,Area)%>%
     rename("NPOC.area"="Area", "NPOC.conc"="Conc")
 
+
   TOC<-left_join(TC, IC, by=c("Site", "Date","Rep"))
-  TOC<-TOC %>% mutate(TOC=TC.conc-IC.conc)
   combined<-left_join(TOC, NPOC, by=c("Site", "Date","Rep"))
 
   results<-rbind(results, combined)
-  }
+}
 
+#Save calibrations from runs######
+calibrations<-calibrations%>% filter(r_squared>0.99)
 IC_cals<-calibrations%>% filter(Analyte=='IC')
 TC_cals<-calibrations%>% filter(Analyte=='TC')
 NPOC_cals<-calibrations%>% filter(Analyte=='NPOC')
 
+library(openxlsx)
+wb <- createWorkbook()
+addWorksheet(wb, "Sheet1")
+addWorksheet(wb, "Sheet2")
+addWorksheet(wb, "Sheet3")
 
-dissolved<-results %>% filter(Rep == NA)
-particulate<-results %>% filter(Rep != is.na(Rep))
+writeData(wb, sheet = "Sheet1", x = IC_cals)
+writeData(wb, sheet = "Sheet2", x = TC_cals)
+writeData(wb, sheet = "Sheet3", x = NPOC_cals)
+
+saveWorkbook(wb, "01_Raw_data/Shimadzu/calcurves.xlsx", overwrite = TRUE)
+######
+
+#interpolate results######
+results<- results%>%filter(!is.na(Date))%>%
+  mutate(IC = if_else(Date < '2024-11-20', IC.area*0.37+0.479, IC.area),
+        TC = if_else(Date < '2024-11-20', TC.area*0.2989-0.234, TC.area),
+         NPOC = if_else(Date < '2024-11-20', NPOC.area*0.297-0.133, NPOC.area))%>%
+  mutate(OC=TC-IC)%>% select(Date, Site, Rep, IC, TC, OC, NPOC)
+
+dissolved <- results %>%filter(if_all(c(Rep), is.na))%>%select(-Rep)
+
+particulate<-results %>% filter(Rep != is.na(Rep)) %>% group_by(Site, Date)%>%
+  mutate(TOC_avg=mean(OC, na.rm=T), TIC_avg=mean(IC, na.rm=T))%>%
+  distinct(Site, Date, TOC_avg, .keep_all = TRUE) %>%
+  select(Site, Date, TOC_avg, TIC_avg)
+
+all<-left_join(dissolved, particulate, by=c('Date', 'Site'))
+final<-all%>% mutate(POC=TOC_avg-OC, PIC=TIC_avg-IC)%>% rename(DOC=OC, DIC= IC)%>%
+  select(Date, Site, DOC, DIC, POC, PIC)
+##########
 
 
-
-
-
-
-
-file.names <- list.files(path="01_Raw_data/Shimadzu/csv files", pattern=".csv", full.names=TRUE)
-for(fil in file.names){
-  runs<-read_csv(fil)
-  DIC<-runs %>%select(`IC Interpolation`,Vial,Ran)%>%mutate(Ran=mdy(Ran),Species='DIC', Vial=as.character(Vial))%>%
-    rename('Conc'='IC Interpolation')
-  DOC<-runs %>%select(TOC,Vial,Ran)%>%mutate(Ran=mdy(Ran),Species='DIC', Vial=as.character(Vial))%>%
-    rename('Conc'='TOC')
-  complete<-rbind(DIC,DOC)
-  results<-rbind(results, complete)
-}
-
-together<-left_join(vials,results,by=c('Vial','Ran'))
-
-carbon<-together %>%
-  rename('ID'='Site', 'Date'='Sample Date','Conc_Raw'='Conc') %>%
-  mutate(Conc.= Conc_Raw*(1/DF))%>%
-  filter(Conc. != Inf) %>% select(Date, ID, Species, Conc., Conc_Raw)
-
-carbon<-rename(carbon, 'Site'='ID')
-carbon<-carbon %>% mutate(ID=case_when(Site=='3'~'3',Site=='5'~'5',Site=='5a'~'5a',
+carbon<-final %>% mutate(ID=case_when(Site=='3'~'3',Site=='5'~'5',Site=='5a'~'5a',
                                     Site=='6'~'6',Site=='6a'~'6a',Site=='7'~'7',
                                     Site=='9'~'9',Site=='13'~'13',Site=='15'~'15',
                                     Site=='5GW1'~'5',Site=='5GW2'~'5',Site=='5GW3'~'5',Site=='5GW4'~'5',
@@ -156,7 +161,7 @@ bgc<-bgc %>%mutate(Date=as.Date(Date))%>%group_by(Date,ID)%>%
 carbon<-left_join(carbon, bgc,by=c('Date','ID'))
 
 carbon<- carbon %>% filter(ID != '9a',ID != '9b', ID!='14') %>% mutate(mmol= Conc./44.01)
-carbon <-carbon[!duplicated(carbon[c('Site','Date','Species')]),]
+#WHERE I STOPPED####carbon <-carbon[!duplicated(carbon[c('Site','Date','Species')]),]
 
 stream<-filter(carbon, chapter=='stream')
 RC<-filter(carbon, chapter=='RC')
