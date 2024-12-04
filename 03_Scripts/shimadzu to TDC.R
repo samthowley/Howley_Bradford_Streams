@@ -7,45 +7,22 @@ library(readxl)
 library(lubridate)
 library(cowplot)
 library(lme4)
+theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
+                axis.text.y = element_text(size = 17, angle=0),
+                axis.title =element_text(size = 17, angle=0),
+                plot.title = element_text(size = 17, angle=0),
+                legend.key.size = unit(0.8, 'cm'),
+                legend.text=element_text(size = 17),
+                legend.title =element_text(size = 17),
+                panel.background = element_rect(fill = 'white'),
+                panel.grid.major = element_line(color = "gray", size = 0.5)))
 
-
-vials<-data.frame()
-file.names <- list.files(path="01_Raw_data/Shimadzu/ID", pattern=".csv", full.names=TRUE)
-for(fil in file.names){
-  sample <- read_csv(fil)
-  manipulate<-sample%>% mutate(Date=mdy(`Sample Date`), Ran=mdy(Ran), Vial=as.character(Vial))
-  manipulate<-manipulate[,c(1:6)]
-
-  vials<-rbind(vials, manipulate)}
-
-
-calibrations<-data.frame()
-results<-data.frame()
-
+results<-data.frame() #call in dat files
 file.names <- list.files(path="01_Raw_data/Shimadzu/dat files/detailed", pattern=".txt", full.names=TRUE)
 for(fil in file.names){
 
   runs<-read_delim(fil,delim = "\t", escape_double = FALSE,
                    trim_ws = TRUE, skip = 10)
-
-  cals<-runs %>% filter(`Sample Name` =='Untitled'| `Sample Name`=='NPOC_Saline_100mgL') %>%
-    mutate(Date= mdy_hms(`Date / Time`)) %>%mutate(day=as.Date(Date))%>%
-    select(`Anal.`, `Mean Area`, `Conc.`, day)%>%
-    rename(Analyte=`Anal.`, Area=`Mean Area`, Conc=`Conc.`)%>%
-
-    group_by(day, Analyte) %>%
-    summarise(model = list(lm(Conc ~Area , data = cur_data())),.groups = "drop") %>%
-    mutate(coeffs = map(model, ~ broom::tidy(.x) %>%
-                          select(term, estimate) %>%
-                          pivot_wider(names_from = term, values_from = estimate)), r_squared = map_dbl(model, ~ summary(.x)$r.squared)  # Extract R-squared
-  ) %>%
-  unnest(cols = coeffs) %>%
-  rename(intercept = `(Intercept)`, slope = Area) %>%
-  select(day, Analyte, intercept, slope, r_squared) %>%
-  rename(Date = day)
-
-  calibrations<-rbind(calibrations, cals)
-
 
   result<-runs%>% filter(`Sample Name` != "Untitled"| `Sample Name`=='NPOC_Saline_100mgL', `Inj. No.` == 1)%>%
     select(`Sample Name`, `Analysis(Inj.)`, `Mean Area`, `Mean Conc.`)%>%
@@ -69,30 +46,10 @@ for(fil in file.names){
   results<-rbind(results, combined)
 }
 
-#Save calibrations from runs######
-calibrations<-calibrations%>% filter(r_squared>0.99)
-IC_cals<-calibrations%>% filter(Analyte=='IC')
-TC_cals<-calibrations%>% filter(Analyte=='TC')
-NPOC_cals<-calibrations%>% filter(Analyte=='NPOC')
-
-library(openxlsx)
-wb <- createWorkbook()
-addWorksheet(wb, "Sheet1")
-addWorksheet(wb, "Sheet2")
-addWorksheet(wb, "Sheet3")
-
-writeData(wb, sheet = "Sheet1", x = IC_cals)
-writeData(wb, sheet = "Sheet2", x = TC_cals)
-writeData(wb, sheet = "Sheet3", x = NPOC_cals)
-
-saveWorkbook(wb, "01_Raw_data/Shimadzu/calcurves.xlsx", overwrite = TRUE)
-######
-
-#interpolate results######
-results<- results%>%filter(!is.na(Date))%>%
-  mutate(IC = if_else(Date < '2024-11-20', IC.area*0.37+0.479, IC.area),
-        TC = if_else(Date < '2024-11-20', TC.area*0.2989-0.234, TC.area),
-         NPOC = if_else(Date < '2024-11-20', NPOC.area*0.297-0.133, NPOC.area))%>%
+results<- results%>%filter(!is.na(Date))%>% #incorporating calibrations
+  mutate(IC = if_else(Date < '2024-12-20', IC.area*0.37+0.479, IC.area),
+        TC = if_else(Date < '2024-12-20', TC.area*0.2989-0.234, TC.area),
+         NPOC = if_else(Date < '2024-12-20', NPOC.area*0.297-0.133, NPOC.area))%>%
   mutate(OC=TC-IC)%>% select(Date, Site, Rep, IC, TC, OC, NPOC)
 
 dissolved <- results %>%filter(if_all(c(Rep), is.na))%>%select(-Rep)
@@ -103,10 +60,23 @@ particulate<-results %>% filter(Rep != is.na(Rep)) %>% group_by(Site, Date)%>%
   select(Site, Date, TOC_avg, TIC_avg)
 
 all<-left_join(dissolved, particulate, by=c('Date', 'Site'))
-final<-all%>% mutate(POC=TOC_avg-OC, PIC=TIC_avg-IC)%>% rename(DOC=OC, DIC= IC)%>%
+dat<-all%>% mutate(POC=TOC_avg-OC, PIC=TIC_avg-IC)%>% rename(DOC=OC, DIC= IC)%>%
   select(Date, Site, DOC, DIC, POC, PIC)
-##########
 
+
+csv<-data.frame() #call in csv files
+file.names <- list.files(path="01_Raw_data/Shimadzu/csvs/manipulated", pattern=".csv", full.names=TRUE)
+for(fil in file.names){
+  run <- read_csv(fil)
+  run<-run %>% rename('Date'='Sample Date', 'DOC'='NPOC')%>% mutate(Date=mdy(Date), DIC= NA, POC=NA, PIC=NA)%>%
+    select(Date, Site, DOC, DIC, POC, PIC)
+
+  csv<-rbind(csv, run)
+}
+
+final<-rbind(csv, dat) #rbind csv and dat files
+
+##########
 
 carbon<-final %>% mutate(ID=case_when(Site=='3'~'3',Site=='5'~'5',Site=='5a'~'5a',
                                     Site=='6'~'6',Site=='6a'~'6a',Site=='7'~'7',
@@ -160,14 +130,12 @@ bgc<-bgc %>%mutate(Date=as.Date(Date))%>%group_by(Date,ID)%>%
 
 carbon<-left_join(carbon, bgc,by=c('Date','ID'))
 
-carbon<- carbon %>% filter(ID != '9a',ID != '9b', ID!='14') %>% mutate(mmol= Conc./44.01)
-#WHERE I STOPPED####carbon <-carbon[!duplicated(carbon[c('Site','Date','Species')]),]
+carbon<- carbon %>% filter(ID != '9a',ID != '9b', ID!='14') %>%distinct(Site, Date, .keep_all = TRUE)
 
 stream<-filter(carbon, chapter=='stream')
 RC<-filter(carbon, chapter=='RC')
 long<-filter(carbon, chapter=='long')
 
-str(long)
 write_csv(RC, "04_Output/TDC_RC.csv")
 write_csv(stream, "04_Output/TDC_stream.csv")
 write_csv(long, "04_Output/TDC_long.csv")
@@ -177,14 +145,18 @@ stream<-read.csv("04_Output/TDC_stream.csv")
 long<-read.csv("04_Output/TDC_long.csv")
 
 
-ggplot(stream, aes(x=depth, y=mmol,color=Species)) +
-  geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")
+ggplot(stream, aes(x=Q, y=depth)) +
+  geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")#+
+  #scale_x_log10()
+
+
+
+
+
+
+
 
 ggplot(long, aes(x=location, y=Conc.,color=Species)) +
   geom_point(size=2)+facet_wrap(~ ID, ncol=5)+ylab("longitudinal sampling")
 
-#check#####
-TOC <- read_csv("01_Raw_data/Shimadzu/dat files/duds/2024_07_11_Howley_TOC_STREAMS_norm.txt",
-                                                skip = 10)
-write_csv(TOC, "01_Raw_data/Shimadzu/csv files/TOC_07112024.csv")
 
