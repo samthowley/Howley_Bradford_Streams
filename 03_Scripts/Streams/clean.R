@@ -213,9 +213,6 @@ master<-master %>%filter(depth>0)%>%filter(Date>'2023-10-05')
 master <- master[!duplicated(master[c('Date','ID')]),]
 detach("package:plyr", unload = TRUE)
 
-#compile Temp
-ggplot(master, aes(x=Date)) + geom_line(aes(y=Temp_pH))+facet_wrap(~ ID, ncol=5)
-
 master$Temp_PT[master$Temp_PT>87]<-NA
 master$Temp_PT[master$Temp_PT<0]<-NA
 
@@ -223,11 +220,8 @@ master$Temp_PT <- ifelse(is.na(master$Temp_PT), master$Temp_pH, master$Temp_PT)
 temperature<-master %>% select(Date, ID, Temp_PT)
 write_csv(temperature, "02_Clean_data/temperature.csv")
 
-ggplot(temperature, aes(x=Date)) + geom_line(aes(y=Temp_PT))+facet_wrap(~ ID, ncol=5)
-
 master<-master[,c("Date","depth","ID","Q","Qbase","CO2","DO","pH","SpC","Temp_PT","Water_press")]
 master<-rename(master, 'Temp'="Temp_PT")
-range(master$Date)
 
 write_csv(master, "master.csv")
 

@@ -14,6 +14,7 @@ theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
                 legend.key.size = unit(0.8, 'cm'),
                 legend.text=element_text(size = 17),
                 legend.title =element_text(size = 17),
+                legend.position = 'bottom',
                 panel.background = element_rect(fill = 'white'),
                 panel.grid.major = element_line(color = "gray", size = 0.5)))
 
@@ -41,7 +42,8 @@ for(fil in file.names){
 
 
   TOC<-left_join(TC, IC, by=c("Site", "Date","Rep"))
-  combined<-left_join(TOC, NPOC, by=c("Site", "Date","Rep"))
+  TOC<-TOC%>%select(-Rep)
+  combined<-left_join(TOC, NPOC, by=c("Site", "Date"))
 
   results<-rbind(results, combined)
 }
@@ -52,24 +54,26 @@ results<- results%>%filter(!is.na(Date))%>% #incorporating calibrations
          NPOC = if_else(Date < '2024-12-20', NPOC.area*0.297-0.133, NPOC.area))%>%
   mutate(OC=TC-IC)%>% select(Date, Site, Rep, IC, TC, OC, NPOC)
 
-dissolved <- results %>%filter(if_all(c(Rep), is.na))%>%select(-Rep)
+dissolved <- results %>%filter(if_all(c(Rep), is.na))%>%
+  rename('DIC'='IC', 'TDC'='TC', 'DOC'='OC', 'NPDOC'='NPOC')%>%select(-Rep)
 
 particulate<-results %>% filter(Rep != is.na(Rep)) %>% group_by(Site, Date)%>%
-  mutate(TOC_avg=mean(OC, na.rm=T), TIC_avg=mean(IC, na.rm=T))%>%
-  distinct(Site, Date, TOC_avg, .keep_all = TRUE) %>%
-  select(Site, Date, TOC_avg, TIC_avg)
+  mutate(TOC=mean(OC, na.rm=T), TIC=mean(IC, na.rm=T), NPTOC=mean(NPOC, na.rm=T))%>%
+  mutate(TIC = if_else(TIC < 0, 0, TIC))%>%
+  mutate(TOC = if_else(TOC < 0, 0, TOC))%>%
+  distinct(Site, Date, TOC, .keep_all = TRUE)%>% select(Date, Site, TIC, TOC, NPTOC)
 
 all<-left_join(dissolved, particulate, by=c('Date', 'Site'))
-dat<-all%>% mutate(POC=TOC_avg-OC, PIC=TIC_avg-IC)%>% rename(DOC=OC, DIC= IC)%>%
-  select(Date, Site, DOC, DIC, POC, PIC)
 
+dat<-all%>% mutate(POC=NPTOC-NPDOC, PIC=TIC-DIC)%>%
+  select(Date, Site, DOC, DIC, POC)
 
 csv<-data.frame() #call in csv files
 file.names <- list.files(path="01_Raw_data/Shimadzu/csvs/manipulated", pattern=".csv", full.names=TRUE)
 for(fil in file.names){
   run <- read_csv(fil)
   run<-run %>% rename('Date'='Sample Date', 'DOC'='NPOC')%>% mutate(Date=mdy(Date), DIC= NA, POC=NA, PIC=NA)%>%
-    select(Date, Site, DOC, DIC, POC, PIC)
+    select(Date, Site, DOC, DIC, POC)
 
   csv<-rbind(csv, run)
 }
@@ -130,33 +134,55 @@ bgc<-bgc %>%mutate(Date=as.Date(Date))%>%group_by(Date,ID)%>%
 
 carbon<-left_join(carbon, bgc,by=c('Date','ID'))
 
-carbon<- carbon %>% filter(ID != '9a',ID != '9b', ID!='14') %>%distinct(Site, Date, .keep_all = TRUE)
+carbon<- carbon%>%distinct(Site, Date, .keep_all = TRUE)
 
-stream<-filter(carbon, chapter=='stream')
+stream<-carbon %>%filter(chapter=='stream')
 RC<-filter(carbon, chapter=='RC')
 long<-filter(carbon, chapter=='long')
+
+ggplot(stream, aes(x=Q, y=DOC)) +
+  geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
+  scale_x_log10()+scale_y_log10()+ geom_smooth(method='lm')
+
+ggplot(stream, aes(x=Q, y=DIC)) +
+  geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
+  scale_x_log10()
+
+ggplot(stream, aes(x=depth)) +
+  geom_point(aes(y=DOC, color='DOC'), size=2)+
+  geom_point(aes(y=POC,color='POC'), size=2)+
+  geom_point(aes(y=DIC,color='DIC'), size=2)+
+  facet_wrap(~ Site, ncol=5, scales = "free")+scale_x_log10()+scale_y_log10()
 
 write_csv(RC, "04_Output/TDC_RC.csv")
 write_csv(stream, "04_Output/TDC_stream.csv")
 write_csv(long, "04_Output/TDC_long.csv")
 
-RC<-read.csv("04_Output/TDC_RC.csv")
-stream<-read.csv("04_Output/TDC_stream.csv")
-long<-read.csv("04_Output/TDC_long.csv")
-
-
-ggplot(stream, aes(x=Q, y=depth)) +
-  geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")#+
-  #scale_x_log10()
 
 
 
 
 
+test<-dissolved %>% filter(complete.cases(NPDOC, DOC))%>%
+  distinct(Date, Site, .keep_all = T)%>%
+  mutate(UniqueID = group_indices(., as.factor(Date), Site))
+
+ggplot(test, aes(x=Site, group=as.factor(Date))) +
+  geom_point(aes(y=NPDOC,color='NPDOC'), size=2)+
+  geom_point(aes(y=DOC,color='DOC'), size=2)
 
 
 
-ggplot(long, aes(x=location, y=Conc.,color=Species)) +
-  geom_point(size=2)+facet_wrap(~ ID, ncol=5)+ylab("longitudinal sampling")
 
 
+
+
+DIC<-dissolved %>% select(Date, Site, DIC)%>% rename('measured_DIC'='DIC')
+
+alkalinity <- read_csv("02_Clean_data/alkalinity.csv")
+alkalinity<-alkalinity %>%mutate(DIC_interpolated = sum(c_across(c(CO2_mgL, HCO3_mgL, CO3_mgL))),
+                                 Date=as.Date(Date)) %>%rename(Site=ID)
+
+DIC_check<-left_join(DIC, alkalinity, by=c('Date', 'Site'))
+DIC_check<-DIC_check %>% distinct('Date', 'Site', .keep_all = T)%>%
+  filter(complete.cases(DIC_in, measured_DIC))

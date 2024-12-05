@@ -129,16 +129,15 @@ rC <- lmList(logQ ~ logh | ID, data=DG_rC)
 depth<-read_csv('02_Clean_data/depth.csv')
 depth <- depth %>%
   mutate(Q= case_when(
-    ID== '13'~ (10^cf[1,1]) *depth^(cf[1,2]),
-    ID== '14'~ (10^cf[2,1]) *depth^(cf[2,2]),
-    ID== '15'~ (10^cf[3,1]) *depth^(cf[3,2]),
-    ID== '3'~ (10^cf[4,1]) *depth^(cf[4,2]),
-    ID== '5'~ (10^cf[5,1]) *depth^(cf[5,2]),
-    ID== '5a'~ (10^cf[6,1]) *depth^(cf[6,2]),
-    ID== '6'~ (10^cf[7,1]) *depth^(cf[7,2]),
-    ID== '6a'~ (10^cf[8,1]) *depth^(cf[8,2]),
-    ID== '7'~ (10^cf[9,1]) *depth^(cf[9,2]),
-    ID== '9'~ (10^cf[10,1]) *depth^(cf[10,2])))
+    ID== '13'~ (10^cf[1,1])*depth^(cf[1,2]),
+    ID== '15'~ (10^cf[2,1])*depth^(cf[2,2]),
+    ID== '3'~ (10^cf[3,1])*depth^(cf[3,2]),
+    ID== '5'~ (10^cf[4,1])*depth^(cf[4,2]),
+    ID== '5a'~ (10^cf[5,1])*depth^(cf[5,2]),
+    ID== '6'~ (10^cf[6,1])*depth^(cf[6,2]),
+    ID== '6a'~ (10^cf[7,1])*depth^(cf[7,2]),
+    ID== '7'~ (10^cf[8,1])*depth^(cf[8,2]),
+    ID== '9'~ (10^cf[9,1])*depth^(cf[9,2])))
 
 x<-c("Date","ID","Q")
 depth<-depth[,x]
@@ -148,17 +147,10 @@ discharge <- depth %>% group_by(ID) %>%
 
 discharge<-discharge %>% group_by(ID) %>% mutate(Qsurficial=Q-Qbase)
 
-#
-# ggplot(discharge, aes(Date)) +
-#   geom_line(aes(y=Qsurficial, color='runoff'))+
-#   geom_line(aes(y=Qbase, color='base'))+
-#   facet_wrap(~ ID, ncol=5, scales = 'free')
+ggplot(discharge, aes(Date)) +
+  geom_line(aes(y=Qsurficial, color='runoff'))+
+  geom_line(aes(y=Qbase, color='base'))+
+  facet_wrap(~ ID, ncol=5, scales = 'free')
 range(discharge$Date)
-##########
-write_csv(discharge, "02_Clean_data/discharge.csv")
-q<-read_csv("02_Clean_data/discharge.csv")
 
-q<- q %>% filter(ID!=14)
-ggplot(q, aes(Date))+scale_y_log10() +
-    geom_line(aes(y=Q))+
-    facet_wrap(~ ID, ncol=3, scales = 'free')+ylab(expression(Discharge~ft^3/sec))
+write_csv(discharge, "02_Clean_data/discharge.csv")
