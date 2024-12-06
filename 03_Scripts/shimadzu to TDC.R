@@ -128,15 +128,16 @@ library(plyr)
 bgc<-join_all(data, by=c('Date','ID'), type='left')
 detach("package:plyr", unload = TRUE)
 
-bgc<-bgc %>%mutate(Date=as.Date(Date))%>%group_by(Date,ID)%>%
+bgc_edit<-bgc %>%
+  mutate(Date=as.Date(Date))%>%arrange(ID,Date) %>% group_by(Date,ID)%>%
   mutate(depth=mean(depth, na.rm=T), pH=mean(pH, na.rm=T), Q==mean(Q, na.rm=T)) %>%
-           select(Date,ID,depth,pH,Q)
+  mutate(depth= if_else(depth<0, NA, depth), Q=if_else(Q<0, NA, Q))%>%
+  fill(Q, .direction = 'down')%>%distinct(Date, ID, .keep_all = T)%>%
+  select(Date,ID,depth,pH,Q)
 
-carbon<-left_join(carbon, bgc,by=c('Date','ID'))
+carbon<-left_join(carbon, bgc_edit,by=c('Date','ID'))
 
-carbon<- carbon%>%distinct(Site, Date, .keep_all = TRUE)
-
-stream<-carbon %>%filter(chapter=='stream')
+stream<-carbon %>%filter(chapter=='stream', Q>1)
 RC<-filter(carbon, chapter=='RC')
 long<-filter(carbon, chapter=='long')
 
@@ -169,7 +170,7 @@ test<-dissolved %>% filter(complete.cases(NPDOC, DOC))%>%
 
 ggplot(test, aes(x=Site, group=as.factor(Date))) +
   geom_point(aes(y=NPDOC,color='NPDOC'), size=2)+
-  geom_point(aes(y=DOC,color='DOC'), size=2)
+  geom_point(aes(y=DOC,color='DOC'), size=2)+ylab('mg/L')
 
 
 

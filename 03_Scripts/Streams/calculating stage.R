@@ -130,13 +130,7 @@ master <-master %>% mutate(depth_clean = case_when(ID=='13' & Date>'2023-12-16 1
 master$depth[master$ID=='13' & master$Date>'2023-12-16 11:00:00'] <- NA
 master$depth <- ifelse(is.na(master$depth), master$depth_clean, master$depth)
 
-master <- master %>% filter(ID=='13' & depth> -0.10|
-                              ID=='14' & depth> 0.3|
-                              ID=='5'& depth> -0.2|
-                              ID=='5a'& depth> -0.35 & depth<0.82|
-                              ID=='6'& depth> -0.2|
-                              ID=='9'& depth>-0.2 |
-                              ID=='3'| ID=='6a'|ID=='7'|ID=='15')
+master<-master%>% filter(depth>0)
 
 
 ggplot(master, aes(x=Date)) + geom_line(aes(y=depth))+facet_wrap(~ ID, ncol=5)+
