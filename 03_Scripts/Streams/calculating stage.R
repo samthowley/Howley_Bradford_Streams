@@ -4,12 +4,10 @@ library(readxl)
 
 ###calc stage#####
 PT<-read_csv('01_Raw_data/PT/compiled_PT.csv')
-range(PT$Date, na.rm = T)
 PT<-PT %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
+
 baro<-read_csv('01_Raw_data/PT/compiled_baro.csv')
-range(baro$Date, na.rm = T)
-baro<-baro %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
-baro<-baro[,-1]
+baro<-baro %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))%>%select(-Date)
 master<-left_join(PT, baro, by=c('region','hr', 'day', 'mnth', 'yr'))
 
 master <-master %>% mutate(PT_clean = case_when(ID=='3' & PT<=14.96 ~ PT+0.37,
@@ -19,16 +17,15 @@ master <-master %>% mutate(PT_clean = case_when(ID=='3' & PT<=14.96 ~ PT+0.37,
                                                      ID=='5' & PT<15 ~ NA,
                                                      ID=='9' & Date>'2022-09-20' & Date<'2023-07-20' & PT<=14.85~ PT+0.35))
 
-master$PT[master$ID=='3' & master$PT<=14.96] <- NA
-master$PT[master$ID=='6' & master$Date>'2022-11-14'] <- NA
-master$PT[master$ID=='9' & master$Date>'2022-09-20' & master$Date<'2023-07-20' & master$PT<=14.85] <- NA
-master$PT[master$ID=='13' & master$PT<15.25] <- NA
 
-master$PT <- ifelse(is.na(master$PT), master$PT_clean, master$PT)
 
-master$Water_press<-master$PT-master$PTbaro
-master$sensor_depth<-1000*master$Water_press/2.2/(2.54^2)/100
-master$date<-as.Date(master$Date)
+master<-master %>% mutate(PT=if_else(ID=='3' & PT<=14.96, NA, PT),
+                          PT=if_else(ID=='6' & Date>'2022-11-14', NA, PT),
+                          PT=if_else(ID=='9' & Date>'2022-09-20' & Date<'2023-07-20' & PT<=14.85, NA, PT),
+                          PT=if_else(ID=='13' & PT<=15.25, NA, PT))
+
+
+master<-master %>% mutate(Water_press=PT-PTbaro)%>% mutate(sensor_depth=1000*Water_press/2.2/(2.54^2)/100, date=as.Date(Date))
 master <- master %>%
   mutate(PL= case_when(ID== '3' & date<='2022-11-15' ~ 137,
                        ID== '5' & date<='2022-11-14'~ 147,
@@ -103,8 +100,7 @@ master <- master %>%
                        ID== '5a' & date>='2023-11-01' ~ 101,
                        ID== '6a' & date>='2023-11-01' ~ 113))
 
-master$depth<-master$sensor_depth-(master$PL-master$PG)/100
-master <- master[!duplicated(master[c( 'Date','ID')]),]
+master<-master %>% mutate(depth=sensor_depth-(PL-PG)/100)%>% distinct(Date, ID, .keep_all = T)
 
 master <-master %>% mutate(depth_clean = case_when(ID=='6' & Date>'2023-11-02' ~ depth+0.16,
                                                    ID=='9' & Date>'2023-11-02' ~ depth-0.1,
@@ -113,14 +109,13 @@ master <-master %>% mutate(depth_clean = case_when(ID=='6' & Date>'2023-11-02' ~
                                                    ID=='6a'& Date>'2023-12-16 14:00:00' ~ depth-0.3,
                                                    ID=='5a'& Date>'2022-11-10 02:00:00'& Date<'2022-11-14 19:00:00' ~ depth-0.1,))
 
-master$depth[master$ID=='5a'& master$Date>'2022-11-10 02:00:00'& master$Date<'2022-11-14 19:00:00'] <- NA
-master$depth[master$ID=='6' & master$Date>'2023-11-02'] <- NA
-master$depth[master$ID=='9' & master$Date>'2023-11-02'] <- NA
-master$depth[master$ID=='13' & master$Date>'2022-01-26' & master$Date<'2022-03-10'] <- NA
-master$depth[master$ID=='3'& master$Date<'2022-11-10' & master$depth<0.23] <- NA
-master$depth[master$ID=='6a'& master$Date>'2023-12-16'] <- NA
+master<-master %>% mutate(depth=if_else(ID=='5a'& Date>'2022-11-10 02:00:00' &Date<'2022-11-14 19:00:00', NA, depth),
+                          depth=if_else(ID=='6'& Date>'2023-11-02', NA, depth),
+                          depth=if_else(ID=='9'& Date>'2023-11-02', NA, depth),
+                          depth=if_else(ID=='3'& Date>'2023-11-02' & depth<0.23, NA, depth),
+                          depth=if_else(ID=='6a'& Date>'2023-12-16', NA, depth))%>%
+  mutate(depth=ifelse(is.na(depth), depth_clean, depth))
 
-master$depth <- ifelse(is.na(master$depth), master$depth_clean, master$depth)
 
 master <-master %>% mutate(depth_clean = case_when(ID=='13' & Date>'2023-11-01 07:00:00'& Date<'2023-12-06 08:00:00'~ depth-0.12))
 master$depth[master$ID=='13' & master$Date>'2023-11-01 07:00:00' & master$Date<'2023-12-06 08:00:00'] <- NA
