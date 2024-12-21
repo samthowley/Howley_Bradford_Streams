@@ -36,6 +36,7 @@ DIC<-KH %>%
   mutate(DIC_mmol= (CO2_molL+CO3_molL+HCO3_molL)*1000)%>%
   select(Date,ID,pH, CO2, DIC_mgL,CO2_mgL,HCO3_mgL,CO3_mgL)
 
+dev.new()
 ggplot(DIC, aes(x=Date)) + geom_point(aes(y=DIC_mgL))+facet_wrap(~ ID, ncol=5, scale='free')
 
 write_csv(DIC, "02_Clean_data/alkalinity.csv")

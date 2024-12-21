@@ -7,7 +7,7 @@ library(weathermetrics)
 library(tools)
 library(cowplot)
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-11-26 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2024-12-14 00:00", tz="UTC"),by="hour")))
 
 clean_DO <- function(fil) {
   DO <- read_csv(fil,skip= 1)
@@ -222,6 +222,7 @@ write_csv(temperature, "02_Clean_data/temperature.csv")
 
 master<-master[,c("Date","depth","ID","Q","Qbase","CO2","DO","pH","SpC","Temp_PT","Water_press")]
 master<-rename(master, 'Temp'="Temp_PT")
+ggplot(master, aes(Date, CO2)) + geom_point() + facet_wrap(~ ID, ncol=4)
 
 write_csv(master, "master.csv")
 

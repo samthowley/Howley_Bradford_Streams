@@ -145,7 +145,11 @@ depth<-depth[,x]
 discharge <- depth %>% group_by(ID) %>%
   mutate(Qbase = gr_baseflow(Q, method = 'jakeman',a = 0.925, passes = 3))
 
-discharge<-discharge %>% group_by(ID) %>% mutate(Qsurficial=Q-Qbase)
+discharge<-discharge %>% group_by(ID) %>% mutate(Qsurficial=Q-Qbase)%>%
+  mutate(Qbase = if_else(Qbase>10000, NA, Qbase),
+         Qsurficial= if_else(Qsurficial>10000, NA, Qsurficial),
+         Qbase = if_else(Qbase<0, NA, Qbase),
+         Qsurficial= if_else(Qsurficial<0, NA, Qsurficial))
 
 ggplot(discharge, aes(Date)) +
   geom_line(aes(y=Qsurficial, color='runoff'))+

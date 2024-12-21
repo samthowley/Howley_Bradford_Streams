@@ -18,13 +18,22 @@ domeFoot_L<-83.6
 R<-0.08205
 dome_length<-0.38
 
-stream<-read_csv('master.csv')
-stream<-stream%>%select(Date, ID,depth, Q, CO2,Temp)%>%fill(CO2, .direction="up")
+file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
+file.names<-file.names[c(5,6,11,4)]
+data <- lapply(file.names,function(x) {read_csv(x)})
+library(plyr)
+stream<-join_all(data, by=c('Date','ID'), type='left')
+stream<-stream[,-9]
+colnames(stream)[10] <- "CO2_enviro"
+
+stream<-stream%>%select(Date, ID,depth, Q, CO2_enviro,Temp_PT)%>% fill(CO2, .direction="up")
 
 GasDome <- function(gas,stream) {
 
-  stream<-stream %>%  rename("CO2_enviro"='CO2')%>% mutate(day=day(Date), hour=hour(Date), month=month(Date),yr=year(Date), date=as.Date(Date))%>%
-    group_by(date,ID)%>%mutate(depth=mean(depth, na.rm=T), Q=mean(Q, na.rm=T), Temp=mean(Temp, na.rm=T))%>%
+  stream<-stream %>%
+    mutate(day=day(Date), hour=hour(Date), month=month(Date),yr=year(Date), date=as.Date(Date))%>%
+    group_by(date,ID)%>%
+    mutate(depth=mean(depth, na.rm=T), Q=mean(Q, na.rm=T), Temp=mean(Temp_PT, na.rm=T))%>%
     select(CO2_enviro,Temp,depth,Q,day, hour,month,yr,ID)
 
   gas<-gas %>% mutate(day=day(Date), hour=hour(Date), month=month(Date),yr=year(Date))
@@ -83,12 +92,12 @@ split<-gasdome %>% split(gasdome$ID)
 write.xlsx(split, file = '04_Output/rC_k600.xlsx')
 
 #organize data file##########
-gas<- read_csv("01_Raw_data/GD/raw/GasDome_10302024.dat",skip = 3)
+gas<- read_csv("01_Raw_data/GD/raw/GasDome_12132024.dat",skip = 3)
 gas<-gas[,c(1,5)]
 colnames(gas)[1] <- "Date"
 colnames(gas)[2] <- "CO2"
-gas<-gas %>% mutate(CO2=CO2*6) %>%filter(Date>'2024-10-28' & Date< '2024-11-04')%>%filter(CO2>100)
+gas<-gas %>% mutate(CO2=CO2*6) %>%filter(Date>'2024-12-10' & Date<'2024-12-14')%>%filter(CO2>100)
 
 ggplot(gas, aes(x=Date, y=CO2)) +geom_point()
 
-write_csv(gas, "01_Raw_data/GD/raw/GasDome_10302024.csv")
+write_csv(gas, "01_Raw_data/GD/raw/GasDome_12132024.csv")
