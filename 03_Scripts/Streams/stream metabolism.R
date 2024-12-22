@@ -13,16 +13,112 @@ library(weathermetrics)
 library('StreamMetabolism')
 #constants######
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2021-03-29 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-10-26 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2024-12-14 00:00", tz="UTC"),by="hour")))
 samplingperiod<-samplingperiod %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 
+x<-c("Date","DO","depth","Mouth_Temp_C")
+file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
+file.names<-file.names[c(5,7,11,6)]
+data <- lapply(file.names,function(x) {read_csv(x)})
+merged_data <- reduce(data, left_join, by = c("ID", 'Date'))
 
+input<-merged_data %>%rename('Temp'='Temp_PT.x')%>% select(ID,Date, DO, depth, Q, Temp)%>%
+  filter(depth>0)
+
+metabolism <- function(site) {
+
+  site<-site%>%select(-ID, Q)
+  site<-site[order(as.Date(site$Date, format="%Y-%m-%d %H:%M:%S")),]
+  site<-left_join(samplingperiod,site)
+  site$Temp_C<- fahrenheit.to.celsius(site$Temp)
+
+  site <- site[!duplicated(site[c('Date')]),]
+
+  site<-rename(site,'DO.obs'='DO','temp.water'='Temp_C')
+  site$DO.sat<-Cs(site$temp.water)
+  site$solar.time <-as.POSIXct(site$Date, format="%Y-%m-%d %H:%M:%S", tz="UTC")
+  site<-site[,-c(1)]
+  site$light<-calc_light(site$solar.time,  29.8, -82.6)
+  y<-c("DO.obs","depth","temp.water", "DO.sat","solar.time","light" )
+  site<-site[,y]
+  mm <- metab(bayes_specs, data=site)
+  prediction2 <- mm@fit$daily %>% select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean,
+                                         GPP_Rhat,ER_Rhat,K600_daily_Rhat)
+  prediction2<- prediction2 %>% filter(ER_Rhat> 0.9 & ER_Rhat<1.05)%>% filter(K600_daily_Rhat> 0.9 & K600_daily_Rhat<1.05)%>%
+    select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean)
+
+  return(prediction2)}
+metabolism_K <- function(site) {
+
+  site<-site%>%select(-ID, log_K600)
+  site<-site[order(as.Date(site$Date, format="%Y-%m-%d %H:%M:%S")),]
+  site<-left_join(samplingperiod,site)
+  site$Temp_C<- fahrenheit.to.celsius(site$Temp)
+
+  site <- site[!duplicated(site[c('Date')]),]
+
+  site<-rename(site,'DO.obs'='DO','temp.water'='Temp_C')
+  site$DO.sat<-Cs(site$temp.water)
+  site$solar.time <-as.POSIXct(site$Date, format="%Y-%m-%d %H:%M:%S", tz="UTC")
+  site<-site[,-c(1)]
+  site$light<-calc_light(site$solar.time,  29.8, -82.6)
+  y<-c("DO.obs","depth","temp.water", "DO.sat","solar.time","light" )
+  site<-site[,y]
+  mm <- metab(bayes_specs, data=site)
+  prediction2 <- mm@fit$daily %>% select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean,
+                                         GPP_Rhat,ER_Rhat,K600_daily_Rhat)
+  prediction2<- prediction2 %>% filter(ER_Rhat> 0.9 & ER_Rhat<1.05)%>% filter(K600_daily_Rhat> 0.9 & K600_daily_Rhat<1.05)%>%
+    select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean)
+
+  return(prediction2)}
+
+
+#K600 interpolation#####
+sheet_names <- excel_sheets("04_Output/rC_K600_edited.xlsx")
+
+list_of_dfs <- list()
+for (sheet in sheet_names) {
+  df <- read_excel("04_Output/rC_K600_edited.xlsx", sheet = sheet)
+  list_of_dfs[[sheet]] <- df
+}
+
+K600 <- bind_rows(list_of_dfs)
+
+rC <- lmList(logQ ~ log_K600 | ID, data=K600)
+(cf <- coef(rC))
+
+k600_interpolated <- input %>%
+  mutate(log_K600= case_when(
+    ID== '13'~ (10^cf[1,1])*log10(Q)^(cf[1,2]),
+    ID== '15'~ (10^cf[2,1])*log10(Q)^(cf[2,2]),
+    ID== '3'~ (10^cf[3,1])*log10(Q)^(cf[3,2]),
+    ID== '5'~ (10^cf[4,1])*log10(Q)^(cf[4,2]),
+    ID== '5a'~ (10^cf[5,1])*log10(Q)^(cf[5,2]),
+    ID== '6'~ (10^cf[6,1])*log10(Q)^(cf[6,2]),
+    ID== '6a'~ (10^cf[7,1])*log10(Q)^(cf[7,2]),
+    ID== '7'~ (10^cf[8,1])*log10(Q)^(cf[8,2]),
+    ID== '9'~ (10^cf[9,1])*log10(Q)^(cf[9,2])))%>%
+  mutate(K600=10^log_K600)
+
+
+#model######
 
 #no k600
 bayes_name <- mm_name(type='bayes', pool_K600='normal', err_obs_iid=TRUE, err_proc_iid=TRUE)
 bayes_specs <- specs(bayes_name, K600_daily_meanlog_meanlog=0.1, K600_daily_meanlog_sdlog=0.001, GPP_daily_lower=0,
                      burnin_steps=1000, saved_steps=1000)
 
+s3<-filter(input, ID=='3')
+s3_ouput<-metabolism(s3)
+s3_ouput$ID<-'3'
+
+s9<-filter(input, ID=='9')
+s9_ouput<-metabolism(s9)
+s9_ouput$ID<-'9'
+
+s13<-filter(input, ID=='13')
+s13_ouput<-metabolism(s13)
+s13_ouput$ID<-'13'
 
 #k600
 bins<- function(site) {
@@ -60,88 +156,27 @@ bins<- function(site) {
   return(bayes_specs)}
 bayes_name <- mm_name(type='bayes', pool_K600="binned", err_obs_iid=TRUE, err_proc_iid=TRUE)
 
-
-metabolism <- function(site) {
-
-  site[order(as.Date(site$Date, format="%Y-%m-%d %H:%M:%S")),]
-  site<-left_join(samplingperiod,site)
-  site$Mouth_Temp_C<- fahrenheit.to.celsius(site$Temp)
-  x<-c("Date","DO","depth","Mouth_Temp_C")
-  site<-site[,x]
-  site <- site[!duplicated(site[c('Date')]),]
-
-  site<-rename(site,'DO.obs'='DO','temp.water'='Mouth_Temp_C')
-  site$DO.sat<-Cs(site$temp.water)
-  site$solar.time <-as.POSIXct(site$Date, format="%Y-%m-%d %H:%M:%S", tz="UTC")
-  site<-site[,-c(1)]
-  site$light<-calc_light(site$solar.time,  29.8, -82.6)
-  y<-c("DO.obs","depth","temp.water", "DO.sat","solar.time","light" )
-  site<-site[,y]
-  mm <- metab(bayes_specs, data=site)
-  prediction2 <- mm@fit$daily %>% select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean,
-                                         GPP_Rhat,ER_Rhat,K600_daily_Rhat)
-  prediction2<- prediction2 %>% filter(ER_Rhat> 0.9 & ER_Rhat<1.05)%>% filter(K600_daily_Rhat> 0.9 & K600_daily_Rhat<1.05)%>%
-    select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean)
-
-  return(prediction2)}
-master <- read_csv("master.csv")
-
-#K600 interpolation#####
-
-GD_compiled<-read_csv('04_Output/GasDome_compiled_edited.csv')
-split<-GD_compiled %>% split(GD_compiled$ID)
-
-rC <- lmList(logQ ~ logh | ID, data=DG_rC)
-(cf <- coef(rC))
-
-depth<-read_csv('02_Clean_data/depth.csv')
-depth <- depth %>%
-  mutate(Q= case_when(
-    ID== '13'~ (10^cf[1,1]) *depth^(cf[1,2]),
-    ID== '14'~ (10^cf[2,1]) *depth^(cf[2,2]),
-    ID== '15'~ (10^cf[3,1]) *depth^(cf[3,2]),
-    ID== '3'~ (10^cf[4,1]) *depth^(cf[4,2]),
-    ID== '5'~ (10^cf[5,1]) *depth^(cf[5,2]),
-    ID== '5a'~ (10^cf[6,1]) *depth^(cf[6,2]),
-    ID== '6'~ (10^cf[7,1]) *depth^(cf[7,2]),
-    ID== '6a'~ (10^cf[8,1]) *depth^(cf[8,2]),
-    ID== '7'~ (10^cf[9,1]) *depth^(cf[9,2]),
-    ID== '9'~ (10^cf[10,1]) *depth^(cf[10,2])))
-
-#model######
-s3<-filter(master, ID=='3')
-s3_ouput<-metabolism(s3)
-s3_ouput$ID<-'3'
-
-s5<-filter(master, ID=='5')
+s5<-filter(k600_interpolated, ID=='5')
 s5_ouput<-metabolism(s5)
 s5_ouput$ID<-'5'
 
-s6<-filter(master, ID=='6')
+s6<-filter(k600_interpolated, ID=='6')
 s6_ouput<-metabolism(s6)
 s6_ouput$ID<-'6' #NOT WORKING
 
-s6a<-filter(master, ID=='6a')
+s6a<-filter(k600_interpolated, ID=='6a')
 s6a_ouput<-metabolism(s6a)
 s6a_ouput$ID<-'6a'
 
-s7<-filter(master, ID=='7')
+s7<-filter(k600_interpolated, ID=='7')
 s7_ouput<-metabolism(s7)
 s7_ouput$ID<-'7'
-
-s9<-filter(master, ID=='9')
-s9_ouput<-metabolism(s9)
-s9_ouput$ID<-'9'
-
-s13<-filter(master, ID=='13')
-s13_ouput<-metabolism(s13)
-s13_ouput$ID<-'13'
 
 s15<-filter(master, ID=='15')
 s15_ouput<-metabolism(s15)
 s15_ouput$ID<-'15'
 
-s5a<-filter(master, ID=='5a')
+s5a<-filter(k600_interpolated, ID=='5a')
 s5a_ouput<-metabolism(s5a)
 s5a_ouput$ID<-'5a'
 
