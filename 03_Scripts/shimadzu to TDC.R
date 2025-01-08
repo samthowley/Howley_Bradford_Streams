@@ -145,6 +145,10 @@ ggplot(stream, aes(x=Q, y=DOC)) +
   geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
   scale_x_log10()+scale_y_log10()+ geom_smooth(method='lm')
 
+ggplot(stream, aes(x=Date, y=DOC)) +
+  geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
+  scale_y_log10()+ geom_smooth(method='lm')
+
 ggplot(stream, aes(x=Q, y=DIC)) +
   geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
   scale_x_log10()

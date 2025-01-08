@@ -20,9 +20,8 @@ dome_length<-0.38
 
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
 file.names<-file.names[c(5,6,11,4)]
-data <- lapply(file.names,function(x) {read_csv(x)})
+data <- lapply(file.names,function(x) {read_csv(x, col_types = cols(ID = col_character()))})
 merged_data <- reduce(data, left_join, by = c("ID", 'Date'))
-
 
 stream<-merged_data%>%rename(Temp=`Temp_PT.x`, CO2_enviro=CO2)%>%
   select(Date, ID,depth, Q, CO2_enviro,Temp)%>% fill(CO2_enviro, .direction="up")
@@ -86,9 +85,11 @@ for(i in file.names){
   gas<-GasDome(gas,stream)
   gasdome<-rbind(gasdome, gas)}
 
+unique(gasdome_cleaned$ID)
+
 gasdome_cleaned <- gasdome[!duplicated(gasdome[c("day", "ID")]), ]
 gasdome_cleaned<-gasdome_cleaned %>%
-  filter(ID!='14', depth>0)%>%select(-day)%>%
+  filter(ID!='14')%>%select(-day)%>%
   mutate(k600_1d=abs(k600_1d), KCO2_1d=abs(KCO2_1d), logQ=log10(Q)) %>%
   mutate(log_K600=log10(k600_1d))%>% select(logQ, everything())
 

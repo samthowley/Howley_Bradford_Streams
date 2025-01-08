@@ -13,7 +13,7 @@ library(weathermetrics)
 library('StreamMetabolism')
 #constants######
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2021-03-29 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-12-14 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2025-01-03 00:00", tz="UTC"),by="hour")))
 samplingperiod<-samplingperiod %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 
 x<-c("Date","DO","depth","Mouth_Temp_C")
@@ -89,16 +89,15 @@ rC <- lmList(logQ ~ log_K600 | ID, data=K600)
 
 k600_interpolated <- input %>%
   mutate(log_K600= case_when(
-    ID== '13'~ (10^cf[1,1])*log10(Q)^(cf[1,2]),
-    ID== '15'~ (10^cf[2,1])*log10(Q)^(cf[2,2]),
-    ID== '3'~ (10^cf[3,1])*log10(Q)^(cf[3,2]),
-    ID== '5'~ (10^cf[4,1])*log10(Q)^(cf[4,2]),
-    ID== '5a'~ (10^cf[5,1])*log10(Q)^(cf[5,2]),
-    ID== '6'~ (10^cf[6,1])*log10(Q)^(cf[6,2]),
-    ID== '6a'~ (10^cf[7,1])*log10(Q)^(cf[7,2]),
-    ID== '7'~ (10^cf[8,1])*log10(Q)^(cf[8,2]),
-    ID== '9'~ (10^cf[9,1])*log10(Q)^(cf[9,2])))%>%
-  mutate(K600=10^log_K600)
+    ID== '13'~ (10^cf[1,1]+Q*10^(cf[1,2]),
+    ID== '15'~ (10^cf[2,1])+Q*10^(cf[2,2]),
+    ID== '3'~ (10^cf[3,1])+Q*10^(cf[3,2]),
+    ID== '5'~ (10^cf[4,1])+Q*10^(cf[4,2]),
+    ID== '5a'~ (10^cf[5,1])+Q*10^(cf[5,2]),
+    ID== '6'~ (10^cf[6,1])+Q*10^(cf[6,2]),
+    ID== '6a'~ (10^cf[7,1])+Q*10^(cf[7,2]),
+    ID== '7'~ (10^cf[8,1])+Q*10^(cf[8,2]),
+    ID== '9'~ (10^cf[9,1])+Q*10^(cf[9,2]))))
 
 
 #model######

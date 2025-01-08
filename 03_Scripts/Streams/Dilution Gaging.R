@@ -158,3 +158,4 @@ ggplot(discharge, aes(Date)) +
 range(discharge$Date)
 
 write_csv(discharge, "02_Clean_data/discharge.csv")
+str(discharge)

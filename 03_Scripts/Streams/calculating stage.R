@@ -133,8 +133,10 @@ ggplot(master, aes(x=Date)) + geom_line(aes(y=depth))+facet_wrap(~ ID, ncol=5)+
 #
 master<-master[, c("Date","Temp_PT","depth","ID","Water_press")]
 range(master$Date)
-###########
 write_csv(master, "02_Clean_data/depth.csv")
+
+###########
+str(master)
 
 #Compile PT##########
 file.names <- list.files(path="01_Raw_data/PT/raw", pattern=".csv", full.names=TRUE)
@@ -171,6 +173,11 @@ write_csv(PT_all, "01_Raw_data/PT/compiled_PT.csv")
 
 #compile baro######
 
+file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
+file.names<-file.names[c(5,6,11,4)]
+data <- lapply(file.names,function(x) {read_csv(x)})
+merged_data <- reduce(data, left_join, by = c("ID", 'Date'))
+
 file.names <- list.files(path="01_Raw_data/baro", pattern=".csv", full.names=TRUE)
 baro_all<-data.frame()
 for(fil in file.names){
@@ -185,7 +192,7 @@ for(fil in file.names){
 baro_all<-baro_all %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 baro_all<-baro_all[,-1]
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2021-03-29 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-12-14 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2025-01-04 00:00", tz="UTC"),by="hour")))
 samplingperiod<- samplingperiod %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 baro_all<-left_join(baro_all, samplingperiod, by=c('hr', 'day', 'mnth', 'yr'))
 

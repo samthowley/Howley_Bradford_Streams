@@ -7,7 +7,7 @@ library(weathermetrics)
 library(tools)
 library(cowplot)
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2024-12-14 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2024-01-04 00:00", tz="UTC"),by="hour")))
 
 clean_DO <- function(fil) {
   DO <- read_csv(fil,skip= 1)
@@ -90,6 +90,7 @@ DO_all$DO[DO_all$DO>10]<-NA
 
 DO_all<-left_join(samplingperiod, DO_all)
 DO_all<- DO_all[!duplicated(DO_all[c('Date','ID')]),]
+DO_all<-DO_all %>% mutate(ID=as.character(ID))
 ggplot(DO_all, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=4)
 range(DO_all$Date)
 
@@ -202,16 +203,11 @@ range(pH_all$Date,na.rm=T)
 write_csv(pH_all, "02_Clean_data/pH_cleaned.csv")
 
 ####Compile####
+
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
-file.names<-file.names[c(5,6,7,9,8,4)]
-
-data <- lapply(file.names,function(x) {read_csv(x)})
-library(plyr)
-master<-join_all(data, by=c('Date','ID'), type='left')
-
-master<-master %>%filter(depth>0)%>%filter(Date>'2023-10-05')
-master <- master[!duplicated(master[c('Date','ID')]),]
-detach("package:plyr", unload = TRUE)
+file.names<-file.names[c(5,4,6,7,8,9)]
+data <- lapply(file.names,function(x) {read_csv(x, col_types = cols(ID = col_character()))})
+master <- reduce(data, left_join, by = c("ID", 'Date'))
 
 master$Temp_PT[master$Temp_PT>87]<-NA
 master$Temp_PT[master$Temp_PT<0]<-NA
