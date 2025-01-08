@@ -99,14 +99,14 @@ s5a<-s5a %>% filter(CO2>3500)%>%
   mutate(CO2 = if_else(Date >= "2024-01-01" & Date <= "2024-03-01" & CO2 > 8000, NA, CO2))
 #ggplot(s5a, aes(Date, CO2))+geom_point()+geom_hline(yintercept = 3500)
 
-s15<-s15 %>% filter(CO2>1000 & CO2<8700)
-# a<-ggplot(s15, aes(Date, CO2))+geom_point()+geom_hline(yintercept = 8700)
+s15<-s15 %>% filter(CO2>1000 & CO2<8800)
+# (a<-ggplot(s15, aes(Date, CO2))+geom_point()+geom_hline(yintercept = 8700))
 # b<-ggplot(s15, aes(Date, depth))+geom_line()
 # plot_grid(a,b,ncol=1)
 
-s7<-s7%>% filter(CO2>1200) %>%
+s7<-s7%>% filter(CO2>1000) %>%
   mutate(CO2 = if_else(Date >= "2024-08-01" & Date <= "2024-10-01" & CO2 > 15000, NA, CO2))
-# a<-ggplot(s7, aes(Date, CO2))+geom_point()+geom_hline(yintercept=1100)
+#(a<-ggplot(s7, aes(Date, CO2))+geom_point()+geom_hline(yintercept=1100))
 # b<-ggplot(s7, aes(Date, depth))+geom_line()
 # plot_grid(a,b,ncol=1)
 
@@ -116,16 +116,17 @@ s3<-s3 %>%filter(CO2>2000)%>%
 #ggplot(test, aes(Date, CO2))+geom_point()+geom_hline(yintercept = 5500)
 # plot_grid(a,b,ncol=1)
 
-s6<-s6 %>% filter(CO2>5800)%>%
+s6<-s6 %>% filter(CO2>1000)%>%
   mutate(CO2 = if_else(Date >= "2024-07-01", CO2*6, CO2))%>%
   mutate(CO2 = if_else(Date >= "2024-01-01" & Date< '2024-04-01' & CO2>12000, NA, CO2))%>%
-  mutate(CO2 = if_else(Date >= "2024-04-01" & CO2>17500, NA, CO2))
-# (a<-ggplot(test, aes(Date, CO2))+geom_point()+geom_hline(yintercept=17500))
+  mutate(CO2 = if_else(Date >= "2024-04-01" & Date< '2024-07-01' & CO2>17500, NA, CO2))
+# range(test$Date)
+# (a<-ggplot(test, aes(Date, CO2))+geom_point()+geom_hline(yintercept=2000))
 # b<-ggplot(s6, aes(Date, depth))+geom_line()
 # plot_grid(a,b,ncol=1)
 
-s6a<-s6a %>% filter(CO2>3000& CO2<21000)
-#ggplot(test, aes(Date, CO2))+geom_point()+geom_hline(yintercept = 3000)
+s6a<-s6a %>% filter(CO2>1000& CO2<21000)
+# ggplot(s6a, aes(Date, CO2))+geom_point()+geom_hline(yintercept = 3000)
 
 s9<-s9 %>%  filter(CO2>1800)%>%
   mutate(CO2 = if_else(Date >= "2024-07-01" & CO2<3700, NA, CO2))%>%
@@ -141,8 +142,7 @@ s13<-s13 %>%  filter(CO2<15000 & CO2>1400)
 
 CO2<-rbind(s5,s5a,s15,s6a,s6,s7,s3,s13,s9)
 range(CO2$Date, na.rm=T)
-dev.new()
-ggplot(CO2, aes(Date, CO2)) + geom_point() + facet_wrap(~ ID, ncol=4)
+ggplot(CO2, aes(Date, CO2)) + geom_point() + facet_wrap(~ ID, ncol=4, scales='free')
 
 write_csv(CO2, "02_Clean_data/CO2_cleaned.csv")
 

@@ -10,17 +10,9 @@ baro<-read_csv('01_Raw_data/PT/compiled_baro.csv')
 baro<-baro %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))%>%select(-Date)
 master<-left_join(PT, baro, by=c('region','hr', 'day', 'mnth', 'yr'))
 
-master <-master %>% mutate(PT_clean = case_when(ID=='3' & PT<=14.96 ~ PT+0.37,
-                                                     ID=='6' & Date>'2022-11-14' ~ PT-0.6,
-                                                     ID=='13' & PT<15.25 ~ PT+0.2,
-                                                     ID=='14' & PT<15.5 ~ NA,
-                                                     ID=='5' & PT<15 ~ NA,
-                                                     ID=='9' & Date>'2022-09-20' & Date<'2023-07-20' & PT<=14.85~ PT+0.35))
-
-
 
 master<-master %>% mutate(PT=if_else(ID=='3' & PT<=14.96, NA, PT),
-                          PT=if_else(ID=='6' & Date>'2022-11-14', NA, PT),
+                          PT=if_else(ID=='6' & Date>'2022-11-14', PT-0.6, PT),
                           PT=if_else(ID=='9' & Date>'2022-09-20' & Date<'2023-07-20' & PT<=14.85, NA, PT),
                           PT=if_else(ID=='13' & PT<=15.25, NA, PT))
 

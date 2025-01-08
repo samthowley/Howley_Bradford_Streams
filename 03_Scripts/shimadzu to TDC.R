@@ -18,7 +18,9 @@ theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
                 panel.background = element_rect(fill = 'white'),
                 panel.grid.major = element_line(color = "gray", size = 0.5)))
 
-results<-data.frame() #call in dat files
+NPOC_all<-data.frame() #call in dat files
+TOC_all<-data.frame() #call in dat files
+
 file.names <- list.files(path="01_Raw_data/Shimadzu/dat files/detailed", pattern=".txt", full.names=TRUE)
 for(fil in file.names){
 
@@ -37,52 +39,50 @@ for(fil in file.names){
   IC<-result %>%filter(Analyte=='IC')%>%rename("IC"="Analyte")%>%select(Site, Date, Rep,Conc,Area)%>%
     rename("IC.area"="Area", "IC.conc"="Conc")
 
-  NPOC<-result %>%filter(Analyte=='NPOC')%>%rename("NPOC"="Analyte")%>%select(Site, Date, Rep,Conc,Area)%>%
+  NPOC<-result %>%filter(Analyte=='NPOC',Site!='NPOC')%>%rename("NPOC"="Analyte")%>%select(Site,Date,Rep,Conc,Area)%>%
     rename("NPOC.area"="Area", "NPOC.conc"="Conc")
-
 
   TOC<-left_join(TC, IC, by=c("Site", "Date","Rep"))
   TOC<-TOC%>%select(-Rep)
-  combined<-left_join(TOC, NPOC, by=c("Site", "Date"))
+  TOC_all<-rbind(TOC_all, TOC)
 
-  results<-rbind(results, combined)
+  NPOC_all<-rbind(NPOC_all, NPOC)
 }
-
-results<- results%>%filter(!is.na(Date))%>% #incorporating calibrations
-  mutate(IC = if_else(Date < '2024-12-20', IC.area*0.37+0.479, IC.area),
-        TC = if_else(Date < '2024-12-20', TC.area*0.2989-0.234, TC.area),
-         NPOC = if_else(Date < '2024-12-20', NPOC.area*0.297-0.133, NPOC.area))%>%
-  mutate(OC=TC-IC)%>% select(Date, Site, Rep, IC, TC, OC, NPOC)
-
-dissolved <- results %>%filter(if_all(c(Rep), is.na))%>%
-  rename('DIC'='IC', 'TDC'='TC', 'DOC'='OC', 'NPDOC'='NPOC')%>%select(-Rep)
-
-particulate<-results %>% filter(Rep != is.na(Rep)) %>% group_by(Site, Date)%>%
-  mutate(TOC=mean(OC, na.rm=T), TIC=mean(IC, na.rm=T), NPTOC=mean(NPOC, na.rm=T))%>%
-  mutate(TIC = if_else(TIC < 0, 0, TIC))%>%
-  mutate(TOC = if_else(TOC < 0, 0, TOC))%>%
-  distinct(Site, Date, TOC, .keep_all = TRUE)%>% select(Date, Site, TIC, TOC, NPTOC)
-
-all<-left_join(dissolved, particulate, by=c('Date', 'Site'))
-
-dat<-all%>% mutate(POC=NPTOC-NPDOC, PIC=TIC-DIC)%>%
-  select(Date, Site, DOC, DIC, POC)
 
 csv<-data.frame() #call in csv files
 file.names <- list.files(path="01_Raw_data/Shimadzu/csvs/manipulated", pattern=".csv", full.names=TRUE)
 for(fil in file.names){
   run <- read_csv(fil)
-  run<-run %>% rename('Date'='Sample Date', 'DOC'='NPOC')%>% mutate(Date=mdy(Date), DIC= NA, POC=NA, PIC=NA)%>%
-    select(Date, Site, DOC, DIC, POC)
+  run<-run %>% rename('Date'='Sample Date', 'DOC'='NPOC')%>% mutate(Date=mdy(Date), DIC= NA)%>%
+    select(Date, Site, DIC, DOC)
 
   csv<-rbind(csv, run)
 }
 
-final<-rbind(csv, dat) #rbind csv and dat files
+
+dissolved_NPOC<-NPOC_all %>% filter(!Rep %in% c("1", "2", "3"))%>%
+  mutate(DOC = if_else(Date < '2025-12-20', NPOC.area*0.297-0.133, NPOC.area), DIC=NA)%>%
+  select(Date, Site, DIC, DOC)
+
+dissolved_TOC<- TOC_all%>%filter(!is.na(Date))%>% #incorporating calibrations
+  mutate(DIC = if_else(Date < '2025-12-20', IC.area*0.37+0.479, IC.area),
+         DOC = if_else(Date < '2025-12-20', TC.area*0.2989-0.234, TC.area))%>%
+  select(Date, Site, DIC, DOC)
+
+dissolvedC<-rbind(dissolved_NPOC, dissolved_TOC,csv)
+
+
+particulate_NPOC<-NPOC_all %>% filter(Rep %in% c("1", "2", "3"))%>%
+  mutate(TNPOC = if_else(Date < '2025-12-20', NPOC.area*0.297-0.133, NPOC.area))%>%group_by(Site, Date)%>%
+  mutate(NPTOC=mean(TNPOC, na.rm=T))%>% distinct(Date,Site, .keep_all = T) %>%select(Site,Date,TNPOC)
+
+sampledC<-left_join(dissolvedC,particulate_NPOC, by=c('Date','Site'))
+sampledC<-sampledC %>% mutate(POC=TNPOC-DOC)
+
 
 ##########
 
-carbon<-final %>% mutate(ID=case_when(Site=='3'~'3',Site=='5'~'5',Site=='5a'~'5a',
+carbon<-sampledC %>% mutate(ID=case_when(Site=='3'~'3',Site=='5'~'5',Site=='5a'~'5a',
                                     Site=='6'~'6',Site=='6a'~'6a',Site=='7'~'7',
                                     Site=='9'~'9',Site=='13'~'13',Site=='15'~'15',
                                     Site=='5GW1'~'5',Site=='5GW2'~'5',Site=='5GW3'~'5',Site=='5GW4'~'5',
@@ -122,42 +122,39 @@ wetland<-filter(carbon, chapter=='wetland')
 write_csv(wetland, "04_Output/TC_wetland.csv")
 
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
-file.names<-file.names[c(5,6,8)]
-data <- lapply(file.names,function(x) {read_csv(x)})
-library(plyr)
-bgc<-join_all(data, by=c('Date','ID'), type='left')
-detach("package:plyr", unload = TRUE)
+file.names<-file.names[c(5,4,6,8)]
+data <- lapply(file.names,function(x) {read_csv(x, col_types = cols(ID = col_character()))})
+bgc <- reduce(data, left_join, by = c("ID", 'Date'))
 
 bgc_edit<-bgc %>%
   mutate(Date=as.Date(Date))%>%arrange(ID,Date) %>% group_by(Date,ID)%>%
   mutate(depth=mean(depth, na.rm=T), pH=mean(pH, na.rm=T), Q==mean(Q, na.rm=T)) %>%
-  mutate(depth= if_else(depth<0, NA, depth), Q=if_else(Q<0, NA, Q))%>%
   fill(Q, .direction = 'down')%>%distinct(Date, ID, .keep_all = T)%>%
-  select(Date,ID,depth,pH,Q)
+  select(Date,ID,depth,pH,Q, CO2, Temp_pH)
 
 carbon<-left_join(carbon, bgc_edit,by=c('Date','ID'))
 
-stream<-carbon %>%filter(chapter=='stream', Q>1)
+stream<-carbon %>%filter(chapter=='stream')
 RC<-filter(carbon, chapter=='RC')
 long<-filter(carbon, chapter=='long')
 
-ggplot(stream, aes(x=Q, y=DOC)) +
-  geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
-  scale_x_log10()+scale_y_log10()+ geom_smooth(method='lm')
-
-ggplot(stream, aes(x=Date, y=DOC)) +
-  geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
-  scale_y_log10()+ geom_smooth(method='lm')
-
-ggplot(stream, aes(x=Q, y=DIC)) +
-  geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
-  scale_x_log10()
-
-ggplot(stream, aes(x=depth)) +
-  geom_point(aes(y=DOC, color='DOC'), size=2)+
-  geom_point(aes(y=POC,color='POC'), size=2)+
-  geom_point(aes(y=DIC,color='DIC'), size=2)+
-  facet_wrap(~ Site, ncol=5, scales = "free")+scale_x_log10()+scale_y_log10()
+# ggplot(stream, aes(x=Q, y=DOC)) +
+#   geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
+#   scale_x_log10()+scale_y_log10()+ geom_smooth(method='lm')
+#
+# ggplot(stream, aes(x=Date, y=DOC)) +
+#   geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
+#   scale_y_log10()+ geom_smooth(method='lm')
+#
+# ggplot(stream, aes(x=Q, y=DIC)) +
+#   geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
+#   scale_x_log10()+scale_y_log10()+ geom_smooth(method='lm')
+#
+# ggplot(stream, aes(x=depth)) +
+#   geom_point(aes(y=DOC, color='DOC'), size=2)+
+#   geom_point(aes(y=POC,color='POC'), size=2)+
+#   geom_point(aes(y=DIC,color='DIC'), size=2)+
+#   facet_wrap(~ Site, ncol=5, scales = "free")+scale_x_log10()+scale_y_log10()
 
 write_csv(RC, "04_Output/TDC_RC.csv")
 write_csv(stream, "04_Output/TDC_stream.csv")
@@ -167,7 +164,7 @@ write_csv(long, "04_Output/TDC_long.csv")
 
 
 
-
+#Checks#########
 test<-dissolved %>% filter(complete.cases(NPDOC, DOC))%>%
   distinct(Date, Site, .keep_all = T)%>%
   mutate(UniqueID = group_indices(., as.factor(Date), Site))
@@ -175,12 +172,6 @@ test<-dissolved %>% filter(complete.cases(NPDOC, DOC))%>%
 ggplot(test, aes(x=Site, group=as.factor(Date))) +
   geom_point(aes(y=NPDOC,color='NPDOC'), size=2)+
   geom_point(aes(y=DOC,color='DOC'), size=2)+ylab('mg/L')
-
-
-
-
-
-
 
 DIC<-dissolved %>% select(Date, Site, DIC)%>% rename('measured_DIC'='DIC')
 

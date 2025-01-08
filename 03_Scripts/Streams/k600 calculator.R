@@ -19,9 +19,11 @@ R<-0.08205
 dome_length<-0.38
 
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
-file.names<-file.names[c(5,6,11,4)]
+file.names<-file.names[c(5,4,6,11)]
 data <- lapply(file.names,function(x) {read_csv(x, col_types = cols(ID = col_character()))})
 merged_data <- reduce(data, left_join, by = c("ID", 'Date'))
+
+ggplot(merged_data, aes(Date, CO2)) + geom_point() + facet_wrap(~ ID, ncol=4)
 
 stream<-merged_data%>%rename(Temp=`Temp_PT.x`, CO2_enviro=CO2)%>%
   select(Date, ID,depth, Q, CO2_enviro,Temp)%>% fill(CO2_enviro, .direction="up")
@@ -84,8 +86,6 @@ for(i in file.names){
   gas$ID<-strsplit(file_path_sans_ext(i), '_')[[1]][5]
   gas<-GasDome(gas,stream)
   gasdome<-rbind(gasdome, gas)}
-
-unique(gasdome_cleaned$ID)
 
 gasdome_cleaned <- gasdome[!duplicated(gasdome[c("day", "ID")]), ]
 gasdome_cleaned<-gasdome_cleaned %>%
