@@ -48,9 +48,9 @@ final <- longC_dim_log %>%
 
 
 
-ggplot(final, aes(x=Long, color=month))+
-  scale_color_gradient(low = "red", high = "blue") +  # Gradient for continuous data
-  geom_point(aes(y=DOC)) +
+ggplot(final, aes(x=Long, color=as.factor(month)))+
+  scale_color_manual(values = c("orange","blue", "black")) +  # Gradient for continuous data
+  geom_point(aes(y=DOC), size=2) +
   facet_wrap(~ID, ncol=3, scale='free')+
   theme(legend.position = "bottom")
 

@@ -14,8 +14,8 @@ theme_set(theme(axis.text.x = element_text(size = 12),
                 axis.title.x = element_text(size = 17),
                 plot.title = element_text(size = 17),
                 legend.key.size = unit(0.5, 'cm'),
-                legend.text=element_text(size = 10),
-                legend.title =element_text(size = 10),
+                legend.text=element_text(size = 8),
+                legend.title =element_text(size = 8),
                 legend.position ="bottom",
                 panel.grid.major.x = element_line(color = "black"),  # Customize x-axis major gridlines
                 panel.grid.minor.y = element_line(color = "black", linetype = "dashed"),
@@ -37,7 +37,7 @@ Q<-Q %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>%
   select(Date, ID, Q,Qbase,Qsurficial) %>% filter(Q>1)
 Q <- Q[!duplicated(Q[c('Date','ID')]),]
 
-dim<-left_join(depth, Q, by=c('ID', 'Date'))
+dim<-full_join(depth, Q, by=c('ID', 'Date'))
 dim<-dim %>% filter(ID=='6'| ID=='5'| ID=='9')
 
 #RC Carbon#########
@@ -52,8 +52,8 @@ RC_dim<-RC_dim%>%select(Site,`Distance (ft)`,Distance_m)
 DC_RC<-read_csv('04_Output/TDC_RC.csv')
 DC_RC<-DC_RC%>%select('Date','Site',"DIC",'DOC')
 
-C_RC<-left_join(DC_RC, RC_dim, by=c("Site"))
-C_RC<-left_join(C_RC, RClog, by=c("Site","Date"))
+C_RC<-full_join(DC_RC, RC_dim, by=c("Site"))
+C_RC<-full_join(C_RC, RClog, by=c("Site","Date"))
 
 C_RC<-C_RC %>% mutate(ID=as.character(ID), CO2=as.numeric(CO2), pH=as.numeric(pH)) %>%
   separate(Site, into = c("Stream", "Well"), sep = "GW")
@@ -63,50 +63,101 @@ C_RC<-C_RC %>% mutate(ID=as.character(ID), CO2=as.numeric(CO2), pH=as.numeric(pH
 streamC<-read_csv('04_Output/TDC_stream.csv')
 streamC_edited<-streamC %>% filter(ID %in% c("5","6","9"))%>%
   rename(Stream=Site, Temp=Temp_pH)%>%
-  mutate(`Distance (ft)`= -0.5, `Distance_m`= -0.5, WTdepth_m=0, Well=NA)%>%
+  mutate(`Distance (ft)`= -0.5, `Distance_m`= -0.5, WTdepth_m=0, Well=0)%>%
   select(Date, Stream, Well, DIC, DOC,`Distance (ft)`, Distance_m, ID, WTdepth_m, CO2,pH,Temp)
 
 all<-rbind(streamC_edited,C_RC)
-all<-all %>% mutate(month=month(Date))%>%filter(!is.na(ID))
+all <- all %>%
+  mutate(month = month(Date)) %>%
+  filter(!is.na(ID)) %>%
+  mutate(ID=case_when(Stream=='5'~'5',
+                      Stream=='6'~'6',
+                      Stream=='3'~'6',
+                      Stream=='9'~'9'))
 write_csv(all, "02_Clean_data/allC_RC.csv")
 
+#Figures########
+
 allDIC <- all %>%filter(!is.na(DIC))
-ggplot(data = allDIC, aes(x = Distance_m, group = Date, color=month)) +
-  scale_color_gradient(low = "blue", high = "red") +  # Gradient for continuous data
+a <- ggplot(data = allDIC %>% filter(Stream == '5'),
+            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
+  scale_color_gradient(low = "blue", high = "red", trans = "log10") +  labs(color = "WT Depth (m)")+
   geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(aes(y = DIC), size = 2, shape = 1) +
-  geom_line(aes(y = DIC)) +
-  ylab("DIC mg/L") + xlab("Distance (m)") +
-  theme(legend.position = "bottom") +
-  facet_wrap(~ ID, scales = "free")
-
-
-ggplot(data = allDIC, aes(x = WTdepth_m, color=month)) +
-  scale_color_gradient(low = "blue", high = "red") +  # Gradient for continuous data
   geom_point(aes(y = DIC), size = 2) +
-  xlab("DIC mg/L") + ylab("Water Table Depth (m)") +scale_y_reverse()+
+  ylab("DIC mg/L") +
+  xlab("Distance (m)") +
   theme(legend.position = "bottom") +
   facet_wrap(~ ID, scales = "free")
 
-
-plot_grid(a,b, ncol=1)
-
-ggplot(data = all, aes(x = Distance_m, group = Date, color=month)) +
-  scale_color_gradient(low = "yellow", high = "purple") +  # Gradient for continuous data
+b <- ggplot(data = allDIC %>% filter(Stream == '6'),
+            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
+  scale_color_gradient(low = "blue", high = "red", trans = "log10") + labs(color = "WT Depth (m)")+
   geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(aes(y = DOC), size = 2, shape = 1) +
-  geom_line(aes(y = DOC)) +
-  ylab("DOC mg/L") + xlab("Distance (m)") +
-  theme(legend.position = "bottom") +
-  facet_wrap(~ ID, scales = "free")
-
-
-ggplot(data = allDIC, aes(x = WTdepth_m, color=month)) +
-  scale_color_gradient(low = "yellow", high = "purple") +  # Gradient for continuous data
   geom_point(aes(y = DIC), size = 2) +
-  xlab("DIC mg/L") + ylab("Water Table Depth (m)") +scale_y_reverse()+
+  ylab("DIC mg/L") +
+  xlab("Distance (m)") +
   theme(legend.position = "bottom") +
   facet_wrap(~ ID, scales = "free")
 
+c <- ggplot(data = allDIC %>% filter(Stream == '9'),
+            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
+  scale_color_gradient(low = "blue", high = "red", trans = "log10") + labs(color = "WT Depth (m)")+
+  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
+  geom_point(aes(y = DIC), size = 2) +
+  ylab("DIC mg/L") +
+  xlab("Distance (m)") +
+  theme(legend.position = "bottom") +
+  facet_wrap(~ ID, scales = "free")
 
-plot_grid(a,b, ncol=1)
+top<-plot_grid(a,b,c, nrow=1)
+
+(bott<-ggplot(data = allDIC, aes(x = DIC, color=Distance_m)) +
+  scale_color_gradient(low = "blue", high = "red") +  # Gradient for continuous data
+  geom_point(aes(y = WTdepth_m), size = 2) +
+ xlab("DIC mg/L") + ylab("Water Table Depth (m)") +
+  theme(legend.position = "bottom") +
+  facet_wrap(~ ID, scales = "free"))
+
+
+plot_grid(top,bott, ncol=1)
+
+a <- ggplot(data = all %>% filter(Stream == '5'),
+            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
+  scale_color_gradient(low = "blue", high = "red", trans = "log10") +  labs(color = "WT Depth (m)")+
+  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
+  geom_point(aes(y = DOC), size = 2) +
+  ylab("DOC mg/L") +
+  xlab("Distance (m)") +
+  theme(legend.position = "bottom") +
+  facet_wrap(~ ID, scales = "free")
+
+b <- ggplot(data = all %>% filter(Stream == '6'),
+            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
+  scale_color_gradient(low = "blue", high = "red", trans = "log10") + labs(color = "WT Depth (m)")+
+  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
+  geom_point(aes(y = DOC), size = 2) +
+  ylab("DOC mg/L") +
+  xlab("Distance (m)") +
+  theme(legend.position = "bottom") +
+  facet_wrap(~ ID, scales = "free")
+
+c <- ggplot(data = all %>% filter(Stream == '9'),
+            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
+  scale_color_gradient(low = "blue", high = "red", trans = "log10") + labs(color = "WT Depth (m)")+
+  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
+  geom_point(aes(y = DOC), size = 2) +
+  ylab("DOC mg/L") +
+  xlab("Distance (m)") +
+  theme(legend.position = "bottom") +
+  facet_wrap(~ ID, scales = "free")
+
+top<-plot_grid(a,b,c, nrow=1)
+
+(bott<-ggplot(data = all, aes(x = DOC, color=Distance_m)) +
+    scale_color_gradient(low = "blue", high = "red") +  # Gradient for continuous data
+    geom_point(aes(y = WTdepth_m), size = 2) +
+    xlab("DOC mg/L") + ylab("Water Table Depth (m)") +
+    theme(legend.position = "bottom") +
+    facet_wrap(~ ID, scales = "free"))
+
+plot_grid(top,bott, ncol=1)

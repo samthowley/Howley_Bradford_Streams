@@ -6,13 +6,11 @@ library(seacarb)
 library(weathermetrics)
 
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
-file.names<-file.names[c(5,6,8,4)]
+file.names<-file.names[c(5,4,8,11)]
 data <- lapply(file.names,function(x) {read_csv(x)})
-library(plyr)
-master<-join_all(data, by=c('Date','ID'), type='left')
-detach("package:plyr", unload = TRUE)
+merged_data <- reduce(data, left_join, by = c("ID", 'Date'))
 
-master<-master %>% rename('Temp'='Temp_PT')%>% select(Date, ID, CO2, pH, Temp, Water_press, depth)%>%
+master<-merged_data %>% rename('Temp'='Temp_PT.x')%>% select(Date, ID, CO2, pH, Temp, Water_press, depth)%>%
   filter(CO2>0)%>%filter(Water_press>0)
 
 master <- master[complete.cases(master[ , c('Temp','CO2','pH','Water_press')]), ]
@@ -34,10 +32,13 @@ DIC<-KH %>%
          CO3_mgL=CO3_molL*60*1000)%>%
   mutate(DIC_mgL=CO2_mgL+CO3_mgL+HCO3_mgL)%>%
   mutate(DIC_mmol= (CO2_molL+CO3_molL+HCO3_molL)*1000)%>%
-  select(Date,ID,pH, CO2, DIC_mgL,CO2_mgL,HCO3_mgL,CO3_mgL)
+  select(Date,ID,pH, CO2, DIC_mgL,CO2_mgL,HCO3_mgL,CO3_mgL)%>%
+  mutate(DIC_mgL=if_else(ID=='6a'& DIC_mgL>100, NA, DIC_mgL))
 
-dev.new()
 ggplot(DIC, aes(x=Date)) + geom_point(aes(y=DIC_mgL))+facet_wrap(~ ID, ncol=5, scale='free')
+
+# s9<-DIC %>%filter(ID=='9')
+# ggplot(s9, aes(x=Date)) + geom_point(aes(y=pH))
 
 write_csv(DIC, "02_Clean_data/alkalinity.csv")
 
