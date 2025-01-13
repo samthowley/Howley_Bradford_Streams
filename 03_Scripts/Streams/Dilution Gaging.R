@@ -112,12 +112,13 @@ DG_rC<- DG_rC %>% mutate(logQ=log10(Q),logh=log10(depth_mean)) %>%
   mutate(Q = if_else(ID=='6a' & depth_mean<0.3 & Q>50, NA, Q))%>%
   filter(ID!='14')
 
-ggplot(DG_rC, aes(x = logh, y = logQ)) +
-  geom_point(size = 2, color = "grey") +  # Use a neutral color for base points
-  geom_smooth(method = "lm", se = FALSE, color = "blue") +  # Adjust method as needed
+ggplot(DG_rC, aes(x = depth_mean, y = Q)) +
+  geom_point(size = 2, color = "black") +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
   facet_wrap(~ ID, ncol = 5, scales = 'free') +
-  labs(x = "Log Height", y = "Log Q") +  # Add axis labels
-  theme_minimal() +  # Optional: Use a minimal theme for better aesthetics
+  scale_x_log10()+scale_y_log10()+
+  ylab(expression('Discharge'~'ft'^3/sec))+xlab("Depth (m)")
+  theme_minimal() +
   theme(legend.position = "bottom")
 
 split<-DG_rC %>% split(DG_rC$ID)
@@ -155,7 +156,16 @@ ggplot(discharge, aes(Date)) +
   geom_line(aes(y=Qsurficial, color='runoff'))+
   geom_line(aes(y=Qbase, color='base'))+
   facet_wrap(~ ID, ncol=5, scales = 'free')
-range(discharge$Date)
 
 write_csv(discharge, "02_Clean_data/discharge.csv")
-str(discharge)
+
+ggplot(discharge %>% filter(ID!=14), aes(Date)) +
+  geom_line(aes(y=Q))+ scale_y_log10()+
+  ylab(expression('Discharge'~'ft'^3/sec))+xlab("Date")+
+  facet_wrap(~ ID, ncol=5, scales = 'free')
+
+ggplot(depth %>% filter(ID!=14), aes(Date)) +
+  geom_line(aes(y=depth))+
+  ylab(expression("Depth (m)"))+xlab("Date")+
+  facet_wrap(~ ID, ncol=5, scales = 'free')
+
