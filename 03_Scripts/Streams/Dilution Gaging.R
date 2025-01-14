@@ -148,7 +148,9 @@ depth<-depth[,x]
 discharge <- depth %>% group_by(ID) %>%
   mutate(Qbase = gr_baseflow(Q, method = 'jakeman',a = 0.925, passes = 3))
 
-discharge<-discharge %>% group_by(ID) %>% mutate(Qsurficial=Q-Qbase)%>%
+discharge<-discharge %>% group_by(ID) %>%
+  mutate(Q=if_else(Q<0.1, NA, Q))%>%
+  mutate(Qsurficial=Q-Qbase)%>%
   mutate(Qbase = if_else(Qbase>10000, NA, Qbase),
          Qsurficial= if_else(Qsurficial>10000, NA, Qsurficial),
          Qbase = if_else(Qbase<0, NA, Qbase),
@@ -180,11 +182,17 @@ N<-ggplot(discharge %>% filter(ID %in% c('7','3','6a', '6')), aes(x = as.Date(Da
 
 plot_grid(N,S, ncol=1)
 
-discharge<-discharge %>% mutate(stream=ID, year=year(Date))
+N<-ggplot(discharge %>% filter(ID %in% c('7', '3', '6a', '6'), Date<'2024-12-31'),
+       aes(x =ID, y =Q, fill=ID))+
+         scale_fill_brewer(palette = "Set1") +
+  geom_boxplot() +scale_y_log10()+facet_wrap(~ year(Date), scales = 'free',nrow=1) +
+  labs(x = "Year", y = "Discharge (Q)") +theme_minimal()+ggtitle('North Basin')
 
-ggplot(discharge %>% filter(ID %in% c('7', '3', '6a', '6')),
-       aes(x = year(Date), y = Q, group = interaction(Date, ID)), fill=stream) +
-  scale_fill_manual(values = c('orange', 'blue','pink','black'))+
-  geom_boxplot() +scale_y_log10()+
-  labs(x = "Year", y = "Discharge (Q)") +theme_minimal()
 
+S<-ggplot(discharge %>% filter(ID %in% c('5','15','5a', '9', '13'), Date<'2024-12-31'),
+       aes(x =ID, y =Q, fill=ID))+
+  scale_fill_brewer(palette = "Set2") +
+  geom_boxplot() +scale_y_log10()+facet_wrap(~ year(Date), scales = 'free',nrow=1) +
+  labs(x = "Year", y = "Discharge (Q)") +theme_minimal()+ggtitle('South Basin')
+
+plot_grid(N,S, nrow=1)
