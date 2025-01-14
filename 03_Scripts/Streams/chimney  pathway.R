@@ -64,7 +64,6 @@ KH<-resp %>%filter(depth>0)%>%  mutate(Temp_C=fahrenheit.to.celsius(Temp_PT)) %>
 KCO2<-KH %>%
   mutate(K600_m.d=K600_daily_mean*depth,
          SchmidtCO2hi=1742-91.24*Temp_C+2.208*Temp_C^2-0.0219*Temp_C^3)%>%
-
   mutate(KCO2_m.d=K600_m.d/((600/SchmidtCO2hi)^(-2/3))) %>%
   mutate(KCO2_d=KCO2_m.d/depth)%>%
   rename(day=Date) #%>% select(day, ID, reactor, Q, Qbase, depth, KCO2_d, KH)
@@ -75,14 +74,19 @@ CO2<-CO2_hourly%>% mutate(day=as.Date(Date))
 chimney<-left_join(CO2,KCO2, by=c('day','ID'))
 chimney <- chimney  %>%
   mutate(CO2_flux=KCO2_m.d*(CO2-400)*KH*(1/10^6)*44*1000)%>%
-  group_by(day,ID)%>%mutate(mean_CO2flux=mean(CO2_flux, na.rm = T))
+  group_by(day,ID)%>%mutate(mean_CO2flux=mean(CO2_flux, na.rm = T), Reactor_C=NEP*0.8)
+
+
 chimney <- chimney[complete.cases(chimney[ , c('CO2_flux')]), ]
 
 chimney$ID <- factor(chimney$ID , levels=c('5','5a','15','7','3','6','6a','9','13'))
 
 ggplot(chimney, aes(Q))+
-  geom_point(aes(y=NEP, color = "NEP")) +ylab(expression('g'/m^2/'day'))+
-  geom_point(aes(y=mean_CO2flux, color="total CO2"))+scale_x_log10()+
+  geom_point(aes(y=Reactor_C, color = "Reactor Pathway")) +
+  geom_smooth(aes(y = Reactor_C, color = "Reactor Pathway"), method = "lm", se = FALSE) +
+  ylab(expression('g'/m^2/'day'))+
+  geom_point(aes(y=mean_CO2flux, color="Total CO2"))+scale_x_log10()+
+  geom_smooth(aes(y = mean_CO2flux, color = "Total CO2"), method = "lm", se = FALSE) +
   facet_wrap(~ ID, ncol=3, scale='free')+theme(legend.position = "bottom")+
   xlab(expression(Discharge~m^3/sec))+
   ggtitle('Reactor-Chimney Carbon')

@@ -11,16 +11,15 @@ library('StreamMetabolism')
 
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
 file.names<-file.names[c(5,6,7,4)]
-data <- lapply(file.names,function(x) {read_csv(x)})
-library(plyr)
-master<-join_all(data, by=c('Date','ID'), type='left')
-detach('package:plyr', unload = TRUE)
+data <- lapply(file.names,function(x) {read_csv(x, col_types = cols(ID = col_character()))})
+master <- reduce(data, left_join, by = c("ID", 'Date'))
 master<-master %>% mutate(day=as.Date(Date))
 
 metabolism<-read_csv('04_Output/master_metabolism.csv')
-metabolism<-metabolism %>% select(K600_daily_mean, Date, ID) %>% rename(k600_1.d=K600_daily_mean, day="Date" )
+metabolism<-metabolism %>%
+  rename(k600_1.d=K600_daily_mean, day="Date" )
 
-master.k600<-left_join(master, metabolism, c('day', 'ID'))
+master.k600<-full_join(master, metabolism, c('day', 'ID'))
 
 temp<-master.k600 %>%
   mutate(Temp_C = fahrenheit.to.celsius(Temp_PT)) %>%mutate(Temp_K=Temp_C+273.15)
@@ -48,7 +47,7 @@ flux<-ks%>%
 
 flux$ID <- factor(flux$ID , levels=c('5','5a','15','7','3','6','6a','9','13'))
 
-write_csv(flux, "fluxes.csv")
+write_csv(flux, "04_Output/fluxes.csv")
 
 ggplot(flux, aes(x = CO2_flux, y = O2_flux, color = Q)) +
   geom_point(shape = 1) +
@@ -60,6 +59,7 @@ ggplot(flux, aes(x = CO2_flux, y = O2_flux, color = Q)) +
                formula = y ~ x, parse = TRUE,
                label.x = "right", label.y = "top",
                size=5) +  # Adds slope equation text
+  geom_abline(slope = -1, intercept = 0, linetype = "dashed", color = "darkred") +
   facet_wrap(~ ID, ncol = 3, scales = 'free') +
   theme(legend.position = "bottom")
 

@@ -159,10 +159,16 @@ ggplot(discharge, aes(Date)) +
 
 write_csv(discharge, "02_Clean_data/discharge.csv")
 
-ggplot(discharge %>% filter(ID!=14), aes(Date)) +
-  geom_line(aes(y=Q))+ scale_y_log10()+
-  ylab(expression('Discharge'~'ft'^3/sec))+xlab("Date")+
-  facet_wrap(~ ID, ncol=5, scales = 'free')
+
+discharge<-read.csv('02_Clean_data/discharge.csv')
+
+ggplot(discharge, aes(x = Date, y = Q, color = ID, group = ID)) +
+  geom_line(size = 1) +  # Adjust line size for better visibility
+  scale_y_log10() +
+  ylab(expression('Discharge'~ft^3/sec)) +
+  xlab("Date") +
+  scale_color_brewer(palette = "Set1") +  # Use a color palette for better distinction
+  ggtitle("Discharge Over Time")
 
 ggplot(depth %>% filter(ID!=14), aes(Date)) +
   geom_line(aes(y=depth))+
