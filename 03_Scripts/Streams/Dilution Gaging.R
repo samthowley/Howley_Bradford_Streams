@@ -7,6 +7,8 @@ library(lme4)
 library(mmand)
 library(grwat)
 library(ggpmisc)
+library(cowplot)
+library(ggplot2)
 
 ###seperating DG######
 clean_DG <- function(DG) {
@@ -159,19 +161,30 @@ ggplot(discharge, aes(Date)) +
 
 write_csv(discharge, "02_Clean_data/discharge.csv")
 
-
+#Figures##########
 discharge<-read.csv('02_Clean_data/discharge.csv')
 
-ggplot(discharge, aes(x = Date, y = Q, color = ID, group = ID)) +
+S<-ggplot(discharge %>% filter(ID %in% c('5','15','5a', '9', '13')), aes(x = as.Date(Date), y = Q, color = ID, group = ID)) +
   geom_line(size = 1) +  # Adjust line size for better visibility
-  scale_y_log10() +
-  ylab(expression('Discharge'~ft^3/sec)) +
-  xlab("Date") +
+  scale_y_log10() +scale_x_date(date_labels = "%Y") +
+  ylab(expression('Discharge'~ft^3/sec)) + xlab("Date") +
   scale_color_brewer(palette = "Set1") +  # Use a color palette for better distinction
-  ggtitle("Discharge Over Time")
+  ggtitle("South Basin")
 
-ggplot(depth %>% filter(ID!=14), aes(Date)) +
-  geom_line(aes(y=depth))+
-  ylab(expression("Depth (m)"))+xlab("Date")+
-  facet_wrap(~ ID, ncol=5, scales = 'free')
+N<-ggplot(discharge %>% filter(ID %in% c('7','3','6a', '6')), aes(x = as.Date(Date), y = Q, color = ID, group = ID)) +
+  geom_line(size = 1) +  # Adjust line size for better visibility
+  scale_y_log10() +scale_x_date(date_labels = "%Y") +
+  ylab(expression('Discharge'~ft^3/sec)) + xlab("Date") +
+  scale_color_brewer(palette = "Set1") +  # Use a color palette for better distinction
+  ggtitle("North Basin")
+
+plot_grid(N,S, ncol=1)
+
+discharge<-discharge %>% mutate(stream=ID, year=year(Date))
+
+ggplot(discharge %>% filter(ID %in% c('7', '3', '6a', '6')),
+       aes(x = year(Date), y = Q, group = interaction(Date, ID)), fill=stream) +
+  scale_fill_manual(values = c('orange', 'blue','pink','black'))+
+  geom_boxplot() +scale_y_log10()+
+  labs(x = "Year", y = "Discharge (Q)") +theme_minimal()
 
