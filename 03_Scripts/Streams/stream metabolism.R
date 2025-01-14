@@ -11,16 +11,17 @@ library(lubridate)
 library(streamMetabolizer)
 library(weathermetrics)
 library('StreamMetabolism')
+library(lme4)
 #constants######
-samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2021-03-29 00:00", tz="UTC"),
+samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
                                             to=as.POSIXct("2025-01-03 00:00", tz="UTC"),by="hour")))
 samplingperiod<-samplingperiod %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 
-x<-c("Date","DO","depth","Mouth_Temp_C")
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
 file.names<-file.names[c(5,7,11,6)]
-data <- lapply(file.names,function(x) {read_csv(x)})
+data <- lapply(file.names,function(x) {read_csv(x, col_types = cols(ID = col_character()))})
 merged_data <- reduce(data, left_join, by = c("ID", 'Date'))
+ggplot(merged_data, aes(Date, DO)) + geom_point() + facet_wrap(~ ID, ncol=4)
 
 input<-merged_data %>%rename('Temp'='Temp_PT.x')%>% select(ID,Date, DO, depth, Q, Temp)%>%
   filter(depth>0)
@@ -119,6 +120,31 @@ s13<-filter(input, ID=='13')
 s13_ouput<-metabolism(s13)
 s13_ouput$ID<-'13'
 
+s5<-filter(input, ID=='5')
+s5_ouput<-metabolism(s5)
+s5_ouput$ID<-'5'
+
+s6<-filter(input, ID=='6')
+s6_ouput<-metabolism(s6)
+s6_ouput$ID<-'6' #NOT WORKING
+
+s6a<-filter(input, ID=='6a')
+s6a_ouput<-metabolism(s6a)
+s6a_ouput$ID<-'6a'
+
+s7<-filter(input, ID=='7')
+s7_ouput<-metabolism(s7)
+s7_ouput$ID<-'7'
+
+s15<-filter(input, ID=='15')
+s15_ouput<-metabolism(s15)
+s15_ouput$ID<-'15'
+
+s5a<-filter(input, ID=='5a')
+s5a_ouput<-metabolism(s5a)
+s5a_ouput$ID<-'5a'
+
+
 #k600
 bins<- function(site) {
   site_positive<- site %>% filter(K600_1d>0)
@@ -155,39 +181,15 @@ bins<- function(site) {
   return(bayes_specs)}
 bayes_name <- mm_name(type='bayes', pool_K600="binned", err_obs_iid=TRUE, err_proc_iid=TRUE)
 
-s5<-filter(k600_interpolated, ID=='5')
-s5_ouput<-metabolism(s5)
-s5_ouput$ID<-'5'
-
-s6<-filter(k600_interpolated, ID=='6')
-s6_ouput<-metabolism(s6)
-s6_ouput$ID<-'6' #NOT WORKING
-
-s6a<-filter(k600_interpolated, ID=='6a')
-s6a_ouput<-metabolism(s6a)
-s6a_ouput$ID<-'6a'
-
-s7<-filter(k600_interpolated, ID=='7')
-s7_ouput<-metabolism(s7)
-s7_ouput$ID<-'7'
-
-s15<-filter(master, ID=='15')
-s15_ouput<-metabolism(s15)
-s15_ouput$ID<-'15'
-
-s5a<-filter(k600_interpolated, ID=='5a')
-s5a_ouput<-metabolism(s5a)
-s5a_ouput$ID<-'5a'
 
 master<-rbind(s3_ouput, s5_ouput, s5a_ouput, s6_ouput,s6a_ouput, s7_ouput, s9_ouput,
               s13_ouput,s15_ouput)
-master<- master %>% rename('ER'="ER_daily_mean", 'GPP'="GPP_daily_mean", 'Date'='date')
+master<- master %>% rename('ER'="ER_daily_mean", 'GPP'="GPP_daily_mean", 'Date'='date')%>%filter(ER>-30)
 
-master<-master %>% filter(Date> "2023-06-16") %>%filter(ER>-30)
 #############
 
-
 write_csv(master, "04_Output/master_metabolism.csv")
+
 
 discharge <- read_csv("02_Clean_data/discharge.csv")
 discharge<-discharge %>% mutate(Date=as.Date(Date))
@@ -204,4 +206,8 @@ b<-ggplot(master,aes(x=ID,y=ER))+
   ggtitle("ER")+theme_sam
 
 plot_grid(a,b, align = "v", ncol = 1, rel_heights = c(0.6,0.4))
+
+
+ggplot(s3, aes(x=Date, y=DO))+
+  geom_point()
 
