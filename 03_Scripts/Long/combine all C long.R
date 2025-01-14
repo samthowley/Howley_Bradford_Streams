@@ -7,11 +7,11 @@ library(readxl)
 library(lubridate)
 library(cowplot)
 library(seacarb)
-
-depth<-read_csv('02_Clean_data/depth.csv')
-Q<-read_csv('02_Clean_data/discharge.csv')
+#need to include stream LB too
 
 #Edit dims######
+depth<-read_csv('02_Clean_data/depth.csv')
+Q<-read_csv('02_Clean_data/discharge.csv')
 
 depth<-depth %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>% mutate(depth=mean(depth, na.rm = T)) %>%
   select(Date, ID, depth)%>% filter(depth>0)
@@ -23,37 +23,40 @@ Q<-Q %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>%
 Q <- Q[!duplicated(Q[c('Date','ID')]),]
 
 dim<-left_join(depth, Q, by=c('ID', 'Date'))
-
+dim_edited<-dim %>%filter(ID %in% c('3','6','9','5'))
 #############
 
-longlog<-read_csv('01_Raw_data/Long. Log.csv')
-longlog<-longlog %>% rename('Sampled'="Visited")
+longC<-read_csv("04_Output/TDC_long.csv")
+longC_edited <- longC %>% mutate(ID=as.character(ID))%>%
+  separate(Site, into = c("ID", "Long"), sep = "\\.")%>%select(-depth, -Q, -pH, -CO2, Temp_pH)
 
-POC<-read_xlsx('01_Raw_data/POC.xlsx')
-POC<-POC %>% select(ID, Sampled, "mg/L") %>%rename('Date'='Sampled', 'POC_mgL'='mg/L', 'Site'='ID')
-POC<-POC[POC$Site %in% c("9.1","9.2","9.3","9.4","9.5","9.Sam",
-                       "5.1","5.2","5.3","5.4","5.5","5.6",
-                       "3.1","3.2","3.3","3.4","6.1","6.2","6.3"),]
+longC_dim<-left_join(longC_edited,dim_edited, by=c('Date', 'ID'))
 
+long_log<-read_csv("01_Raw_data/Long. Log.csv")
+long_log_edited <- long_log %>% rename(Date=Visited)%>%mutate(Date=mdy(Date))%>%
+  separate(Site, into = c("ID", "Long"), sep = "\\.")
 
-DC<-read_csv('04_Output/TDC_long.csv')
-DIC<-DC %>% filter(Species=='DIC') %>% rename("DIC"="Conc.") %>% select(Site, ID, Date, DIC)
-DOC<-DC %>% filter(Species=='DOC') %>% rename("DOC"="Conc.") %>% select(Site, ID, Date, DOC)
-DC<-left_join(DOC, DIC, by=c("Site","Date", 'ID'))
-
-totC<-left_join(DC,POC, by=c("Site","Date"))
-totC<-totC %>% mutate(ID=as.character(ID))
-# totDC <- totDC[rev(order(as.Date(totDC$Date, format="%m/%d/%Y"))),]
-# totDC$POC_mgL[totDC$POC_mgL>200]<-NA
-
-totC<-left_join(totC,dim, by=c("ID","Date"))
-totC_separated <- totC %>%
-  separate(Site, into = c("Stream", "Long"), sep = "\\.")
+longC_dim_log<-left_join(longC_dim,long_log_edited, by=c('Date', 'ID', 'Long'))
+final <- longC_dim_log %>%
+  mutate(ID = as.character(ID),Long = as.character(Long)) %>%
+  mutate(Long = case_when(
+    ID == '6' & Long == '1' ~ '4',
+    ID == '6' & Long == '2' ~ '5',
+    ID == '6' & Long == '3' ~ '6',
+    TRUE ~ Long)) %>%
+  mutate(ID = if_else(ID == '3', '6', ID))%>% mutate(month=month(Date))
 
 
-ggplot(totC_separated, aes(x=Long, color= Q))+
-  #scale_color_gradient(high='red', low='blue')+
-  geom_point(aes(y=DOC, color = "DOC")) +
-  geom_point(aes(y=DIC, color="DIC"))+
-  facet_wrap(~Stream, ncol=3, scale='free')+
+
+ggplot(final, aes(x=Long, color=as.factor(month)))+
+  scale_color_manual(values = c("orange","blue", "black")) +  # Gradient for continuous data
+  geom_point(aes(y=DOC), size=2) +
+  facet_wrap(~ID, ncol=3, scale='free')+
   theme(legend.position = "bottom")
+
+ggplot(final, aes(x=Long, color= Q))+
+  #scale_color_gradient(high='red', low='blue')+
+  geom_point(aes(y=DIC, color="DIC"))+
+  facet_wrap(~ID, ncol=3, scale='free')+
+  theme(legend.position = "bottom")
+

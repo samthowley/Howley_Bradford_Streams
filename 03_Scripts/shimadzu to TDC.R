@@ -42,7 +42,7 @@ for(fil in file.names){
   NPOC<-result %>%filter(Analyte=='NPOC',Site!='NPOC')%>%rename("NPOC"="Analyte")%>%select(Site,Date,Rep,Conc,Area)%>%
     rename("NPOC.area"="Area", "NPOC.conc"="Conc")
 
-  TOC<-left_join(TC, IC, by=c("Site", "Date","Rep"))
+  TOC<-full_join(TC, IC, by=c("Site", "Date","Rep"))
   TOC<-TOC%>%select(-Rep)
   TOC_all<-rbind(TOC_all, TOC)
 
@@ -62,21 +62,25 @@ for(fil in file.names){
 
 dissolved_NPOC<-NPOC_all %>% filter(!Rep %in% c("1", "2", "3"))%>%
   mutate(DOC = if_else(Date < '2025-12-20', NPOC.area*0.297-0.133, NPOC.area), DIC=NA)%>%
-  select(Date, Site, DIC, DOC)
+  select(Date, Site, DOC)
 
 dissolved_TOC<- TOC_all%>%filter(!is.na(Date))%>% #incorporating calibrations
   mutate(DIC = if_else(Date < '2025-12-20', IC.area*0.37+0.479, IC.area),
-         DOC = if_else(Date < '2025-12-20', TC.area*0.2989-0.234, TC.area))%>%
-  select(Date, Site, DIC, DOC)
+         DOC = if_else(Date < '2025-12-20', TC.area*0.2989-0.234, TC.area))
 
-dissolvedC<-rbind(dissolved_NPOC, dissolved_TOC,csv)
+DOC<-dissolved_TOC%>%select(Date, Site, DOC)
+DOC_NPOC<-rbind(DOC,dissolved_NPOC)
 
+DIC<-dissolved_TOC%>%select(Date, Site, DIC)
+DC<-full_join(DIC, DOC_NPOC, by = c("Date","Site"))
+
+dissolvedC_csv<-rbind(DC, csv)
 
 particulate_NPOC<-NPOC_all %>% filter(Rep %in% c("1", "2", "3"))%>%
   mutate(TNPOC = if_else(Date < '2025-12-20', NPOC.area*0.297-0.133, NPOC.area))%>%group_by(Site, Date)%>%
-  mutate(NPTOC=mean(TNPOC, na.rm=T))%>% distinct(Date,Site, .keep_all = T) %>%select(Site,Date,TNPOC)
+    mutate(NPTOC=mean(TNPOC, na.rm=T))%>% distinct(Date,Site, .keep_all = T) %>%select(Site,Date,TNPOC)
 
-sampledC<-left_join(dissolvedC,particulate_NPOC, by=c('Date','Site'))
+sampledC<-full_join(dissolvedC_csv,particulate_NPOC, by=c('Date','Site'))
 sampledC<-sampledC %>% mutate(POC=TNPOC-DOC)
 
 
@@ -117,14 +121,11 @@ carbon<-carbon %>% mutate(chapter=case_when(Site=='3'~'stream',Site=='5'~'stream
                                             Site=='9.5'~'long',Site=='9.6'~'long',Site=='9.Sam'~'long'))
 
 carbon$chapter[is.na(carbon$chapter)]<-'wetland'
-wetland<-filter(carbon, chapter=='wetland')
-
-write_csv(wetland, "04_Output/TC_wetland.csv")
 
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
 file.names<-file.names[c(5,4,6,8)]
 data <- lapply(file.names,function(x) {read_csv(x, col_types = cols(ID = col_character()))})
-bgc <- reduce(data, left_join, by = c("ID", 'Date'))
+bgc <- reduce(data, full_join, by = c("ID", 'Date'))
 
 bgc_edit<-bgc %>%
   mutate(Date=as.Date(Date))%>%arrange(ID,Date) %>% group_by(Date,ID)%>%
@@ -132,7 +133,9 @@ bgc_edit<-bgc %>%
   fill(Q, .direction = 'down')%>%distinct(Date, ID, .keep_all = T)%>%
   select(Date,ID,depth,pH,Q, CO2, Temp_pH)
 
-carbon<-left_join(carbon, bgc_edit,by=c('Date','ID'))
+carbon<-full_join(carbon, bgc_edit,by=c('Date','ID'))
+carbon<-carbon %>% mutate(Date = if_else(Date == as.Date("2004-05-08"), as.Date("2024-05-08"), Date))%>%
+                   mutate(Date = if_else(Date == as.Date("2004-06-14"),as.Date("2024-06-14") ,Date))
 
 stream<-carbon %>%filter(chapter=='stream')
 RC<-filter(carbon, chapter=='RC')
@@ -179,6 +182,6 @@ alkalinity <- read_csv("02_Clean_data/alkalinity.csv")
 alkalinity<-alkalinity %>%mutate(DIC_interpolated = sum(c_across(c(CO2_mgL, HCO3_mgL, CO3_mgL))),
                                  Date=as.Date(Date)) %>%rename(Site=ID)
 
-DIC_check<-left_join(DIC, alkalinity, by=c('Date', 'Site'))
+DIC_check<-full_join(DIC, alkalinity, by=c('Date', 'Site'))
 DIC_check<-DIC_check %>% distinct('Date', 'Site', .keep_all = T)%>%
   filter(complete.cases(DIC_in, measured_DIC))

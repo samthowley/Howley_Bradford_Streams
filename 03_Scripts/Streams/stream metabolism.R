@@ -184,11 +184,13 @@ bayes_name <- mm_name(type='bayes', pool_K600="binned", err_obs_iid=TRUE, err_pr
 
 master<-rbind(s3_ouput, s5_ouput, s5a_ouput, s6_ouput,s6a_ouput, s7_ouput, s9_ouput,
               s13_ouput,s15_ouput)
-master<- master %>% rename('ER'="ER_daily_mean", 'GPP'="GPP_daily_mean", 'Date'='date')%>%filter(ER>-30)
+master<- master %>% rename('ER'="ER_daily_mean", 'GPP'="GPP_daily_mean", 'Date'='date')%>%
+  filter(ER>-30 & ER<0)
+
+write_csv(master, "04_Output/master_metabolism.csv")
 
 #############
 
-write_csv(master, "04_Output/master_metabolism.csv")
 
 
 discharge <- read_csv("02_Clean_data/discharge.csv")
@@ -196,11 +198,13 @@ discharge<-discharge %>% mutate(Date=as.Date(Date))
 metabolism<-read_csv("04_Output/master_metabolism.csv")
 metabolism<-left_join(metabolism, discharge, by=c('Date', 'ID'))
 select<-metabolism %>% filter(ID %in% c('5','6','9'))
-ggplot(select, aes(Q, ER)) + scale_x_log10()+
-  geom_point(aes(y=ER, color='ER'))+
-  geom_point(aes(y=GPP, color='GPP')) + facet_wrap(~ ID, ncol=3, scale='free')+
-  ylab(expression(O[2]~'g'/m^2/'day'))+xlab(expression(Discharge~m^3/sec))
 
+ggplot(metabolism, aes(Date)) +
+  #geom_point(aes(y = ER, color = 'ER')) +
+  geom_point(aes(y = GPP, color = 'GPP')) +
+  facet_wrap(~ ID, ncol = 3, scale = 'free') +
+  ylab(expression(O[2]~'g'/m^2/'day')) +
+  xlab("Date")
 b<-ggplot(master,aes(x=ID,y=ER))+
   geom_boxplot(outlier.color="black")+
   ggtitle("ER")+theme_sam

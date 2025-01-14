@@ -14,8 +14,8 @@ theme_set(theme(axis.text.x = element_text(size = 12),
                 axis.title.x = element_text(size = 17),
                 plot.title = element_text(size = 17),
                 legend.key.size = unit(0.5, 'cm'),
-                legend.text=element_text(size = 10),
-                legend.title =element_text(size = 10),
+                legend.text=element_text(size = 8),
+                legend.title =element_text(size = 8),
                 legend.position ="bottom",
                 panel.grid.major.x = element_line(color = "black"),  # Customize x-axis major gridlines
                 panel.grid.minor.y = element_line(color = "black", linetype = "dashed"),
@@ -37,7 +37,7 @@ Q<-Q %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>%
   select(Date, ID, Q,Qbase,Qsurficial) %>% filter(Q>1)
 Q <- Q[!duplicated(Q[c('Date','ID')]),]
 
-dim<-left_join(depth, Q, by=c('ID', 'Date'))
+dim<-full_join(depth, Q, by=c('ID', 'Date'))
 dim<-dim %>% filter(ID=='6'| ID=='5'| ID=='9')
 
 #RC Carbon#########
@@ -52,8 +52,8 @@ RC_dim<-RC_dim%>%select(Site,`Distance (ft)`,Distance_m)
 DC_RC<-read_csv('04_Output/TDC_RC.csv')
 DC_RC<-DC_RC%>%select('Date','Site',"DIC",'DOC')
 
-C_RC<-left_join(DC_RC, RC_dim, by=c("Site"))
-C_RC<-left_join(C_RC, RClog, by=c("Site","Date"))
+C_RC<-full_join(DC_RC, RC_dim, by=c("Site"))
+C_RC<-full_join(C_RC, RClog, by=c("Site","Date"))
 
 C_RC<-C_RC %>% mutate(ID=as.character(ID), CO2=as.numeric(CO2), pH=as.numeric(pH)) %>%
   separate(Site, into = c("Stream", "Well"), sep = "GW")
@@ -63,134 +63,101 @@ C_RC<-C_RC %>% mutate(ID=as.character(ID), CO2=as.numeric(CO2), pH=as.numeric(pH
 streamC<-read_csv('04_Output/TDC_stream.csv')
 streamC_edited<-streamC %>% filter(ID %in% c("5","6","9"))%>%
   rename(Stream=Site, Temp=Temp_pH)%>%
-  mutate(`Distance (ft)`= -0.5, `Distance_m`= -0.5, WTdepth_m=0, Well=NA)%>%
+  mutate(`Distance (ft)`= -0.5, `Distance_m`= -0.5, WTdepth_m=0, Well=0)%>%
   select(Date, Stream, Well, DIC, DOC,`Distance (ft)`, Distance_m, ID, WTdepth_m, CO2,pH,Temp)
 
 all<-rbind(streamC_edited,C_RC)
-all<-all %>% mutate(Date=ymd(Date))
+all <- all %>%
+  mutate(month = month(Date)) %>%
+  filter(!is.na(ID)) %>%
+  mutate(ID=case_when(Stream=='5'~'5',
+                      Stream=='6'~'6',
+                      Stream=='3'~'6',
+                      Stream=='9'~'9'))
 write_csv(all, "02_Clean_data/allC_RC.csv")
 
-(a<-ggplot(data = all, aes(x = Distance_m, group = Date, color=Date)) +
-  scale_color_gradient(low = "blue", high = "red") +  # Gradient for continuous data
+#Figures########
+
+allDIC <- all %>%filter(!is.na(DIC))
+a <- ggplot(data = allDIC %>% filter(Stream == '5'),
+            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
+  scale_color_gradient(low = "blue", high = "red", trans = "log10") +  labs(color = "WT Depth (m)")+
   geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(aes(y = DIC), size = 2, shape = 1) +
-  geom_line(aes(y = DIC)) +
-  ylab("DIC mg/L") + xlab("Distance (m)") +
+  geom_point(aes(y = DIC), size = 2) +
+  ylab("DIC mg/L") +
+  xlab("Distance (m)") +
+  theme(legend.position = "bottom") +
+  facet_wrap(~ ID, scales = "free")
+
+b <- ggplot(data = allDIC %>% filter(Stream == '6'),
+            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
+  scale_color_gradient(low = "blue", high = "red", trans = "log10") + labs(color = "WT Depth (m)")+
+  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
+  geom_point(aes(y = DIC), size = 2) +
+  ylab("DIC mg/L") +
+  xlab("Distance (m)") +
+  theme(legend.position = "bottom") +
+  facet_wrap(~ ID, scales = "free")
+
+c <- ggplot(data = allDIC %>% filter(Stream == '9'),
+            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
+  scale_color_gradient(low = "blue", high = "red", trans = "log10") + labs(color = "WT Depth (m)")+
+  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
+  geom_point(aes(y = DIC), size = 2) +
+  ylab("DIC mg/L") +
+  xlab("Distance (m)") +
+  theme(legend.position = "bottom") +
+  facet_wrap(~ ID, scales = "free")
+
+top<-plot_grid(a,b,c, nrow=1)
+
+(bott<-ggplot(data = allDIC, aes(x = DIC, color=Distance_m)) +
+  scale_color_gradient(low = "blue", high = "red") +  # Gradient for continuous data
+  geom_point(aes(y = WTdepth_m), size = 2) +
+ xlab("DIC mg/L") + ylab("Water Table Depth (m)") +
   theme(legend.position = "bottom") +
   facet_wrap(~ ID, scales = "free"))
 
-(b<-ggplot(data=C_RC, aes(x=WTdepth_m, group = Date)) +
-    geom_point(aes(y=DIC), size = 2)+
-    ylab("DOC mg/L")+xlab('Water Table Depth (m)')+
-    #geom_point(aes(y=CO2_mv),size=2)+
-    theme(legend.position = "bottom")+
-    facet_wrap(~ ID, scales='free'))
 
+plot_grid(top,bott, ncol=1)
 
-plot_grid(a,b, ncol=1)
+a <- ggplot(data = all %>% filter(Stream == '5'),
+            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
+  scale_color_gradient(low = "blue", high = "red", trans = "log10") +  labs(color = "WT Depth (m)")+
+  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
+  geom_point(aes(y = DOC), size = 2) +
+  ylab("DOC mg/L") +
+  xlab("Distance (m)") +
+  theme(legend.position = "bottom") +
+  facet_wrap(~ ID, scales = "free")
 
-(a<-ggplot(data = C_RC, aes(x = Distance_m, color = Date, group=Date)) +
-    scale_color_gradient(low = "blue", high = "red") +
-    theme(legend.position = "bottom") + geom_vline(xintercept = 0, colour = "gray", size=1.5) +
-    geom_point(aes(y = DOC), size = 2) +
-    geom_line(aes(y = DOC)) +
-    ylab("DOC mg/L") + xlab('Distance (m)')+ labs(color = "Date")+
-    facet_wrap(~ ID, scales = 'free') +
-    ggtitle('River Corridor')+theme(legend.position = "none"))
+b <- ggplot(data = all %>% filter(Stream == '6'),
+            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
+  scale_color_gradient(low = "blue", high = "red", trans = "log10") + labs(color = "WT Depth (m)")+
+  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
+  geom_point(aes(y = DOC), size = 2) +
+  ylab("DOC mg/L") +
+  xlab("Distance (m)") +
+  theme(legend.position = "bottom") +
+  facet_wrap(~ ID, scales = "free")
 
-(b<-ggplot(data=C_RC, aes(x=WTdepth_m, group = Date)) +
-  geom_point(aes(y=DOC), size = 2)+
-  ylab("DOC mg/L")+xlab('Water Table Depth (m)')+
-  #geom_point(aes(y=CO2_mv),size=2)+
-  theme(legend.position = "bottom")+
-  facet_wrap(~ ID, scales='free'))
+c <- ggplot(data = all %>% filter(Stream == '9'),
+            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
+  scale_color_gradient(low = "blue", high = "red", trans = "log10") + labs(color = "WT Depth (m)")+
+  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
+  geom_point(aes(y = DOC), size = 2) +
+  ylab("DOC mg/L") +
+  xlab("Distance (m)") +
+  theme(legend.position = "bottom") +
+  facet_wrap(~ ID, scales = "free")
 
-plot_grid(a,b, ncol=1)
+top<-plot_grid(a,b,c, nrow=1)
 
+(bott<-ggplot(data = all, aes(x = DOC, color=Distance_m)) +
+    scale_color_gradient(low = "blue", high = "red") +  # Gradient for continuous data
+    geom_point(aes(y = WTdepth_m), size = 2) +
+    xlab("DOC mg/L") + ylab("Water Table Depth (m)") +
+    theme(legend.position = "bottom") +
+    facet_wrap(~ ID, scales = "free"))
 
-a<-ggplot(data = C_RC, aes(x = Distance_m, color = Date, group=Date)) +
-  scale_color_gradient(low = "blue", high = "red") +
-  theme(legend.position = "bottom") + geom_vline(xintercept = 0, colour = "gray", size=1.5) +
-  geom_point(aes(y = pH), size = 2) +
-  geom_line(aes(y = pH)) +
-  ylab("pH") + xlab('Distance (m)')+ labs(color = "Date")+
-  facet_wrap(~ ID, scales = 'free') +
-  ggtitle('River Corridor')+theme(legend.position = "none")
-
-b<-ggplot(data=C_RC, aes(x=WTdepth_m, group = Date)) +
-  geom_point(aes(y=pH), size = 2)+
-  ylab("pH")+xlab('Water Table Depth (m)')+
-  #geom_point(aes(y=CO2_mv),size=2)+
-  theme(legend.position = "bottom")+
-  facet_wrap(~ ID, scales='free')
-
-plot_grid(a,b, ncol=1)
-
-###Interpolating CO2######
-CO2 <- function(master) {
-  master <- master[complete.cases(master[ , c('Temp','pH','Water_press','Q')]), ]
-  master$Temp_K<- master$Temp+273.15
-
-  master$exp<-2400*((1/master$Temp_K)-(1/298.15))
-  master$KH<-0.034*2.178^(master$exp)#mol/L/atm
-
-  master$K1<-K1(S=0.01, T=master$Temp, P=master$Water_press)
-  master$K2<-K2(S=0.01, T=master$Temp, P=master$Water_press)
-
-  master$pK1<- -log10(master$K1)
-  master$pK2<- -log10(master$K2)
-
-  master$HCO3_molL<-master$DIC_mgL/61000
-  master$CO2_molL<-master$HCO3_molL/(10^(master$pH-master$pK1))
-
-  master$CO2_atm<-master$CO2_molL/master$KH
-  master$CO2_ppm_inter<-master$CO2_atm*1000000
-
-  master<-master %>% select(Date, ID, Site, CO2_ppm_inter, CO2_molL, HCO3_molL)
-  return(master)}
-
-RCc<-read_csv("02_Clean_data/allC_RC.csv")
-RCc$ID<-as.character(RCc$ID)
-
-depth<-read_csv("02_Clean_data/depth.csv")
-discharge<-read_csv("02_Clean_data/discharge.csv")
-
-RCc<-left_join(RCc, depth, by=c('Date','ID'))
-RCc<-left_join(RCc, discharge, by=c('Date','ID'))
-
-CO2_inter<-CO2(RCc)
-RCc<-left_join(RCc, CO2_inter, by=c('Date','ID','Site'))
-RCc <- RCc[!duplicated(RCc[c('Site','Date')]),]
-
-
-theme_set(theme(axis.text.x = element_text(size = 17, angle=0),
-                axis.text.y = element_text(size = 17, angle=0),
-                axis.title.y =element_text(size = 17, color = "black"),
-                axis.title.x =element_text(size = 17),
-                plot.title = element_text(size = 17),
-                legend.position = "none",
-                panel.background = element_rect(fill = 'white'),
-                axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
-                axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black")))
-
-a<-ggplot(RCc, aes(x=Distance_m, y=DOC_mgL, color=Q))+
-  scale_color_gradient(low = "blue", high = "red")+
-  geom_point()+facet_wrap(~ ID, ncol=5, scales = "free")+ggtitle('River Corridor')
-b<-ggplot(RCc, aes(x=Distance_m, y=DIC_mgL, color=Q))+
-  scale_color_gradient(low = "blue", high = "red")+
-  geom_point()+facet_wrap(~ ID, ncol=5, scales='free')+ggtitle('River Corridor')
-plot_grid(a,b,ncol=1)
-
-(a<-ggplot(data=RCc, aes(x=Qbase)) +
-    geom_point(aes(y=DOC_mgL),color='blue',size=3)+
-    geom_point(aes(y=DIC_mgL),color='orange',size=3)+
-    facet_wrap(~ Site, ncol=5)+ ggtitle('Rver Corridor'))
-
-(a<-ggplot(data=RCc, aes(x=WTdepth, color=Distance_m)) +
-    scale_color_gradient(low = "blue", high = "red")+
-    geom_point(aes(y=DOC_mgL),size=3)+
-    #geom_point(aes(y=DIC_mgL),size=3)+
-    facet_wrap(~ Site, ncol=5, scales='free')+ ggtitle('River Corridor'))
-
-
-write_csv(C_RC, "02_Clean_data/allC_RC.csv")
+plot_grid(top,bott, ncol=1)

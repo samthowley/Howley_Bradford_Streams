@@ -25,11 +25,12 @@ theme_set(theme(axis.text.x = element_text(size = 12),
                 axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "gray"),
                 axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "gray")))
 
+
+#Edit dims######
 depth<-read_csv('02_Clean_data/depth.csv')
 Q<-read_csv('02_Clean_data/discharge.csv')
 length<-read_csv('02_Clean_data/stream area.csv')
 
-#Edit dims######
 depth<-depth %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>% mutate(depth=mean(depth, na.rm = T)) %>%
   select(Date, ID, depth, Temp_PT)
 depth <- depth[!duplicated(depth[c( 'Date','ID')]),]
@@ -42,48 +43,36 @@ Q <- Q[!duplicated(Q[c('Date','ID')]),]
 dim<-left_join(Q, depth, by=c('ID', 'Date'))
 
 #sample C##########
-POC<-read_xlsx('01_Raw_data/POC.xlsx')
-POC<-POC %>% rename('Date'='Sampled', 'POC_mgL'='mg/L')%>%
-  mutate(POC_mmol=POC_mgL/44.01) %>% select(ID,Date,POC_mgL,POC_mmol) %>%filter(POC_mgL<200)
-POC<-POC[POC$ID %in% c("6","5a","7","9","5","6a","13","15","3"), ]
 
-DC_strm<-read_csv('04_Output/TDC_stream.csv')
-# DIC_strm<-DC_strm %>% filter(Species=='DIC') %>%
-#   rename("DIC"="Conc.","DIC_mmol"='mmol')%>%
-#   select(ID, Date, DIC, DIC_mmol)
-DOC_strm<-DC_strm %>% filter(Species=='DOC') %>%
-  rename("DOC"="Conc.","DOC_mmol"='mmol') %>%
-  select(ID, Date, DOC, DOC_mmol)
-# DC<-left_join(DOC_strm, DIC_strm, by=c("ID","Date"))
+shimadzu<-read_csv('04_Output/TDC_stream.csv')
 
-totDC<-left_join(DOC_strm,POC, by=c("ID","Date"))
 
 alkalinity <- read_csv("02_Clean_data/alkalinity.csv")
-alkalinity<-alkalinity %>% mutate(DIC=CO2_mgL+HCO3_mgL+CO3_mgL, Date=as.Date(Date))
-totDC<-left_join(totDC,alkalinity, by=c("ID","Date"))
+alkalinity_edited<-alkalinity%>%select(Date, ID, DIC_mgL, CO2_mgL, HCO3_mgL, CO3_mgL)
+
+combined<-full_join(shimadzu, alkalinity_edited, by=c('Date', 'ID'))
 
 
-#totDC<-totDC %>% select(ID,Date,POC_mgL,DIC,DOC,POC_mmol,DIC_mmol,DOC_mmol)
-totDC <- totDC[rev(order(as.Date(totDC$Date, format="%m/%d/%Y"))),]
+totC<-combined %>%distinct(Date, ID, .keep_all = T)%>%
+  mutate(DIC = if_else(is.na(DIC), as.numeric(DIC_mgL), DIC))%>%
+  select(Date, ID, DIC, DOC, POC, ID, depth, pH, Q, CO2)%>%
+  mutate(POC=abs(POC))
 
-totDC <- totDC[!duplicated(totDC[c('ID','Date')]),]
-totDC<-left_join(totDC, dim, by=c('ID', 'Date'))
 
-totDC<-totDC%>%filter(Q>1)
-totDC$ID <- factor(totDC$ID , levels=c('5','5a','15','7','3','6','6a','9','13'))
-
-ggplot(totDC, aes(x=Q))+
+ggplot(totC, aes(x=Q))+
   geom_point(aes(y=DOC, color="DOC"),size=3, shape=1)+
   geom_point(aes(y=DIC, color= "DIC"), size=3)+
-  geom_point(aes(y=POC_mgL, color="POC"), size=3)+
+  geom_point(aes(y=POC, color="POC"), size=3)+
   scale_colour_manual(values = c("black", "#0000FF", "darkorange"))+
   scale_x_log10()+scale_y_log10()+
   xlab(expression('Discharge'~m^3/s))+ylab('mg/L')+
   facet_wrap(~ ID, ncol=3, scales='free')+theme(legend.position = 'bottom')+ggtitle("Stream Carbon Species")
 
-site<-totDC %>% filter(ID=='5')
-ggtern(data=site,aes(DOC,DIC,POC_mgL, colour = Q))+scale_color_gradient(low = "blue", high = "red") +
-  geom_point(size=2) +labs(x="DOC_mgL",y="DIC_mgL",z="POC_mgL")+facet_wrap(~ ID, ncol=3, scales='free')
+
+ggtern(data=totC %>% filter(ID %in% c('6','9','3')) ,aes(DOC,DIC,POC, colour = Q))+
+  scale_color_gradient(low = "blue", high = "red") +
+  geom_point(size=2) +labs(x="DOC",y="DIC",z="POC")+
+  facet_wrap(~ ID, ncol=3, scales='free')+theme_minimal_grid()+theme(legend.position = "bottom")
 
 write_csv(totDC, "04_Output/stream_sampledC.csv")
 

@@ -140,13 +140,13 @@ for(fil in file.names){
   }
 pH_all <- pH_all[!duplicated(pH_all[c('Date','ID')]),]
 
-#depth<-read_csv('02_Clean_data/depth.csv')
-#pH_all<-left_join(pH_all, depth, by=c('Date','ID'))
+# depth<-read_csv('02_Clean_data/depth.csv')
+# pH_all<-left_join(pH_all, depth, by=c('Date','ID'))
 
 sites<-split(pH_all,pH_all$ID)
 s13<-sites[['13']]
-s15<-sites[['15']]# not working :()
-s3<-sites[['3']] #npt working :()
+s15<-sites[['15']]
+s3<-sites[['3']]
 s5<-sites[['5']]
 s5a<-sites[['5a']]
 s6<-sites[['6']]
@@ -183,13 +183,14 @@ s6<-s6%>% filter(pH<5 & pH>3.5)
 # b<-ggplot(s6, aes(Date, depth)) + geom_line()
 # plot_grid(a,b, ncol=1)
 
-s7<-s7%>%filter(pH<6)
-# a<-ggplot(s7, aes(Date, pH)) + geom_line()+geom_hline(yintercept = 3.3)
+s7<-s7%>%filter(pH<6 & pH>3.5)
+# a<-ggplot(s7, aes(Date, pH)) + geom_line()+geom_hline(yintercept = 3.5)
 # b<-ggplot(s7, aes(Date, depth)) + geom_line()
 # plot_grid(a,b, ncol=1)
 
-s9<-s9%>%filter(pH<9)
-# a<-ggplot(s9, aes(Date, pH)) + geom_line()+geom_hline(yintercept = 3.3)
+s9<-s9%>%filter(pH<8 & pH>3)%>%
+  mutate(pH=if_else(Date>'2023-10-01'& Date<'2024-02-02' & pH>4, NA, pH))
+# (a<-ggplot(s9, aes(Date, pH)) + geom_line()+geom_hline(yintercept = 4))
 # b<-ggplot(s9, aes(Date, depth)) + geom_line()
 # plot_grid(a,b, ncol=1)
 
