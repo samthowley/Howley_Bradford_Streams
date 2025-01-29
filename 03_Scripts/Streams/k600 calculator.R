@@ -99,12 +99,12 @@ split<-gasdome_cleaned %>% split(gasdome_cleaned$ID)
 write.xlsx(split, file = '04_Output/rC_k600.xlsx')
 
 #organize data file##########
-gas<- read_csv("01_Raw_data/GD/raw/GasDome_12132024.dat",skip = 3)
+gas<- read_csv("01_Raw_data/GD/raw/GasDome_01272025.dat",skip = 3)
 gas<-gas[,c(1,5)]
 colnames(gas)[1] <- "Date"
 colnames(gas)[2] <- "CO2"
-gas<-gas %>% mutate(CO2=CO2*6) %>%filter(Date>'2024-12-10' & Date<'2024-12-14')%>%filter(CO2>100)
+gas<-gas %>% mutate(CO2=CO2*6) %>%filter(Date>'2025-01-13')%>%filter(CO2>100)
 
 ggplot(gas, aes(x=Date, y=CO2)) +geom_point()
 
-write_csv(gas, "01_Raw_data/GD/raw/GasDome_12132024.csv")
+write_csv(gas, "01_Raw_data/GD/raw/GasDome_01272025.csv")
