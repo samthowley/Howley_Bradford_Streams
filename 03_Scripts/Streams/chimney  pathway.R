@@ -74,7 +74,10 @@ CO2<-CO2_hourly%>% mutate(day=as.Date(Date))
 chimney<-left_join(CO2,KCO2, by=c('day','ID'))
 chimney <- chimney  %>%
   mutate(CO2_flux=KCO2_m.d*(CO2-400)*KH*(1/10^6)*44*1000)%>%
-  group_by(day,ID)%>%mutate(mean_CO2flux=mean(CO2_flux, na.rm = T), Reactor_C=NEP*0.8)
+  group_by(day,ID)%>%mutate(mean_CO2flux=mean(CO2_flux, na.rm = T), Reactor_C=NEP*0.8)%>%ungroup()%>%
+  mutate(passive_CO2=mean_CO2flux-Reactor_C)%>%
+  mutate(reactor_tot= Reactor_C/mean_CO2flux, passive_tot=passive_CO2/mean_CO2flux,
+         active_passive=Reactor_C/passive_CO2)
 
 
 chimney <- chimney[complete.cases(chimney[ , c('CO2_flux')]), ]
@@ -93,9 +96,16 @@ ggplot(chimney, aes(Q))+
 
 
 ggplot(chimney, aes(Q))+
-  geom_point(aes(y=NEP),size=2)+ggtitle("NEP")+ylab(expression(O[2]~'g'/m^2/'day'))+xlab(expression('Discharge'~m^3))+
+  geom_point(aes(y=active_passive),size=2)+ggtitle("NEP")+ylab(expression(O[2]~'g'/m^2/'day'))+xlab(expression('Discharge'~m^3))+
   facet_wrap(~ ID, ncol=3, scale='free')+theme(legend.position = "bottom")
 
+result <- chimney %>%
+  group_by(ID) %>%
+  summarise(active_days = sum(reactor_tot >0.5, na.rm = TRUE),
+            passive_days = sum(passive_tot >0.5, na.rm = TRUE),
+            passive_prop=mean(passive_tot)*100,
+            active_prop=mean(reactor_tot)*100) %>% filter(active_prop<100)
+mean(result$active_prop)
 
 write_csv(chimney, "04_Output/chimney_reactor.csv")
 

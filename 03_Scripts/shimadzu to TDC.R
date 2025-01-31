@@ -172,7 +172,7 @@ test<-dissolved %>% filter(complete.cases(NPDOC, DOC))%>%
   distinct(Date, Site, .keep_all = T)%>%
   mutate(UniqueID = group_indices(., as.factor(Date), Site))
 
-ggplot(test, aes(x=Site, group=as.factor(Date))) +
+-ggplot(test, aes(x=Site, group=as.factor(Date))) +
   geom_point(aes(y=NPDOC,color='NPDOC'), size=2)+
   geom_point(aes(y=DOC,color='DOC'), size=2)+ylab('mg/L')
 
