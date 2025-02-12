@@ -69,10 +69,14 @@ ggplot(totC, aes(x=Q))+
   facet_wrap(~ ID, ncol=3, scales='free')+theme(legend.position = 'bottom')+ggtitle("Stream Carbon Species")
 
 
-ggtern(data=totC %>% filter(ID %in% c('6','9','3')) ,aes(DOC,DIC,POC, colour = Q))+
-  scale_color_gradient(low = "blue", high = "red") +
-  geom_point(size=2) +labs(x="DOC",y="DIC",z="POC")+
-  facet_wrap(~ ID, ncol=3, scales='free')+theme_minimal_grid()+theme(legend.position = "bottom")
+ggtern(data=totC ,aes(DOC_perc,DIC_perc,POC_perc, colour = ID))+
+  #scale_color_gradient(low = "blue", high = "red") +
+  geom_point(size=2) +labs(x="DOC%",y="DIC%",z="POC%")+
+  theme_minimal_grid()+theme(legend.position = "bottom")
+
+
+totC<-totC %>% mutate(TotalC=DIC+DOC+POC)%>%
+  mutate(DIC_perc=DIC/TotalC, DOC_perc=DOC/TotalC, POC_perc=POC/TotalC)
 
 write_csv(totDC, "04_Output/stream_sampledC.csv")
 

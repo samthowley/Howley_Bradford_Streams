@@ -71,7 +71,7 @@ GasDome <- function(gas,stream) {
   gas$KCO2_1d<-(gas$KCO2_dh/gas$depth)*24
   gas$k600_1d<- (gas$k600_dh/gas$depth)*24
 
-  gas<-gas%>% select(Date,day,ID,CO2,CO2_enviro,depth,Q,Temp,KCO2_1d,k600_1d)
+  gas<-gas%>% select(Date,day,ID,CO2,CO2_enviro,depth,Q,Temp,KCO2_dh,k600_dh)
 
   return(gas)
 }
@@ -90,8 +90,18 @@ for(i in file.names){
 gasdome_cleaned <- gasdome[!duplicated(gasdome[c("day", "ID")]), ]
 gasdome_cleaned<-gasdome_cleaned %>%
   filter(ID!='14')%>%select(-day)%>%
-  mutate(k600_1d=abs(k600_1d), KCO2_1d=abs(KCO2_1d), logQ=log10(Q)) %>%
-  mutate(log_K600=log10(k600_1d))%>% select(logQ, everything())
+  mutate(k600_dh=abs(k600_dh), KCO2_1d=abs(KCO2_dh), logQ=log10(Q)) %>%
+  mutate(log_K600=log10(k600_dh))%>% select(logQ, everything())
+
+
+ggplot(gasdome_cleaned, aes(x = Q, y = k600_dh)) +
+  geom_point(size = 2, color = "black") +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  facet_wrap(~ ID, ncol = 5, scales = 'free') +
+  scale_x_log10()+scale_y_log10()+
+  #ylab(expression('Discharge'~'ft'^3/sec))+xlab("Depth (m)")
+theme_minimal() +
+  theme(legend.position = "bottom")
 
 write_csv(gasdome_cleaned, "01_Raw_data/GD/GasDome_compiled.csv")
 

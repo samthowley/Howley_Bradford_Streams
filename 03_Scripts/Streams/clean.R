@@ -219,14 +219,15 @@ write_csv(temperature, "02_Clean_data/temperature.csv")
 
 master<-master[,c("Date","depth","ID","Q","Qbase","CO2","DO","pH","SpC","Temp_PT","Water_press")]
 master<-rename(master, 'Temp'="Temp_PT")
-ggplot(master, aes(Date, CO2)) + geom_point() + facet_wrap(~ ID, ncol=4)
+
+ggplot(master, aes(Date, pH)) + geom_point() + facet_wrap(~ ID, ncol=4)
 
 write_csv(master, "master.csv")
 
 #TEST##########
 depth<-read_csv("02_Clean_data/depth.csv")
 depth<-depth %>% filter(ID!=14)
-ggplot(depth, aes(Date, depth)) + geom_line() + facet_wrap(~ ID, ncol=3)+
+ggplot(depth, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=3)+
   ylab("Depth (m)")
 
 
