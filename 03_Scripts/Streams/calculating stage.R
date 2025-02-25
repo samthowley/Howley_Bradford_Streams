@@ -19,109 +19,37 @@ master<-master %>% mutate(PT=if_else(ID=='3' & PT<=14.96, NA, PT),
 
 master<-master %>% mutate(Water_press=PT-PTbaro)%>% mutate(sensor_depth=1000*Water_press/2.2/(2.54^2)/100, date=as.Date(Date))
 master <- master %>%
-  mutate(PL= case_when(ID== '3' & date<='2022-11-15' ~ 137,
-                       ID== '5' & date<='2022-11-14'~ 147,
-                       ID== '6' & date<='2021-04-06'~ 118,
-                       ID== '7' & date<='2022-11-15'~ 135,
-                       ID== '9' & date<='2022-11-14'~ 142,
-                       ID== '13' & date<='2021-09-20'~ 139,
-                       ID== '14' & date<='2022-11-15'~ 141,
-                       ID== '15' & date<='2022-11-15'~ 139,
-                       ID== '5a'  & date<='2022-11-14'~ 142,
-                       ID== '6a' & date<='2022-11-15'~ 142,
-
-                       ID== '3' & date>='2022-11-15' & date<='2023-11-01' ~ 136,
-                       ID== '5' & date>='2022-11-14' & date<='2023-11-11' ~ 147,
-                       ID== '6' & date>='2021-04-06' & date<='2022-11-15'~ 143,
-                       ID== '7' & date>='2022-11-15' & date<='2023-11-01' ~ 134,
-                       ID== '9' & date>='2022-11-14' & date<='2023-11-01'~ 125,
-                       ID== '13' & date>='2021-09-20'& date<='2023-12-19'~ 141,
-                       ID== '14' & date>='2022-11-15'& date<='2023-11-01'~ 136,
-                       ID== '15' & date>='2022-11-15'& date<='2023-11-01'~ 138,
-                       ID== '5a' & date>='2022-11-14'& date<='2023-11-01'~ 142,
-                       ID== '6a' & date>='2022-11-15'& date<='2023-11-01'~ 142,
-
-                       ID== '6' & date>='2022-11-15' & date<='2023-11-01'~ 179,
-                       ID== '13' & date>='2021-09-20' & date<='2022-11-15'~ 215,
-
-                       ID== '3' & date>='2023-11-01' ~ 136,
-                       ID== '5' & date>='2023-11-01' ~ 146,
-                       ID== '6' & date>='2023-11-01' ~ 184,
-                       ID== '7' & date>='2022-11-15' ~ 134,
-                       ID== '9' & date>='2023-11-01' ~ 122,
-                       ID== '13' & date>='2023-11-15' ~ 212,
-                       ID== '14' & date>='2023-11-01' ~ 137,
-                       ID== '15' & date>='2022-11-14' ~ 138,
-                       ID== '5a' & date>='2023-11-01' ~ 143,
-                       ID== '6a' & date>='2023-11-01' ~ 142))
+  mutate(PL= case_when(ID== '3'  ~ 136,
+                       ID== '5' ~ 147,
+                       ID== '6' ~ 143,
+                       ID== '7' ~ 134,
+                       ID== '9' ~ 125,
+                       ID== '13' ~ 141,
+                       ID== '14' ~ 141,
+                       ID== '15' ~ 139,
+                       ID== '5a' ~ 142,
+                       ID== '6a' ~ 142))
 
 master <- master %>%
-  mutate(PG= case_when(ID== '3'& date<='2022-11-15' ~ 120,
-                       ID== '5' & date<='2022-11-14'~ 105,
-                       ID== '6' & date<='2021-04-06' ~ 117,
-                       ID== '7' & date<='2022-11-15'~ 103,
-                       ID== '9' & date<='2022-11-14'~ 109,
-                       ID== '13' & date<='2021-09-20'~ 60,
-                       ID== '14' & date<='2022-11-15'~ 110,
-                       ID== '15' & date<='2022-11-15'~ 103,
-                       ID== '5a'  & date<='2022-11-14'~ 110,
-                       ID== '6a' & date<='2022-11-15'~ 103,
-
-                       ID== '3' & date>='2022-11-15' & date<='2023-11-01' ~ 108,
-                       ID== '5' & date>='2022-11-14' & date<='2023-11-11' ~ 102,
-                       ID== '6' & date>='2021-04-06' & date<='2022-11-15'~ 113,
-                       ID== '7' & date>='2022-11-15' & date<='2023-11-01' ~ 99,
-                       ID== '9' & date>='2022-11-14' & date<='2023-11-01'~ 109,
-                       ID== '13' & date>='2021-09-20'& date<='2023-12-19'~ 103,
-                       ID== '14' & date>='2022-11-15'& date<='2023-11-01'~ 104,
-                       ID== '15' & date>='2022-11-15'& date<='2023-11-01'~ 105,
-                       ID== '5a' & date>='2022-11-14'& date<='2023-11-01'~ 101,
-                       ID== '6a' & date>='2022-11-15'& date<='2023-11-01'~ 109,
-
-                       ID== '6' & date>='2022-11-15' & date<='2023-11-01'~ 132,
-                       ID== '13' & date>='2021-09-20' & date<='2022-11-15'~ 181,
-
-                       ID== '3' & date>='2023-11-01' ~ 107,
-                       ID== '5' & date>='2023-11-01' ~ 98,
-                       ID== '6' & date>='2023-11-01' ~ 122,
-                       ID== '7' & date>='2022-11-15' ~ 100,
-                       ID== '9' & date>='2023-11-01' ~ 116,
-                       ID== '13' & date>='2023-11-15' ~ 182,
-                       ID== '14' & date>='2023-11-01' ~ 110,
-                       ID== '15' & date>='2022-11-14' ~ 104,
-                       ID== '5a' & date>='2023-11-01' ~ 101,
-                       ID== '6a' & date>='2023-11-01' ~ 113))
+  mutate(PG= case_when(ID== '3'  ~ 108,
+                       ID== '5' ~ 105,
+                       ID== '6' ~ 113,
+                       ID== '7' ~ 99,
+                       ID== '9' ~ 109,
+                       ID== '13' ~ 103,
+                       ID== '14' ~ 110,
+                       ID== '15' ~ 103,
+                       ID== '5a' ~ 110,
+                       ID== '6a' ~ 103))
 
 master<-master %>% mutate(depth=sensor_depth-(PL-PG)/100)%>% distinct(Date, ID, .keep_all = T)
 
-master <-master %>% mutate(depth_clean = case_when(ID=='6' & Date>'2023-11-02' ~ depth+0.16,
-                                                   ID=='9' & Date>'2023-11-02' ~ depth-0.1,
-                                                   ID=='13' & Date>='2022-01-28 12:00:00' & Date<'2022-03-10'~ depth+0.16,
-                                                   ID=='3'& Date<'2022-11-10' & depth<0.23 ~ depth+0.1,
-                                                   ID=='6a'& Date>'2023-12-16 14:00:00' ~ depth-0.3,
-                                                   ID=='5a'& Date>'2022-11-10 02:00:00'& Date<'2022-11-14 19:00:00' ~ depth-0.1,))
-
-master<-master %>% mutate(depth=if_else(ID=='5a'& Date>'2022-11-10 02:00:00' &Date<'2022-11-14 19:00:00', NA, depth),
-                          depth=if_else(ID=='6'& Date>'2023-11-02', NA, depth),
-                          depth=if_else(ID=='9'& Date>'2023-11-02', NA, depth),
-                          depth=if_else(ID=='3'& Date>'2023-11-02' & depth<0.23, NA, depth),
-                          depth=if_else(ID=='6a'& Date>'2023-12-16', NA, depth))%>%
-  mutate(depth=ifelse(is.na(depth), depth_clean, depth))
-
-
-master <-master %>% mutate(depth_clean = case_when(ID=='13' & Date>'2023-11-01 07:00:00'& Date<'2023-12-06 08:00:00'~ depth-0.12))
-master$depth[master$ID=='13' & master$Date>'2023-11-01 07:00:00' & master$Date<'2023-12-06 08:00:00'] <- NA
-master$depth <- ifelse(is.na(master$depth), master$depth_clean, master$depth)
-
-master <-master %>% mutate(depth_clean = case_when(ID=='13' & Date>'2023-12-16 11:00:00'~ depth-0.2))
-master$depth[master$ID=='13' & master$Date>'2023-12-16 11:00:00'] <- NA
-master$depth <- ifelse(is.na(master$depth), master$depth_clean, master$depth)
 
 master<-master%>% mutate(depth=if_else(depth<0, NA, depth))
 
 
 ggplot(master, aes(x=Date)) + geom_line(aes(y=depth))+facet_wrap(~ ID, ncol=5)+
-  geom_hline(yintercept = 0)
+  geom_hline(yintercept = 0)+ggtitle("Post- James")
 #
 master<-master[, c("Date","Temp_PT","depth","ID","Water_press")]
 range(master$Date)

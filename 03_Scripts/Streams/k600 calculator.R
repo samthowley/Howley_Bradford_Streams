@@ -118,3 +118,21 @@ gas<-gas %>% mutate(CO2=CO2*6) %>%filter(Date>'2025-01-13')%>%filter(CO2>100)
 ggplot(gas, aes(x=Date, y=CO2)) +geom_point()
 
 write_csv(gas, "01_Raw_data/GD/raw/GasDome_01272025.csv")
+
+#Visualize K600##########
+
+file_path <- "04_Output/rC_k600_edited.xlsx"  # Replace with your file path
+sheet_names <- excel_sheets(file_path)
+
+all_sheets <- lapply(sheet_names, read_excel, path = file_path)
+combined_data <- bind_rows(all_sheets, .id = "sheet_name")
+
+
+ggplot(combined_data, aes(x = depth, y = k600_dh)) +
+  geom_point(size = 2, color = "black") +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  facet_wrap(~ ID, ncol = 5, scales = 'free') +
+  scale_x_log10()+scale_y_log10()+
+  #ylab(expression('Discharge'~'ft'^3/sec))+xlab("Depth (m)")
+  theme_minimal() +
+  theme(legend.position = "bottom")

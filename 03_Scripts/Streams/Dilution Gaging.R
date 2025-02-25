@@ -158,7 +158,11 @@ discharge<-discharge %>% group_by(ID) %>%
 
 ggplot(discharge, aes(Date)) +
   geom_line(aes(y=Qsurficial, color='runoff'))+
-  geom_line(aes(y=Qbase, color='base'))+
+  geom_line(aes(y=Qbase, color='base'))+scale_y_log10()+
+  facet_wrap(~ ID, ncol=5, scales = 'free')
+
+ggplot(discharge, aes(Date)) +
+  geom_line(aes(y=depth, color='runoff'))+
   facet_wrap(~ ID, ncol=5, scales = 'free')
 
 write_csv(discharge, "02_Clean_data/discharge.csv")
