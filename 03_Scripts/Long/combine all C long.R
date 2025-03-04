@@ -44,19 +44,19 @@ final <- longC_dim_log %>%
     ID == '6' & Long == '2' ~ '5',
     ID == '6' & Long == '3' ~ '6',
     TRUE ~ Long)) %>%
-  mutate(ID = if_else(ID == '3', '6', ID))%>% mutate(month=month(Date))
+  mutate(ID = if_else(ID == '3', '6', ID))%>% mutate(month=month(Date))%>%
+  mutate(POC=abs(POC))
 
 
 
 ggplot(final, aes(x=Long, color=as.factor(month)))+
-  scale_color_manual(values = c("orange","blue", "black")) +  # Gradient for continuous data
   geom_point(aes(y=DOC), size=2) +
   facet_wrap(~ID, ncol=3, scale='free')+
   theme(legend.position = "bottom")
 
 ggplot(final, aes(x=Long, color= Q))+
-  #scale_color_gradient(high='red', low='blue')+
-  geom_point(aes(y=DIC, color="DIC"))+
+  scale_color_gradient(high='red', low='blue')+
+  geom_point(aes(y=DIC))+
   facet_wrap(~ID, ncol=3, scale='free')+
   theme(legend.position = "bottom")
 

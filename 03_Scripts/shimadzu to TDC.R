@@ -77,23 +77,28 @@ DC<-full_join(DIC, DOC_NPOC, by = c("Date","Site"))
 dissolvedC_csv<-rbind(DC, csv)
 
 particulate_NPOC<-NPOC_all %>% filter(Rep %in% c("1", "2", "3"))%>%
-  mutate(TNPOC = if_else(Date < '2025-12-20', NPOC.area*0.297-0.133, NPOC.area))%>%group_by(Site, Date)%>%
+  mutate(TNPOC = if_else(Date < '2025-12-20', NPOC.area*0.297-0.133, NPOC.area))%>%
+  group_by(Site, Date)%>%
     mutate(NPTOC=mean(TNPOC, na.rm=T))%>% distinct(Date,Site, .keep_all = T) %>%select(Site,Date,TNPOC)
 
 sampledC<-full_join(dissolvedC_csv,particulate_NPOC, by=c('Date','Site'))
-sampledC<-sampledC %>% mutate(POC=TNPOC-DOC)
+sampledC<-sampledC %>% mutate(POC=TNPOC-DOC)%>%arrange(Date)%>%filter(DOC != is.na(DOC))
 
 
 ##########
 
-carbon<-sampledC %>% mutate(ID=case_when(Site=='3'~'3',Site=='5'~'5',Site=='5a'~'5a',
+carbon<-sampledC %>% mutate(Site= if_else(Site=='5,5','5.5', Site))%>%
+  mutate(ID=case_when(Site=='3'~'3',Site=='5'~'5',Site=='5a'~'5a',
                                     Site=='6'~'6',Site=='6a'~'6a',Site=='7'~'7',
                                     Site=='9'~'9',Site=='13'~'13',Site=='15'~'15',
+
                                     Site=='5GW1'~'5',Site=='5GW2'~'5',Site=='5GW3'~'5',Site=='5GW4'~'5',
                                     Site=='5GW5'~'5',Site=='5GW6'~'5',Site=='5GW7'~'5',Site=='6GW1'~'6',
                                     Site=='6GW2'~'6',Site=='6GW3'~'6',Site=='6GW4'~'6',Site=='6GW5'~'6',
                                     Site=='6GW6'~'6',Site=='9GW1'~'9',Site=='9GW2'~'9',Site=='9GW3'~'9',
-                                    Site=='9GW4'~'9',Site=='5.1'~'5',Site=='5.2'~'5',Site=='5.3'~'5',
+                                    Site=='9GW4'~'9',Site=='9GW5'~'9',Site=='5GW8'~'5',
+
+                                    Site=='5.1'~'5',Site=='5.2'~'5',Site=='5.3'~'5',
                                     Site=='5.4'~'5',Site=='5.5'~'5',Site=='6.1'~'6',Site=='6.2'~'6',
                                     Site=='6.3'~'6',Site=='6.4'~'6',Site=='6.5'~'6',Site=='6.6'~'6',
                                     Site=='9.1'~'9',Site=='9.2'~'9',Site=='9.3'~'9',Site=='9.4'~'9',
@@ -108,7 +113,7 @@ carbon<-carbon %>% mutate(chapter=case_when(Site=='3'~'stream',Site=='5'~'stream
                                             Site=='5GW5'~'RC',Site=='5GW6'~'RC',Site=='5GW7'~'RC',Site=='6GW1'~'RC',
                                             Site=='6GW2'~'RC',Site=='6GW3'~'RC',Site=='6GW4'~'RC',Site=='6GW5'~'RC',
                                             Site=='6GW6'~'RC',Site=='9GW1'~'RC',Site=='9GW2'~'RC',Site=='9GW3'~'RC',
-                                            Site=='9GW4'~'RC',
+                                            Site=='9GW4'~'RC',Site=='9GW5'~'RC',Site=='5GW8'~'RC',
 
                                             Site=='5.1'~'long',Site=='5.2'~'long',Site=='5.3'~'long',
                                             Site=='5.4'~'long',Site=='5.5'~'long',Site=='5.6'~'long',
@@ -140,6 +145,7 @@ carbon<-carbon %>% mutate(Date = if_else(Date == as.Date("2004-05-08"), as.Date(
 stream<-carbon %>%filter(chapter=='stream')
 RC<-filter(carbon, chapter=='RC')
 long<-filter(carbon, chapter=='long')
+wetland<-filter(carbon, chapter=='wetland')
 
 # ggplot(stream, aes(x=Q, y=DOC)) +
 #   geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+

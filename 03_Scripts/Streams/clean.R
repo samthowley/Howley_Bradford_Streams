@@ -7,7 +7,7 @@ library(weathermetrics)
 library(tools)
 library(cowplot)
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2025-01-29 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2025-02-28 00:00", tz="UTC"),by="hour")))
 
 clean_DO <- function(fil) {
   DO <- read_csv(fil,skip= 1)
@@ -121,6 +121,7 @@ s6<-s6 %>% filter(SpC<135 & SpC>50)
 s6a<-s6a %>% filter(SpC<135)
 s7<-s7 %>% filter(SpC<200 & SpC>80)
 s9<-s9 %>% filter(SpC>35)
+s5a<-s5a %>% filter(SpC<300)
 
 SpC_all<-rbind(s5,s5a,s15,s3,s7,s6,s6a,s9,s13)
 

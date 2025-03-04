@@ -108,7 +108,6 @@ samples_air<-samples_air %>% mutate(chapter=case_when(Site=='3'~'stream',Site=='
 
 raw_data<-left_join(samples_air, light, by=c('Date','ID'))
 
-#measure####
 
 CO2_conversion<-raw_data%>%
   mutate(Temp_K=Temp_PT+273.15)%>%
@@ -139,11 +138,20 @@ meas<-CO2_conversion%>%
     N2O_umol_L=(PVnRT_N2O-N2O_hs_umol)/V_wp
     )
 
-mol_to_ppm<-meas %>%select(Site, Date, chapter, Temp_K, CO2_umol_L,CH4_umol_L,N2O_umol_L)%>%rename('ID'='Site')
-  # mutate(KH=0.034*exp(2400*((1/Temp_K)-(1/298.15))),
-  #        CO2_mol_L=CO2_umol_L/10^9)%>%
-  # mutate(CO2_atm=CO2_mol_L/KH)%>%
-  # mutate(CO2_ppm=CO2_atm*10^6)%>%
+
+mol_to_ppm<-meas %>%
+  mutate(exp=2400*((1/Temp_K)-(1/298.15))) %>%
+  mutate(KH=0.034*2.178^(exp))%>%
+  mutate(CO2air_umol_L=CO2_air_uatm*KH,
+         CH4air_umol_L=CH4_air_uatm*KH,
+         N2O_air_umol_L=N2O_air_uatm*KH)%>%
+  mutate(CO2_sat=CO2_umol_L/CO2air_umol_L,
+         CH4_sat=CH4_umol_L/CH4air_umol_L,
+         N2O_sat=N2O_umol_L/N2O_air_umol_L)%>%
+  select(Site, Date, chapter, Temp_K, CO2_umol_L,CH4_umol_L,N2O_umol_L,
+         CO2_sat, CH4_sat, N2O_sat)%>%
+  rename('ID'='Site')
+
 
 write_csv(mol_to_ppm, "04_Output/Picarro_gas.csv")
 
@@ -170,6 +178,13 @@ ggplot(stream_depth, aes(x=Q))+
   geom_point(aes(y=CO2_umol_L, color='CO2_umol_L'))+  geom_point(aes(y=CH4_umol_L, color='CH4_umol_L'))+
   geom_point(aes(y=N2O_umol_L, color='N2O_umol_L'))+scale_y_log10()+scale_x_log10()+
   facet_wrap(~ ID, ncol=3)+ylab('umol_L')
+
+ggplot(stream_depth, aes(x=Q))+
+  geom_point(aes(y=CO2_sat, color='CO2_sat'))+
+  geom_point(aes(y=CH4_sat, color='CH4_sat'))+
+  geom_point(aes(y=N2O_sat, color='N2O_sat'))+scale_y_log10()+scale_x_log10()+
+  facet_wrap(~ ID, ncol=3)+ylab('umol_L')
+
 
 
 RChydro <- read_csv("02_Clean_data/allC_RC.csv")
