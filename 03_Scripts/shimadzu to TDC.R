@@ -147,38 +147,34 @@ RC<-filter(carbon, chapter=='RC')
 long<-filter(carbon, chapter=='long')
 wetland<-filter(carbon, chapter=='wetland')
 
-# ggplot(stream, aes(x=Q, y=DOC)) +
-#   geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
-#   scale_x_log10()+scale_y_log10()+ geom_smooth(method='lm')
+ggplot(stream, aes(x=Q, y=DOC)) +
+  geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
+  scale_x_log10()+scale_y_log10()+ geom_smooth(method='lm')
 #
-# ggplot(stream, aes(x=Date, y=DOC)) +
-#   geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
-#   scale_y_log10()+ geom_smooth(method='lm')
+ggplot(stream, aes(x=Date, y=DOC)) +
+  geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
+  scale_y_log10()+ geom_smooth(method='lm')
 #
-# ggplot(stream, aes(x=Q, y=DIC)) +
-#   geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
-#   scale_x_log10()+scale_y_log10()+ geom_smooth(method='lm')
+ggplot(stream, aes(x=Q, y=DIC)) +
+  geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
+  scale_x_log10()+scale_y_log10()+ geom_smooth(method='lm')
 #
-# ggplot(stream, aes(x=depth)) +
-#   geom_point(aes(y=DOC, color='DOC'), size=2)+
-#   geom_point(aes(y=POC,color='POC'), size=2)+
-#   geom_point(aes(y=DIC,color='DIC'), size=2)+
-#   facet_wrap(~ Site, ncol=5, scales = "free")+scale_x_log10()+scale_y_log10()
+ggplot(stream, aes(x=depth)) +
+  geom_point(aes(y=DOC, color='DOC'), size=2)+
+  geom_point(aes(y=POC,color='POC'), size=2)+
+  geom_point(aes(y=DIC,color='DIC'), size=2)+
+  facet_wrap(~ Site, ncol=5, scales = "free")+scale_x_log10()+scale_y_log10()
 
 write_csv(RC, "04_Output/TDC_RC.csv")
 write_csv(stream, "04_Output/TDC_stream.csv")
 write_csv(long, "04_Output/TDC_long.csv")
-
-
-
-
 
 #Checks#########
 test<-dissolved %>% filter(complete.cases(NPDOC, DOC))%>%
   distinct(Date, Site, .keep_all = T)%>%
   mutate(UniqueID = group_indices(., as.factor(Date), Site))
 
--ggplot(test, aes(x=Site, group=as.factor(Date))) +
+ggplot(test, aes(x=Site, group=as.factor(Date))) +
   geom_point(aes(y=NPDOC,color='NPDOC'), size=2)+
   geom_point(aes(y=DOC,color='DOC'), size=2)+ylab('mg/L')
 
