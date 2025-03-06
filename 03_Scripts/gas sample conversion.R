@@ -94,7 +94,7 @@ samples_air<-samples_air %>% mutate(chapter=case_when(Site=='3'~'stream',Site=='
                                             Site=='5GW5'~'RC',Site=='5GW6'~'RC',Site=='5GW7'~'RC',Site=='6GW1'~'RC',
                                             Site=='6GW2'~'RC',Site=='6GW3'~'RC',Site=='6GW4'~'RC',Site=='6GW5'~'RC',
                                             Site=='6GW6'~'RC',Site=='9GW1'~'RC',Site=='9GW2'~'RC',Site=='9GW3'~'RC',
-                                            Site=='9GW4'~'RC',Site=='9GW5'~'9',Site=='5GW8'~'5',
+                                            Site=='9GW4'~'RC',Site=='9GW5'~'RC',Site=='5GW8'~'RC',
 
                                             Site=='5.1'~'long',Site=='5.2'~'long',Site=='5.3'~'long',
                                             Site=='5.4'~'long',Site=='5.5'~'long',Site=='5.6'~'long',
@@ -161,6 +161,57 @@ stream<-meas %>%filter(chapter=='stream')
 RC<-filter(meas, chapter=='RC')
 long<-filter(meas, chapter=='long')
 
+#Conversion to flux########
+stream <- read_csv("04_Output/Picarro_gas.csv")%>%filter(chapter=='stream')
+
+depth <- read_csv("02_Clean_data/depth.csv")
+depth_day<-depth %>%mutate(Date=as.Date(Date))%>% group_by(ID, Date)%>% mutate(depth=mean(depth, na.rm = T))%>%
+  distinct(ID, Date, .keep_all = T)
+
+Q <- read_csv("02_Clean_data/discharge.csv")
+Q_day<-Q %>%mutate(Date=as.Date(Date))%>% group_by(ID, Date)%>% mutate(Q=mean(Q, na.rm = T))%>%
+  distinct(ID, Date, .keep_all = T)
+
+hydro<-left_join(Q_day, depth_day, by=c('ID', 'Date'))
+meas_depth<-left_join(stream, hydro, by=c('ID', 'Date'))
+
+metabolism<-read_csv('04_Output/master_metabolism.csv')
+metabolism<-metabolism %>%rename(k600_1.d=K600_daily_mean)
+
+meas.k600<-full_join(meas_depth, metabolism, c('Date', 'ID'))
+
+temp<-meas.k600 %>% mutate(Temp_C = fahrenheit.to.celsius(Temp_PT))
+
+ks<-temp %>%
+  mutate(K600_m.d=k600_1.d*depth,
+         SchmidtCO2hi=1742-91.24*Temp_C+2.208*Temp_C^2-0.0219*Temp_C^3,
+         SchmidtO2hi=1568-86.04*Temp_C+2.142*Temp_C^2-0.0216*Temp_C^3)%>%
+  mutate(KCO2_m.d=K600_m.d/((600/SchmidtCO2hi)^(-2/3))) %>%
+  mutate(KO2_m.d=KCO2_m.d/((SchmidtCO2hi/SchmidtO2hi)^(-2/3)))#%>% select(day, ID, reactor, Q, Qbase, depth, KCO2_d, KH)
+
+
+flux<-ks%>%
+  mutate(CO2_flux=KCO2_m.d*(CO2_umol_L/10^6)*44.01)%>%
+  filter(complete.cases(CO2_umol_L, k600_1.d))%>% distinct()
+
+fluxes_sensors <- read_csv("04_Output/fluxes.csv")
+fluxes_sensors<-fluxes_sensors %>%
+  mutate(Date=as.Date(Date))%>%group_by(Date, ID)%>%
+  mutate(CO2_flux_sensors=mean(CO2_flux, na.rm=T))%>%
+  select(Date, ID, CO2_flux_sensors) %>%distinct(ID, Date, .keep_all = T)
+
+flux_check<-left_join(flux, fluxes_sensors, by=c('Date', 'ID'))
+
+write_csv(flux_check, "test.csv")
+
+
+ggplot(flux_check, aes(x=Q))+
+  geom_point(aes(y=CO2_flux_sensors, color='sensors'), shape=1)+
+  geom_point(aes(y=CO2_flux, color='samples'), shape=1)+scale_x_log10()+
+  facet_wrap(~ ID, ncol=3)
+
+
+#Figures########
 
 depth <- read_csv("02_Clean_data/depth.csv")
 depth_day<-depth %>%mutate(Date=as.Date(Date))%>% group_by(ID, Date)%>% mutate(depth=mean(depth, na.rm = T))%>%

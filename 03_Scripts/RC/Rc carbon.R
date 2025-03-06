@@ -40,14 +40,14 @@ Q <- Q[!duplicated(Q[c('Date','ID')]),]
 dim<-full_join(depth, Q, by=c('ID', 'Date'))
 dim<-dim %>% filter(ID=='6'| ID=='5'| ID=='9')
 
-#RC Carbon#########
+#DOC DIC#########
 
 #Create RC carbon dataset
 RClog<-read_xlsx('01_Raw_data/RC log.xlsx')
 RClog<- RClog%>%rename("WTdepth_m"="Wtdepth (m)") %>% select(Date, ID, Site, WTdepth_m, CO2_mv,pH, Temp) %>%rename('CO2'=CO2_mv)
 
 RC_dim <- read_excel("01_Raw_data/RC log.xlsx",sheet = "Sheet1")
-RC_dim<-RC_dim%>%select(Site,`Distance (ft)`,Distance_m)
+RC_dim<-RC_dim%>%select(Site,`Distance (ft)`,Distance_m, DistanceID)
 
 DC_RC<-read_csv('04_Output/TDC_RC.csv')
 DC_RC<-DC_RC%>%select('Date','Site',"DIC",'DOC')%>%distinct(Site, Date, .keep_all = T)
@@ -69,6 +69,7 @@ RC_all<-full_join(C_RC, RC_gas, by=c('Stream', 'Well', 'Date'))%>%
   mutate(CO2 = if_else(CO2<0, NA, CO2))%>%arrange(Date,Stream,Well)
 
 
+test<-RC_all %>% filter(Well=='8' & Stream=='5')
 #include streams#####
 
 streamC<-read_csv('04_Output/stream_sampledC.csv')
@@ -78,98 +79,94 @@ streamC_edited<-streamC %>%
   mutate(`Distance (ft)`= -0.5,
          `Distance_m`= -0.5,
          WTdepth_m=0,
-         Well=0,
+         Well=0, DistanceID='0',
          ID=Stream)%>%
-  select(Date, Stream, Well, DIC, DOC,`Distance (ft)`, Distance_m,
+  select(Date, Stream, Well, DIC, DOC,`Distance (ft)`, Distance_m, DistanceID,
          ID,WTdepth_m, CO2,pH,Temp,CO2_umol_L,CH4_umol_L,N2O_umol_L,
          CO2_sat,CH4_sat,N2O_sat)
 
-stream_RC<-rbind(streamC_edited,RC_all)
+stream_RC<-rbind(streamC_edited,RC_all)%>%mutate(Stream=as.factor(Stream))
 
 write_csv(RC_all, "02_Clean_data/allC_RC.csv")
 
 #Figures########
+RC_all<-read_csv("02_Clean_data/allC_RC.csv")
 
-allDIC <- all %>%filter(!is.na(DIC))
-a <- ggplot(data = allDIC %>% filter(Stream == '5'),
-            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
-  scale_color_gradient(low = "blue", high = "red", trans = "log10") +  labs(color = "WT Depth (m)")+
+
+#DIC
+
+a<-ggplot(
+  RC_all %>% filter(!is.na(Stream)),
+  aes(x = Distance_m, y = DIC, fill = as.factor(DistanceID))) +
+  geom_boxplot() +    ylab("DIC mg/L") + xlab("Distance (m)")+
+  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
+  facet_wrap(~Stream, scales = 'free') +
+  labs(fill = "Wells")
+
+b<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = WTdepth_m, color=as.factor(DistanceID))) +
+  scale_color_brewer(palette = "Set0") +  # Use a discrete color palette
   geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(aes(y = DIC), size = 2) +
-  ylab("DIC mg/L") +
-  xlab("Distance (m)") +
-  theme(legend.position = "bottom") +
-  facet_wrap(~ ID, scales = "free")
-
-b <- ggplot(data = allDIC %>% filter(Stream == '6'),
-            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
-  scale_color_gradient(low = "blue", high = "red", trans = "log10") + labs(color = "WT Depth (m)")+
-  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(aes(y = DIC), size = 2) +
-  ylab("DIC mg/L") +
-  xlab("Distance (m)") +
-  theme(legend.position = "bottom") +
-  facet_wrap(~ ID, scales = "free")
-
-c <- ggplot(data = allDIC %>% filter(Stream == '9'),
-            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
-  scale_color_gradient(low = "blue", high = "red", trans = "log10") + labs(color = "WT Depth (m)")+
-  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(aes(y = DIC), size = 2) +
-  ylab("DIC mg/L") +
-  xlab("Distance (m)") +
-  theme(legend.position = "bottom") +
-  facet_wrap(~ ID, scales = "free")
-
-top<-plot_grid(a,b,c, nrow=1)
-
-(bott<-ggplot(data = allDIC, aes(x = DIC, color=Distance_m)) +
-  scale_color_gradient(low = "blue", high = "red") +  # Gradient for continuous data
-  geom_point(aes(y = WTdepth_m), size = 2) +
- xlab("DIC mg/L") + ylab("Water Table Depth (m)") +
-  theme(legend.position = "bottom") +
-  facet_wrap(~ ID, scales = "free"))
+    geom_point(aes(y = DIC), size = 2) +
+    ylab("DIC mg/L") +
+    xlab("WTdepth") +labs(fill = "Wells")+facet_wrap(~Stream, scale='free')+
+  labs(color = "Wells")
+(DIC<-plot_grid(a,b, ncol=1))
 
 
-plot_grid(top,bott, ncol=1)
+#DOC
 
-a <- ggplot(data = all %>% filter(Stream == '5'),
-            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
-  scale_color_gradient(low = "blue", high = "red", trans = "log10") +  labs(color = "WT Depth (m)")+
+a<-ggplot(
+  RC_all %>% filter(!is.na(Stream)),
+  aes(x = Distance_m, y = DOC, fill = as.factor(DistanceID))) +
+  geom_boxplot() +    ylab("DOC mg/L") + xlab("Distance (m)")+
+  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
+  facet_wrap(~Stream, scales = 'free') +
+  labs(fill = "Wells")
+
+b<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = WTdepth_m, color=as.factor(DistanceID))) +
+  scale_color_brewer(palette = "Set0") +  # Use a discrete color palette
   geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
   geom_point(aes(y = DOC), size = 2) +
   ylab("DOC mg/L") +
-  xlab("Distance (m)") +
-  theme(legend.position = "bottom") +
-  facet_wrap(~ ID, scales = "free")
+  xlab("WTdepth") +labs(fill = "Wells")+facet_wrap(~Stream, scale='free')+
+  labs(color = "Wells")
+(DOC<-plot_grid(a,b, ncol=1))
 
-b <- ggplot(data = all %>% filter(Stream == '6'),
-            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
-  scale_color_gradient(low = "blue", high = "red", trans = "log10") + labs(color = "WT Depth (m)")+
+
+#CO2
+a<-ggplot(
+  RC_all %>% filter(!is.na(Stream)),
+  aes(x = Distance_m, y = CO2_umol_L, fill = as.factor(DistanceID))) +
+  geom_boxplot() +    ylab("DOC mg/L") + xlab("Distance (m)")+
+  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
+  facet_wrap(~Stream, scales = 'free') +
+  labs(fill = "Wells")
+
+b<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = WTdepth_m, color=as.factor(DistanceID))) +
+  scale_color_brewer(palette = "Set0") +  # Use a discrete color palette
   geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(aes(y = DOC), size = 2) +
+  geom_point(aes(y = CO2_umol_L), size = 2) +
   ylab("DOC mg/L") +
-  xlab("Distance (m)") +
-  theme(legend.position = "bottom") +
-  facet_wrap(~ ID, scales = "free")
+  xlab("WTdepth") +labs(fill = "Wells")+facet_wrap(~Stream, scale='free')+
+  labs(color = "Wells")
+(CO2<-plot_grid(a,b, ncol=1))
 
-c <- ggplot(data = all %>% filter(Stream == '9'),
-            aes(x = Distance_m, group = Date, color = abs(WTdepth_m))) +
-  scale_color_gradient(low = "blue", high = "red", trans = "log10") + labs(color = "WT Depth (m)")+
+
+#CH4
+a<-ggplot(
+  RC_all %>% filter(!is.na(Stream)),
+  aes(x = Distance_m, y = CH4_umol_L, fill = as.factor(DistanceID))) +
+  geom_boxplot() +    ylab("DOC mg/L") + xlab("Distance (m)")+
+  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
+  facet_wrap(~Stream, scales = 'free') +
+  labs(fill = "Wells")
+
+b<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = WTdepth_m, color=as.factor(DistanceID))) +
+  scale_color_brewer(palette = "Set0") +  # Use a discrete color palette
   geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(aes(y = DOC), size = 2) +
+  geom_point(aes(y = CH4_umol_L), size = 2) +
   ylab("DOC mg/L") +
-  xlab("Distance (m)") +
-  theme(legend.position = "bottom") +
-  facet_wrap(~ ID, scales = "free")
+  xlab("WTdepth") +labs(fill = "Wells")+facet_wrap(~Stream, scale='free')+
+  labs(color = "Wells")
+(CH4<-plot_grid(a,b, ncol=1))
 
-top<-plot_grid(a,b,c, nrow=1)
-
-(bott<-ggplot(data = all, aes(x = DOC, color=Distance_m)) +
-    scale_color_gradient(low = "blue", high = "red") +  # Gradient for continuous data
-    geom_point(aes(y = WTdepth_m), size = 2) +
-    xlab("DOC mg/L") + ylab("Water Table Depth (m)") +
-    theme(legend.position = "bottom") +
-    facet_wrap(~ ID, scales = "free"))
-
-plot_grid(top,bott, ncol=1)

@@ -110,10 +110,14 @@ carbon<-carbon %>% mutate(chapter=case_when(Site=='3'~'long',Site=='5'~'long',Si
                                             Site=='9'~'long',Site=='13'~'stream',Site=='15'~'stream',
 
                                             Site=='5GW1'~'RC',Site=='5GW2'~'RC',Site=='5GW3'~'RC',Site=='5GW4'~'RC',
-                                            Site=='5GW5'~'RC',Site=='5GW6'~'RC',Site=='5GW7'~'RC',Site=='6GW1'~'RC',
+                                            Site=='5GW5'~'RC',Site=='5GW6'~'RC',Site=='5GW7'~'RC',Site=='5GW8'~'RC',
+
+                                            Site=='6GW1'~'RC',
                                             Site=='6GW2'~'RC',Site=='6GW3'~'RC',Site=='6GW4'~'RC',Site=='6GW5'~'RC',
-                                            Site=='6GW6'~'RC',Site=='9GW1'~'RC',Site=='9GW2'~'RC',Site=='9GW3'~'RC',
-                                            Site=='9GW4'~'RC',Site=='9GW5'~'RC',Site=='5GW8'~'RC',
+                                            Site=='6GW6'~'RC',
+
+                                            Site=='9GW1'~'RC',Site=='9GW2'~'RC',Site=='9GW3'~'RC',
+                                            Site=='9GW4'~'RC',Site=='9GW5'~'RC',
 
                                             Site=='5.1'~'long',Site=='5.2'~'long',Site=='5.3'~'long',
                                             Site=='5.4'~'long',Site=='5.5'~'long',Site=='5.6'~'long',
@@ -142,7 +146,9 @@ carbon<-full_join(carbon, bgc_edit,by=c('Date','ID'))
 carbon<-carbon %>% mutate(Date = if_else(Date == as.Date("2004-05-08"), as.Date("2024-05-08"), Date))%>%
                    mutate(Date = if_else(Date == as.Date("2004-06-14"),as.Date("2024-06-14") ,Date))
 
-RC<-filter(carbon, chapter=='RC')
+RC<-filter(carbon, chapter=='RC')%>%
+  mutate(Site=if_else(Site=='5GW7'&Date=="2023-01-30", '5GW8', Site))
+
 long<-filter(carbon, chapter=='long')
 long <- long %>%
   mutate(Site = if_else(Site == "5", "5.5", Site),

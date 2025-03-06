@@ -37,7 +37,7 @@ long_log_edited <- long_log %>% rename(Date=Visited)%>%mutate(Date=mdy(Date))%>%
   separate(Site, into = c("ID", "Long"), sep = "\\.")
 
 longC_dim_log<-left_join(longC_dim,long_log_edited, by=c('Date', 'ID', 'Long'))
-final <- longC_dim_log %>%
+water_samples <- longC_dim_log %>%
   mutate(ID = as.character(ID),Long = as.character(Long)) %>%
   mutate(Long = case_when(
     ID == '6' & Long == '1' ~ '4',
@@ -48,15 +48,22 @@ final <- longC_dim_log %>%
   mutate(POC=abs(POC))
 
 
+#include gas samples####
+Picarro_gas <- read_csv("04_Output/Picarro_gas.csv")%>% filter(chapter=='long')%>%
+  separate(ID, into = c("ID", "Long"), sep = "\\.")%>%select(-chapter)
 
-ggplot(final, aes(x=Long, color=as.factor(month)))+
-  geom_point(aes(y=DOC), size=2) +
+all_samples<-full_join(water_samples, Picarro_gas)
+
+#Further manipulation######
+final<-all_samples %>%mutate(Wetland_density=case_when(ID==5~ "low",
+                                        ID==6~ "high",
+                                        ID==9~ "moderate"))
+
+ggplot(all_samples, aes(x=Long))+
+  geom_point(aes(y=POC), size=2) +
   facet_wrap(~ID, ncol=3, scale='free')+
   theme(legend.position = "bottom")
 
-ggplot(final, aes(x=Long, color= Q))+
-  scale_color_gradient(high='red', low='blue')+
-  geom_point(aes(y=DIC))+
-  facet_wrap(~ID, ncol=3, scale='free')+
+ggplot(final, aes(x=Long, color=Wetland_density))+
+  geom_point(aes(y=CO2_sat), size=2) +
   theme(legend.position = "bottom")
-
