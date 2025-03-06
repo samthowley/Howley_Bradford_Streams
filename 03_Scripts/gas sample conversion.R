@@ -69,21 +69,21 @@ samples_air <- samples_air%>% group_by(Site) %>%
 
 #divide gas samples by chapter######
 samples_air<-samples_air %>% mutate(ID=case_when(Site=='3'~'3',Site=='5'~'5',Site=='5a'~'5a',
-                                         Site=='6'~'6',Site=='6a'~'6a',Site=='7'~'7',
-                                         Site=='9'~'9',Site=='13'~'13',Site=='15'~'15',
+                                        Site=='6'~'6',Site=='6a'~'6a',Site=='7'~'7',
+                                        Site=='9'~'9',Site=='13'~'13',Site=='15'~'15',
 
-                                         Site=='5GW1'~'5',Site=='5GW2'~'5',Site=='5GW3'~'5',Site=='5GW4'~'5',
-                                         Site=='5GW5'~'5',Site=='5GW6'~'5',Site=='5GW7'~'5',Site=='6GW1'~'6',
-                                         Site=='6GW2'~'6',Site=='6GW3'~'6',Site=='6GW4'~'6',Site=='6GW5'~'6',
-                                         Site=='6GW6'~'6',Site=='9GW1'~'9',Site=='9GW2'~'9',Site=='9GW3'~'9',
-                                         Site=='9GW4'~'9',Site=='5GW8'~'5',Site=='9GW5'~'9',
+                                        Site=='5GW1'~'5',Site=='5GW2'~'5',Site=='5GW3'~'5',Site=='5GW4'~'5',
+                                        Site=='5GW5'~'5',Site=='5GW6'~'5',Site=='5GW7'~'5',Site=='6GW1'~'6',
+                                        Site=='6GW2'~'6',Site=='6GW3'~'6',Site=='6GW4'~'6',Site=='6GW5'~'6',
+                                        Site=='6GW6'~'6',Site=='9GW1'~'9',Site=='9GW2'~'9',Site=='9GW3'~'9',
+                                        Site=='9GW4'~'9',Site=='9GW5'~'9',Site=='5GW8'~'5',
 
-                                         Site=='5.1'~'5',Site=='5.2'~'5',Site=='5.3'~'5',
-                                         Site=='5.4'~'5',Site=='5.5'~'5',Site=='6.1'~'6',Site=='6.2'~'6',
-                                         Site=='6.3'~'6',Site=='6.4'~'6',Site=='6.5'~'6',Site=='6.6'~'6',
-                                         Site=='9.1'~'9',Site=='9.2'~'9',Site=='9.3'~'9',Site=='9.4'~'9',
-                                         Site=='9.5'~'9',Site=='9.6'~'9',Site=='9.Sam'~'9',Site=='3.1'~'6',
-                                         Site=='3.4'~'6',Site=='5.6'~'5'))%>%distinct(ID,Date,Rep, .keep_all = T)
+                                        Site=='5.1'~'5',Site=='5.2'~'5',Site=='5.3'~'5',
+                                        Site=='5.4'~'5',Site=='5.5'~'5',Site=='6.1'~'6',Site=='6.2'~'6',
+                                        Site=='6.3'~'6',Site=='6.4'~'6',Site=='6.5'~'6',Site=='6.6'~'6',
+                                        Site=='9.1'~'9',Site=='9.2'~'9',Site=='9.3'~'9',Site=='9.4'~'9',
+                                        Site=='9.5'~'9',Site=='9.6'~'9',Site=='9.Sam'~'9'))%>%
+  distinct(Site,Date,Rep, .keep_all = T)
 
 
 samples_air<-samples_air %>% mutate(chapter=case_when(Site=='3'~'stream',Site=='5'~'stream',Site=='5a'~'stream',
@@ -94,7 +94,7 @@ samples_air<-samples_air %>% mutate(chapter=case_when(Site=='3'~'stream',Site=='
                                             Site=='5GW5'~'RC',Site=='5GW6'~'RC',Site=='5GW7'~'RC',Site=='6GW1'~'RC',
                                             Site=='6GW2'~'RC',Site=='6GW3'~'RC',Site=='6GW4'~'RC',Site=='6GW5'~'RC',
                                             Site=='6GW6'~'RC',Site=='9GW1'~'RC',Site=='9GW2'~'RC',Site=='9GW3'~'RC',
-                                            Site=='9GW4'~'RC',
+                                            Site=='9GW4'~'RC',Site=='9GW5'~'9',Site=='5GW8'~'5',
 
                                             Site=='5.1'~'long',Site=='5.2'~'long',Site=='5.3'~'long',
                                             Site=='5.4'~'long',Site=='5.5'~'long',Site=='5.6'~'long',
@@ -184,8 +184,6 @@ ggplot(stream_depth, aes(x=Q))+
   geom_point(aes(y=CH4_sat, color='CH4_sat'))+
   geom_point(aes(y=N2O_sat, color='N2O_sat'))+scale_y_log10()+scale_x_log10()+
   facet_wrap(~ ID, ncol=3)+ylab('umol_L')
-
-
 
 RChydro <- read_csv("02_Clean_data/allC_RC.csv")
 RChydro<-RChydro %>% mutate(Stream=as.character(Stream), Well=as.character(Well))

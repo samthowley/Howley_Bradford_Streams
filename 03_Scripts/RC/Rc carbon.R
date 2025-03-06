@@ -50,31 +50,43 @@ RC_dim <- read_excel("01_Raw_data/RC log.xlsx",sheet = "Sheet1")
 RC_dim<-RC_dim%>%select(Site,`Distance (ft)`,Distance_m)
 
 DC_RC<-read_csv('04_Output/TDC_RC.csv')
-DC_RC<-DC_RC%>%select('Date','Site',"DIC",'DOC')
+DC_RC<-DC_RC%>%select('Date','Site',"DIC",'DOC')%>%distinct(Site, Date, .keep_all = T)
 
 C_RC<-full_join(DC_RC, RC_dim, by=c("Site"))
 C_RC<-full_join(C_RC, RClog, by=c("Site","Date"))
 
 C_RC<-C_RC %>% mutate(ID=as.character(ID), CO2=as.numeric(CO2), pH=as.numeric(pH)) %>%
   separate(Site, into = c("Stream", "Well"), sep = "GW")
+#include gas sampling#####
+Picarro_gas <- read_csv("04_Output/Picarro_gas.csv")
+RC_gas<-Picarro_gas%>%filter(chapter=='RC')%>%
+  separate(ID, into = c("Stream", "Well"), sep = "GW")%>%select(-chapter, -Temp_K)%>%
+  arrange(Date,Stream,Well)
 
-#include streams
+RC_all<-full_join(C_RC, RC_gas, by=c('Stream', 'Well', 'Date'))%>%
+  distinct(Stream, Well, Date, .keep_all = T)%>%
+  mutate(CO2=CO2*0.217 - 93.866)%>%
+  mutate(CO2 = if_else(CO2<0, NA, CO2))%>%arrange(Date,Stream,Well)
 
-streamC<-read_csv('04_Output/TDC_stream.csv')
-streamC_edited<-streamC %>% filter(ID %in% c("5","6","9"))%>%
-  rename(Stream=Site, Temp=Temp_pH)%>%
-  mutate(`Distance (ft)`= -0.5, `Distance_m`= -0.5, WTdepth_m=0, Well=0)%>%
-  select(Date, Stream, Well, DIC, DOC,`Distance (ft)`, Distance_m, ID, WTdepth_m, CO2,pH,Temp)
 
-all<-rbind(streamC_edited,C_RC)
-all <- all %>%
-  mutate(month = month(Date)) %>%
-  filter(!is.na(ID)) %>%
-  mutate(ID=case_when(Stream=='5'~'5',
-                      Stream=='6'~'6',
-                      Stream=='3'~'6',
-                      Stream=='9'~'9'))
-write_csv(all, "02_Clean_data/allC_RC.csv")
+#include streams#####
+
+streamC<-read_csv('04_Output/stream_sampledC.csv')
+streamC_edited<-streamC %>%
+  filter(ID %in% c("5","6","9"))%>%
+  rename(Stream=ID, Temp=Temp_pH)%>%
+  mutate(`Distance (ft)`= -0.5,
+         `Distance_m`= -0.5,
+         WTdepth_m=0,
+         Well=0,
+         ID=Stream)%>%
+  select(Date, Stream, Well, DIC, DOC,`Distance (ft)`, Distance_m,
+         ID,WTdepth_m, CO2,pH,Temp,CO2_umol_L,CH4_umol_L,N2O_umol_L,
+         CO2_sat,CH4_sat,N2O_sat)
+
+stream_RC<-rbind(streamC_edited,RC_all)
+
+write_csv(RC_all, "02_Clean_data/allC_RC.csv")
 
 #Figures########
 

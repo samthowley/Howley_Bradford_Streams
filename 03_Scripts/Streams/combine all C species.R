@@ -50,14 +50,16 @@ shimadzu<-read_csv('04_Output/TDC_stream.csv')
 alkalinity <- read_csv("02_Clean_data/alkalinity.csv")
 alkalinity_edited<-alkalinity%>%select(Date, ID, DIC_mgL, CO2_mgL, HCO3_mgL, CO3_mgL)
 
-combined<-full_join(shimadzu, alkalinity_edited, by=c('Date', 'ID'))
+combined<-left_join(shimadzu, alkalinity_edited, by=c('Date', 'ID'))
 
 
 totC<-combined %>%distinct(Date, ID, .keep_all = T)%>%
   mutate(DIC = if_else(is.na(DIC), as.numeric(DIC_mgL), DIC))%>%
-  select(Date, ID, DIC, DOC, POC, ID, depth, pH, Q, CO2)%>%
+  select(Date, ID, DIC, DOC, POC, ID, depth, pH, Q, CO2, Temp_pH)%>%
   mutate(POC=abs(POC))
 
+totC<-totC %>% mutate(TotalC=DIC+DOC+POC)%>%
+  mutate(DIC_perc=DIC/TotalC, DOC_perc=DOC/TotalC, POC_perc=POC/TotalC)
 
 ggplot(totC, aes(x=Q))+
   geom_point(aes(y=DOC, color="DOC"),size=3, shape=1)+
@@ -69,16 +71,25 @@ ggplot(totC, aes(x=Q))+
   facet_wrap(~ ID, ncol=3, scales='free')+theme(legend.position = 'bottom')+ggtitle("Stream Carbon Species")
 
 
-ggtern(data=totC ,aes(DOC_perc,DIC_perc,POC_perc, colour = ID))+
+ggtern(data=totC%>%filter(ID %in% c('5','6','9')),aes(DOC,DIC,POC, colour = Q))+
+  scale_color_gradient(low = "blue", high = "red") +
+  geom_point(size=2) +labs(x="DOC",y="DIC",z="POC")+
+  theme_minimal_grid()+theme(legend.position = "bottom")+
+  facet_wrap(~ID, scale="free")
+
+ggtern(data=totC,aes(DOC,DIC,POC, colour = ID))+
   #scale_color_gradient(low = "blue", high = "red") +
   geom_point(size=2) +labs(x="DOC%",y="DIC%",z="POC%")+
   theme_minimal_grid()+theme(legend.position = "bottom")
 
+#include gas samples#######
 
-totC<-totC %>% mutate(TotalC=DIC+DOC+POC)%>%
-  mutate(DIC_perc=DIC/TotalC, DOC_perc=DOC/TotalC, POC_perc=POC/TotalC)
+Picarro_gas <- read_csv("04_Output/Picarro_gas.csv")
+strm_gas<-Picarro_gas%>%filter(chapter=='stream')%>%select(-Temp_K, -chapter)
 
-write_csv(totDC, "04_Output/stream_sampledC.csv")
+all_sampled_C<-full_join(totC,strm_gas)
+
+write_csv(all_sampled_C, "04_Output/stream_sampledC.csv")
 
 #box plots#####
 names(totDC)

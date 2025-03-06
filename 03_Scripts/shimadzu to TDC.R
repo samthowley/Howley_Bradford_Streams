@@ -82,7 +82,7 @@ particulate_NPOC<-NPOC_all %>% filter(Rep %in% c("1", "2", "3"))%>%
     mutate(NPTOC=mean(TNPOC, na.rm=T))%>% distinct(Date,Site, .keep_all = T) %>%select(Site,Date,TNPOC)
 
 sampledC<-full_join(dissolvedC_csv,particulate_NPOC, by=c('Date','Site'))
-sampledC<-sampledC %>% mutate(POC=TNPOC-DOC)%>%arrange(Date)%>%filter(DOC != is.na(DOC))
+sampledC<-sampledC %>% mutate(POC=abs(TNPOC-DOC))%>%arrange(Date)%>%filter(DOC != is.na(DOC))
 
 
 ##########
@@ -105,9 +105,9 @@ carbon<-sampledC %>% mutate(Site= if_else(Site=='5,5','5.5', Site))%>%
                                     Site=='9.5'~'9',Site=='9.6'~'9',Site=='9.Sam'~'9'))
 
 
-carbon<-carbon %>% mutate(chapter=case_when(Site=='3'~'stream',Site=='5'~'stream',Site=='5a'~'stream',
-                                            Site=='6'~'stream',Site=='6a'~'stream',Site=='7'~'stream',
-                                            Site=='9'~'stream',Site=='13'~'stream',Site=='15'~'stream',
+carbon<-carbon %>% mutate(chapter=case_when(Site=='3'~'long',Site=='5'~'long',Site=='5a'~'stream',
+                                            Site=='6'~'long',Site=='6a'~'stream',Site=='7'~'stream',
+                                            Site=='9'~'long',Site=='13'~'stream',Site=='15'~'stream',
 
                                             Site=='5GW1'~'RC',Site=='5GW2'~'RC',Site=='5GW3'~'RC',Site=='5GW4'~'RC',
                                             Site=='5GW5'~'RC',Site=='5GW6'~'RC',Site=='5GW7'~'RC',Site=='6GW1'~'RC',
@@ -142,10 +142,27 @@ carbon<-full_join(carbon, bgc_edit,by=c('Date','ID'))
 carbon<-carbon %>% mutate(Date = if_else(Date == as.Date("2004-05-08"), as.Date("2024-05-08"), Date))%>%
                    mutate(Date = if_else(Date == as.Date("2004-06-14"),as.Date("2024-06-14") ,Date))
 
-stream<-carbon %>%filter(chapter=='stream')
 RC<-filter(carbon, chapter=='RC')
 long<-filter(carbon, chapter=='long')
+long <- long %>%
+  mutate(Site = if_else(Site == "5", "5.5", Site),
+         Site = if_else(Site == "3", "3.1", Site),
+         Site = if_else(Site == "6", "6.2", Site),
+         Site = if_else(Site == "9", "9.5", Site))
+
 wetland<-filter(carbon, chapter=='wetland')
+
+forstream <- carbon %>%
+  mutate(Site = if_else(Site == "6.2", "6", Site),
+         Site = if_else(Site == "5.5", "5", Site),
+         Site = if_else(Site == "9.5", "9", Site),
+         Site = if_else(Site == "3.1", "3", Site))
+stream<-forstream %>% mutate(chapter=case_when(Site=='3'~'stream',Site=='5'~'stream',Site=='5a'~'stream',
+                                            Site=='6'~'stream',Site=='6a'~'stream',Site=='7'~'stream',
+                                            Site=='9'~'stream',Site=='13'~'stream',Site=='15'~'stream'))%>%
+  filter(chapter=='stream')
+
+
 
 ggplot(stream, aes(x=Q, y=DOC)) +
   geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+

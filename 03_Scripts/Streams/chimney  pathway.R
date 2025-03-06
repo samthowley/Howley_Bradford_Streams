@@ -92,7 +92,7 @@ ggplot(chimney, aes(Q))+
   geom_smooth(aes(y = mean_CO2flux, color = "Total CO2"), method = "lm", se = FALSE) +
   facet_wrap(~ ID, ncol=3, scale='free')+theme(legend.position = "bottom")+
   xlab(expression(Discharge~m^3/sec))+
-  ggtitle('Reactor-Chimney Carbon')
+  ggtitle('Reactor-Chimney Carbon')+scale_y_log10()
 
 
 ggplot(chimney, aes(Q))+
