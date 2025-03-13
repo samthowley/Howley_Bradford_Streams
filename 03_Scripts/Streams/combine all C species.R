@@ -61,26 +61,15 @@ totC<-combined %>%distinct(Date, ID, .keep_all = T)%>%
 totC<-totC %>% mutate(TotalC=DIC+DOC+POC)%>%
   mutate(DIC_perc=DIC/TotalC, DOC_perc=DOC/TotalC, POC_perc=POC/TotalC)
 
-ggplot(totC, aes(x=Q))+
+ggplot(totC%>%filter(ID != is.na(ID)), aes(x=Q))+
   geom_point(aes(y=DOC, color="DOC"),size=3, shape=1)+
   geom_point(aes(y=DIC, color= "DIC"), size=3)+
   geom_point(aes(y=POC, color="POC"), size=3)+
   scale_colour_manual(values = c("black", "#0000FF", "darkorange"))+
   scale_x_log10()+scale_y_log10()+
-  xlab(expression('Discharge'~m^3/s))+ylab('mg/L')+
+  xlab(expression('Discharge'~ft^3/s))+ylab('mg/L')+
   facet_wrap(~ ID, ncol=3, scales='free')+theme(legend.position = 'bottom')+ggtitle("Stream Carbon Species")
 
-
-ggtern(data=totC%>%filter(ID %in% c('5','6','9')),aes(DOC,DIC,POC, colour = Q))+
-  scale_color_gradient(low = "blue", high = "red") +
-  geom_point(size=2) +labs(x="DOC",y="DIC",z="POC")+
-  theme_minimal_grid()+theme(legend.position = "bottom")+
-  facet_wrap(~ID, scale="free")
-
-ggtern(data=totC,aes(DOC,DIC,POC, colour = ID))+
-  #scale_color_gradient(low = "blue", high = "red") +
-  geom_point(size=2) +labs(x="DOC%",y="DIC%",z="POC%")+
-  theme_minimal_grid()+theme(legend.position = "bottom")
 
 #include gas samples#######
 
@@ -101,8 +90,24 @@ long_C<- rbind(POC, DIC, DOC)
 
 order <- c("5", "5a", "15", "9", '13', '6', '6a', '3', '7')
 
-#ggplot(df, aes(x = factor(site, levels = ordered_sites), y = value)) +
-ggplot(long_C, aes(x= factor(ID, levels=order), y=Conc, fill=Species))+
-  scale_fill_manual(values=c('DIC'='black', 'DOC'='blue', POC='darkorange'))+
-  geom_boxplot()+ ylab("mg/L")+xlab( 'ID')
-dev.new()
+ggtern(data=totC,aes(DOC,DIC*10,POC*10, colour = ID))+
+  #scale_color_gradient(low = "blue", high = "red") +
+  geom_point(size=2) +labs(x="DOC mg/L",y="DIC deci-mg/L",z="POC deci-mg/L")+
+  theme_minimal_grid()+
+  theme(legend.position = "bottom",
+        axis.title = element_text(size =9))
+
+ggtern(data=totC,aes(DOC,DIC*10,POC*10, colour = depth))+
+  #scale_color_gradient(low = "blue", high = "red") +
+  geom_point(size=2) +labs(x="DOC mg/L",y="DIC deci-mg/L",z="POC deci-mg/L")+
+  theme_minimal_grid()+
+  theme(legend.position = "bottom",
+        axis.title = element_text(size =9))
+
+
+ggtern(data=totC%>%filter(ID %in% c('5','6','9')),aes(DOC,DIC*10,POC*10, colour = Q))+
+  scale_color_gradient(low = "blue", high = "red") +
+  geom_point(size=2) +labs(x="DOC",y="DIC",z="POC")+
+  theme_minimal_grid()+theme(legend.position = "bottom")+
+  facet_wrap(~ID, scale="free")
+

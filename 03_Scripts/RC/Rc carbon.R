@@ -69,7 +69,6 @@ RC_all<-full_join(C_RC, RC_gas, by=c('Stream', 'Well', 'Date'))%>%
   mutate(CO2 = if_else(CO2<0, NA, CO2))%>%arrange(Date,Stream,Well)
 
 
-test<-RC_all %>% filter(Well=='8' & Stream=='5')
 #include streams#####
 
 streamC<-read_csv('04_Output/stream_sampledC.csv')
@@ -136,8 +135,8 @@ b<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = WTdepth_m, color=as.fa
 #CO2
 a<-ggplot(
   RC_all %>% filter(!is.na(Stream)),
-  aes(x = Distance_m, y = CO2_umol_L, fill = as.factor(DistanceID))) +
-  geom_boxplot() +    ylab("DOC mg/L") + xlab("Distance (m)")+
+  aes(x = Distance_m, y = CO2_sat, fill = as.factor(DistanceID))) +
+  geom_boxplot() +    ylab("CO2 Saturation") + xlab("Distance (m)")+
   scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
   facet_wrap(~Stream, scales = 'free') +
   labs(fill = "Wells")
@@ -145,8 +144,8 @@ a<-ggplot(
 b<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = WTdepth_m, color=as.factor(DistanceID))) +
   scale_color_brewer(palette = "Set0") +  # Use a discrete color palette
   geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(aes(y = CO2_umol_L), size = 2) +
-  ylab("DOC mg/L") +
+  geom_point(aes(y = CO2_sat), size = 2) +
+  ylab("CO2 Saturation") +
   xlab("WTdepth") +labs(fill = "Wells")+facet_wrap(~Stream, scale='free')+
   labs(color = "Wells")
 (CO2<-plot_grid(a,b, ncol=1))
@@ -155,8 +154,8 @@ b<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = WTdepth_m, color=as.fa
 #CH4
 a<-ggplot(
   RC_all %>% filter(!is.na(Stream)),
-  aes(x = Distance_m, y = CH4_umol_L, fill = as.factor(DistanceID))) +
-  geom_boxplot() +    ylab("DOC mg/L") + xlab("Distance (m)")+
+  aes(x = Distance_m, y = CH4_sat, fill = as.factor(DistanceID))) +
+  geom_boxplot() +    ylab("CH4 Saturation") + xlab("Distance (m)")+
   scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
   facet_wrap(~Stream, scales = 'free') +
   labs(fill = "Wells")
@@ -164,8 +163,8 @@ a<-ggplot(
 b<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = WTdepth_m, color=as.factor(DistanceID))) +
   scale_color_brewer(palette = "Set0") +  # Use a discrete color palette
   geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(aes(y = CH4_umol_L), size = 2) +
-  ylab("DOC mg/L") +
+  geom_point(aes(y = CH4_sat), size = 2) +
+  ylab("CH4 Saturation") +
   xlab("WTdepth") +labs(fill = "Wells")+facet_wrap(~Stream, scale='free')+
   labs(color = "Wells")
 (CH4<-plot_grid(a,b, ncol=1))

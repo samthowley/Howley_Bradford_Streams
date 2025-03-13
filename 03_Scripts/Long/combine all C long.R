@@ -7,6 +7,7 @@ library(readxl)
 library(lubridate)
 library(cowplot)
 library(seacarb)
+library(ggtern)
 #need to include stream LB too
 
 #Edit dims######
@@ -59,11 +60,44 @@ final<-all_samples %>%mutate(Wetland_density=case_when(ID==5~ "low",
                                         ID==6~ "high",
                                         ID==9~ "moderate"))
 
-ggplot(all_samples, aes(x=Long))+
-  geom_point(aes(y=POC), size=2) +
+streamorder <- read_csv("04_Output/streamorder.csv")%>%
+  mutate(Site = if_else(Site == "5", "5.5", Site),
+         Site = if_else(Site == "6", "6.2", Site),
+         Site = if_else(Site == "9", "9.5", Site))%>%
+  separate(Site, into = c("ID", "Long"), sep = "\\.")
+
+
+final<-left_join(final,streamorder, c=by('ID', 'Long'))
+
+test<-final%>% filter(ID==5)
+
+
+
+
+
+ggplot(all_samples%>%filter(ID!='3'), aes(x=Long))+
+  geom_point(aes(y=DOC, color='DOC'), size=2) +
+  geom_point(aes(y=DIC, color='DIC'), size=2) +
+  geom_point(aes(y=POC, color='POC'), size=2) +
   facet_wrap(~ID, ncol=3, scale='free')+
   theme(legend.position = "bottom")
 
 ggplot(final, aes(x=Long, color=Wetland_density))+
-  geom_point(aes(y=CO2_sat), size=2) +
+  geom_point(aes(y=DOC), size=2) +
   theme(legend.position = "bottom")
+
+
+ggtern(data=final %>%filter(ID !='3'),aes(DOC,DIC*10,POC*10, color=ID))+
+  #scale_color_gradient(low = "blue", high = "red") +
+  geom_point(size=2) +labs(x="DOC mg/L",y="DIC deci-mg/L",z="POC deci-mg/L")+
+  theme_minimal_grid()+theme(legend.position = "bottom",
+                             axis.title =element_text(size = 9, angle=0))+
+  labs(color='Longitudinal Sampling')
+
+ggtern(data=final %>%filter(ID !='3'),aes(DOC,DIC*10,POC*10, color=Q))+
+  #scale_color_gradient(low = "blue", high = "red") +
+  geom_point(size=2) +labs(x="DOC mg/L",y="DIC deci-mg/L",z="POC deci-mg/L")+
+  theme_minimal_grid()+theme(legend.position = "bottom",
+                             axis.title =element_text(size = 9, angle=0))+
+  labs(color='Longitudinal Sampling')
+

@@ -2,6 +2,7 @@ library(marelac)
 library(tidyverse)
 library(weathermetrics)
 library(streamMetabolizer)
+library(ggtern)
 
 R<-0.08205
 V_wp<-0.07
