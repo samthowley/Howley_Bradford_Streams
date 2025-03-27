@@ -111,7 +111,7 @@ for(fil in file.names){
 baro_all<-baro_all %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 baro_all<-baro_all[,-1]
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2021-03-29 00:00", tz="UTC"),
-                                            to=as.POSIXct("2025-02-28 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2025-03-28 00:00", tz="UTC"),by="hour")))
 samplingperiod<- samplingperiod %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 baro_all<-left_join(baro_all, samplingperiod, by=c('hr', 'day', 'mnth', 'yr'))
 

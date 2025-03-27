@@ -82,9 +82,9 @@ write_csv(all_sampled_C, "04_Output/stream_sampledC.csv")
 
 #box plots#####
 names(totDC)
-POC<-totDC %>% select(Date,ID,Q,depth, POC_mgL)%>% rename(Conc=POC_mgL)%>%mutate(Species= 'POC')
-DIC<-totDC %>% select(Date,ID,Q,depth, DIC)%>% rename(Conc=DIC)%>%mutate(Species= 'DIC')
-DOC<-totDC %>% select(Date,ID,Q,depth, DOC)%>% rename(Conc=DOC)%>%mutate(Species= 'DOC')
+POC<-all_sampled_C %>% select(Date,ID,Q,depth, POC)%>% rename(Conc=POC)%>%mutate(Species= 'POC')
+DIC<-all_sampled_C %>% select(Date,ID,Q,depth, DIC)%>% rename(Conc=DIC)%>%mutate(Species= 'DIC')
+DOC<-all_sampled_C %>% select(Date,ID,Q,depth, DOC)%>% rename(Conc=DOC)%>%mutate(Species= 'DOC')
 
 long_C<- rbind(POC, DIC, DOC)
 

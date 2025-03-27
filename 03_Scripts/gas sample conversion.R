@@ -47,14 +47,20 @@ for(i in file.names){
 format<-gas_samples%>%
  rename(N2O_x=N2O_dry_mean, CO2_x=CO2_dry_mean, CH4_x=CH4_dry_mean)%>%
   separate(SampleName, into = c("Site", "Date","Rep"), sep = "_")%>%
-  mutate(Date=mdy(Date))
+  mutate(Date=mdy(Date))%>%
+  mutate(across(3:6,as.numeric))
+
+remove_erroreanous_runs<-format %>%
+  group_by(Site, Rep, Date) %>%
+  slice_max(order_by = CO2_x, with_ties = FALSE) %>%
+  ungroup()
 
 #parse out air samples
-air<-format%>% filter(CO2_x>300 & CO2_x<800)%>%
+air<-remove_erroreanous_runs%>% filter(CO2_x>300 & CO2_x<700)%>%
   rename(N2O_air_ppm=N2O_x, CH4_air_ppm= CH4_x, CO2_air_ppm=CO2_x)%>%
   select(-Rep)
 
-samples<- format %>% filter(CO2_x>800)%>%arrange(Site, Date)
+samples<- remove_erroreanous_runs %>% filter(CO2_x>800)%>%arrange(Site, Date)
 
 samples_air<-left_join(samples, air, by=c('Site', 'Date'))
 

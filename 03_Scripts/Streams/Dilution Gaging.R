@@ -22,10 +22,10 @@ clean_DG <- function(DG) {
   DG1<-DG %>%filter(time>start & time< end)
   return(DG1)}
 
-DG <- read_csv("01_Raw_data/DG/raw/01272025.csv", skip = 1)
+DG <- read_csv("01_Raw_data/DG/raw/DG_03112025.csv", skip = 1)
 
-start<-'14:42:00'
-end<-'14:51:05'
+start<-'12:02:00'
+end<-'12:40:00'
 
 DG1<-clean_DG(DG)
 
@@ -34,7 +34,7 @@ DG1<-clean_DG(DG)
 
 ggplot(DG1, aes(Date,LowSpC)) + geom_line()
 
-write_csv(DG1, '01_Raw_data/DG/seperated/01272025_6.csv')
+write_csv(DG1, '01_Raw_data/DG/seperated/03112025_9.2.csv')
 
 ###### compile ####
 DG_all<-data.frame()
