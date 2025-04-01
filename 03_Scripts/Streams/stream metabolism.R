@@ -14,7 +14,7 @@ library('StreamMetabolism')
 library(lme4)
 #constants######
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2025-02-28 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2025-03-28 00:00", tz="UTC"),by="hour")))
 samplingperiod<-samplingperiod %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
