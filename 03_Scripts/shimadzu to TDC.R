@@ -64,6 +64,7 @@ dissolved_NPOC<-NPOC_all %>% filter(!Rep %in% c("1", "2", "3"))%>%
   mutate(DOC = if_else(Date < '2025-12-20', NPOC.area*0.297-0.133, NPOC.area), DIC=NA)%>%
   select(Date, Site, DOC)
 
+
 dissolved_TOC<- TOC_all%>%filter(!is.na(Date))%>% #incorporating calibrations
   mutate(DIC = if_else(Date < '2025-12-20', IC.area*0.37+0.479, IC.area),
          DOC = if_else(Date < '2025-12-20', TC.area*0.2989-0.234, TC.area))

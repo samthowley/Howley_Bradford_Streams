@@ -77,7 +77,10 @@ chimney <- chimney  %>%
   group_by(day,ID)%>%mutate(mean_CO2flux=mean(CO2_flux, na.rm = T), Reactor_C=NEP*0.8)%>%ungroup()%>%
   mutate(passive_CO2=mean_CO2flux-Reactor_C)%>%
   mutate(reactor_tot= Reactor_C/mean_CO2flux, passive_tot=passive_CO2/mean_CO2flux,
-         active_passive=Reactor_C/passive_CO2)
+         active_passive=Reactor_C/passive_CO2)%>%
+  mutate(Basin=case_when(ID=='5'~'5',ID=='5a'~'5',ID=='15'~'15',
+                         ID=='3'~'6',ID=='7'~'7',ID=='6'~'6',ID=='6a'~'6',
+                         ID=='9'~'9', ID=='13'~'13'))
 
 
 chimney <- chimney[complete.cases(chimney[ , c('CO2_flux')]), ]
@@ -105,11 +108,32 @@ result <- chimney %>%
             passive_days = sum(passive_tot >0.5, na.rm = TRUE),
             passive_prop=mean(passive_tot)*100,
             active_prop=mean(reactor_tot)*100) %>% filter(active_prop<100)
-mean(result$active_prop)
 
 write_csv(chimney, "04_Output/chimney_reactor.csv")
 
-#CO2 quality check#####
+wetland_cover <- read_csv("01_Raw_data/wetland_cover.csv")%>%
+  rename("Basin"="Basin_Name", "wetland_cover_perc"="PERCENTAGE", 'Basin_area'='Shape_Area')%>%
+  select(Basin, wetland_cover_perc, Basin_area)
+wetland_proxim <- read_csv("01_Raw_data/wetland_proxim.csv")%>%
+  rename('wetland_dist'='NEAR_DIST', 'Basin'='Site')%>%select(Basin, wetland_dist)
+
+wetland_x<-left_join(wetland_cover, wetland_proxim, by='Basin')
+
+chimney_wetland<-full_join(chimney, wetland_x, by='Basin')
+
+ggplot(chimney_wetland, aes(Q,color=wetland_cover_perc))+
+  geom_point(aes(y=reactor_tot),size=2)+
+  xlab(expression('Discharge'~m^3))+
+  scale_y_log10()+
+  scale_x_log10()+
+  theme(legend.position = "bottom")
+
+
+ggplot(chimney_wetland, aes(x=as.factor(wetland_cover_perc), y=reactor_tot, fill=ID)) +
+  geom_boxplot()+scale_y_log10()
+
+
+#CO2 quality check######CO2 quality wetland_cover_perccheck#####
 
 CO2_hourly<-left_join(CO2_hourly, dim, by=c('Date', 'ID'))
 CO2_hourly<-CO2_hourly %>% filter(CO2>700) %>%filter(ID !='14')
