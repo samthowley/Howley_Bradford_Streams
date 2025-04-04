@@ -16,7 +16,7 @@ clean_DG <- function(DG) {
   colnames(DG)[1] <- "Date"
   colnames(DG)[2] <- "LowSpC"
   colnames(DG)[3] <- "FullSpC"
-  DG$Date<-mdy_hms(DG$Date)
+  DG$Date<-mdy_hm(DG$Date)
 
   DG$time<-strftime(DG$Date, format="%H:%M:%S", tz = "UTC")
   DG1<-DG %>%filter(time>start & time< end)
@@ -24,46 +24,51 @@ clean_DG <- function(DG) {
 
 DG <- read_csv("01_Raw_data/DG/raw/DG_03112025.csv", skip = 1)
 
-start<-'12:02:00'
-end<-'12:40:00'
+start<-'9:20:00'
+end<-'10:40:00'
 
 DG1<-clean_DG(DG)
 
-# cumulative_seconds <- seq(5, length.out = 73, by = 5)
-# DG1<-DG1 %>% mutate(Date=Date+cumulative_seconds)
+ggplot(DG3, aes(Date,FullSpC)) + geom_line()
 
-ggplot(DG1, aes(Date,LowSpC)) + geom_line()
-
-write_csv(DG1, '01_Raw_data/DG/seperated/03112025_9.2.csv')
+write_csv(DG, '01_Raw_data/DG/seperated/03112025_9.2.csv')
 
 ###### compile ####
 DG_all<-data.frame()
-file.names <- list.files(path="01_Raw_data/DG/seperated", pattern=".csv", full.names=TRUE)
+file.names <- list.files(path="01_Raw_data/DG/raw", pattern=".csv", full.names=TRUE)
 for(i in file.names){
-  DG<-read_csv(i)
+  DG<-read_csv(i, skip=1)%>%select(2:4)
+  colnames(DG)[1] <- "Date"
+  colnames(DG)[2] <- "LowSpC"
+  colnames(DG)[3] <- "FullSpC"
+
   DG$ID<-strsplit(file_path_sans_ext(i), '_')[[1]][4]
   DG_all<-rbind(DG_all, DG)
 }
-range(DG_all$Date, na.rm = F)
+
 write_csv(DG_all, "01_Raw_data/DG/compiled_DG.csv")
 #extract DG#####
 notes<- read_csv("01_Raw_data/DG/Streams_dilution_gauging.csv",
                  col_types = cols(Date = col_date(format = "%m/%d/%Y")))
+
 notes<-notes[,c(1,2,3,6)]
 notes<-rename(notes, 'day'='Date', 'ID'='Site')
 
-DG<-read.csv('01_Raw_data/DG/compiled_DG.csv')
+DG<- read_csv("01_Raw_data/DG/compiled_DG.csv")
 
-DG$Date<-ymd_hms(DG$Date)
-DG$day<-as.Date(DG$Date)
+DG<-DG_all%>%mutate(Date=ymd_hms(Date))%>%
+  mutate(day=as.Date(Date))
+
 DG<-left_join(DG, notes, by=c('day','ID'))
 
 DG<-DG %>% group_by(day,ID) %>% mutate(elapsed = as.numeric(Date-Date[1]))
 
 DG <- DG %>%
-  mutate(time_group =  case_when(elapsed <= 30 ~ "prior",elapsed >= 30 ~ "after"))%>%
+  mutate(time_group =  case_when(elapsed <= 3 ~ "prior",elapsed >= 3 ~ "after"))%>%
   group_by(day,ID,time_group)%>%
-  summarise(mean_prior = mean(LowSpC)) %>%ungroup() %>% filter(time_group== 'prior') %>%
+  summarise(mean_prior = mean(LowSpC)) %>%
+  ungroup() %>%
+  filter(time_group== 'prior') %>%
   left_join(DG, prio_calc, by=c('day', 'ID'))
 
 DG$SpC_cor<-(DG$LowSpC-DG$mean_prior)
@@ -72,12 +77,6 @@ DG$NaCl<-DG$SpC_cor*0.51
 DG$tC<-DG$elapsed*DG$NaCl
 DG$single_mass<-DG$NaCl*5
 DG$total_mass<-cumsum(DG$single_mass)
-
-DG <- DG %>%
-  mutate(time_group =  case_when(elapsed <= 30 ~ "prior",elapsed >= 30 ~ "after"))%>%
-  group_by(day,ID,time_group)%>%
-  summarise(mean_prior = mean(LowSpC)) %>%ungroup() %>% filter(time_group== 'prior') %>%
-  left_join(DG, prio_calc, by=c('day', 'ID'))
 
 DG<-DG %>% arrange(day,ID)%>%group_by(day,ID)%>%mutate(total_mass = cumsum(single_mass))
 
@@ -88,10 +87,14 @@ DG$t_star<-DG$m_1/DG$m_0
 DG$u_mean<-DG$Reach_m/DG$t_star
 DG$Q<-(DG$NaCl_g*1000)/DG$m_0
 
-x<-c('Date','day','ID','Q','u_mean','NaCl_g','Reach_m','total_mass','m_0','m_1','t_star')
-DG<-DG[,x]
-DG$date<-as.Date(DG$Date)
-DG <- DG[!duplicated(DG[c('date','ID')]),]
+DG<-DG%>% group_by(ID)%>%
+  summarize(Q=mean(Q, na.rm=T),
+            Reach_m=mean(Reach_m, na.rm=T),
+            NaCl_g=mean(NaCl_g, na.rm=T),
+            m_0=mean(m_0, na.rm=T),
+            m_1=mean(m_1, na.rm=T))
+
+
 write_csv(DG, "04_Output/compiled_DG.csv")
 
 #Calculate Q####
@@ -120,8 +123,6 @@ ggplot(DG_rC, aes(x = depth_mean, y = Q)) +
   facet_wrap(~ ID, ncol = 5, scales = 'free') +
   scale_x_log10()+scale_y_log10()+
   ylab(expression('Discharge'~'ft'^3/sec))+xlab("Depth (m)")
-  theme_minimal() +
-  theme(legend.position = "bottom")
 
 split<-DG_rC %>% split(DG_rC$ID)
 write.xlsx(split, file = '04_Output/rC_DG.xlsx')
@@ -130,7 +131,7 @@ rC <- lmList(logQ ~ logh | ID, data=DG_rC)
 (cf <- coef(rC))
 
 depth<-read_csv('02_Clean_data/depth.csv')
-depth <- depth %>%
+depth <- depth %>% filter(!ID %in% c('6.3','9.2'))%>%
   mutate(Q= case_when(
     ID== '13'~ (10^cf[1,1])*depth^(cf[1,2]),
     ID== '15'~ (10^cf[2,1])*depth^(cf[2,2]),
@@ -140,10 +141,7 @@ depth <- depth %>%
     ID== '6'~ (10^cf[6,1])*depth^(cf[6,2]),
     ID== '6a'~ (10^cf[7,1])*depth^(cf[7,2]),
     ID== '7'~ (10^cf[8,1])*depth^(cf[8,2]),
-    ID== '9'~ (10^cf[9,1])*depth^(cf[9,2])))
-
-x<-c("Date","ID","Q")
-depth<-depth[,x]
+    ID== '9'~ (10^cf[9,1])*depth^(cf[9,2])))%>% select(Date, ID, Q)
 
 discharge <- depth %>% group_by(ID) %>%
   mutate(Qbase = gr_baseflow(Q, method = 'jakeman',a = 0.925, passes = 3))
@@ -165,6 +163,7 @@ ggplot(discharge, aes(Date)) +
   geom_line(aes(y=depth, color='runoff'))+
   facet_wrap(~ ID, ncol=5, scales = 'free')
 
+test<-depth%>% filter(ID=='5') %>% filter(Date>'2025-03-30')
 write_csv(discharge, "02_Clean_data/discharge.csv")
 
 #Figures##########
