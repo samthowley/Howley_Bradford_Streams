@@ -80,7 +80,10 @@ chimney <- chimney  %>%
          active_passive=Reactor_C/passive_CO2)%>%
   mutate(Basin=case_when(ID=='5'~'5',ID=='5a'~'5',ID=='15'~'15',
                          ID=='3'~'6',ID=='7'~'7',ID=='6'~'6',ID=='6a'~'6',
-                         ID=='9'~'9', ID=='13'~'13'))
+                         ID=='9'~'9', ID=='13'~'13'))%>% ungroup%>%
+  group_by(ID)%>%
+  mutate(discharge_quartile = ntile(Q, 4))%>% ungroup
+
 
 
 chimney <- chimney[complete.cases(chimney[ , c('CO2_flux')]), ]
@@ -108,7 +111,6 @@ result <- chimney %>%
             passive_days = sum(passive_tot >0.5, na.rm = TRUE),
             passive_prop=mean(passive_tot)*100,
             active_prop=mean(reactor_tot)*100) %>% filter(active_prop<100)
-
 write_csv(chimney, "04_Output/chimney_reactor.csv")
 
 wetland_cover <- read_csv("01_Raw_data/wetland_cover.csv")%>%
@@ -129,9 +131,19 @@ ggplot(chimney_wetland, aes(Q,color=wetland_cover_perc))+
   theme(legend.position = "bottom")
 
 
-ggplot(chimney_wetland, aes(x=as.factor(wetland_cover_perc), y=reactor_tot, fill=ID)) +
-  geom_boxplot()+scale_y_log10()
+ggplot(chimney_wetland %>%filter(discharge_quartile==4), aes(x=as.factor(wetland_cover_perc),
+                                                             y=Reactor_C, fill=ID)) +
+  geom_boxplot()+
+  scale_y_log10()
 
+wetland_prop <- read_csv("01_Raw_data/wetland proportion buffer.csv")
+chimney_wetland_prop<-left_join(chimney, wetland_prop, by='Basin')
+
+ggplot(chimney_wetland_prop %>% filter(buffer_radius==2000 & discharge_quartile==4),
+       aes(x=as.factor(proportion), y=CO2, fill=ID)) +
+  geom_boxplot()+
+  geom_point(position=position_jitter(width=0.1))+
+  scale_y_log10()
 
 #CO2 quality check######CO2 quality wetland_cover_perccheck#####
 
