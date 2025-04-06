@@ -169,12 +169,98 @@ stream<-forstream %>% mutate(chapter=case_when(Site=='3'~'stream',Site=='5'~'str
                                             Site=='9'~'stream',Site=='13'~'stream',Site=='15'~'stream'))%>%
   filter(chapter=='stream')
 
+write_csv(RC, "04_Output/TDC_RC.csv")
+write_csv(stream, "04_Output/TDC_stream.csv")
+write_csv(long, "04_Output/TDC_long.csv")
+
+#################################
+#Figures#########################
+#################################
+stream<-read_csv("04_Output/TDC_stream.csv")%>%filter(!ID=='6a')
+DOC<-stream %>% select(Site, DOC, Q)%>% rename(C=DOC)%>%mutate(type='DOC')
+DIC<-stream %>% select(Site, DIC, Q)%>% rename(C=DIC)%>%mutate(type='DIC')
+POC<-stream %>% select(Site, POC, Q)%>% rename(C=POC)%>%mutate(type='POC')
+for_figs<-rbind(POC, DOC, DIC)
 
 
-ggplot(stream, aes(x=Q, y=DOC)) +
-  geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
-  scale_x_log10()+scale_y_log10()+ geom_smooth(method='lm')
+DOC$Site <- factor(DOC$Site , levels=c('5','5a','6','3','7','13','6a','9','15'))
+
+ggplot(DOC, aes(x=Q, y=C, color=type)) +
+  geom_point(size=2)+
+  ylab('mg/L')+
+  xlab(expression('Discharge'~m^3))+
+  facet_wrap(~ Site, ncol=3, scales = "free")+
+  scale_x_log10()+scale_y_log10()+
+  stat_poly_line(method = "lm", formula = y ~ x, se = FALSE) +
+  stat_poly_eq(
+    aes(label = paste(..eq.label.., ..rr.label..,..p.value.label.., sep = "~~~~~")),
+    formula = y ~ x,
+    parse = TRUE,
+    label.x.npc = "left",
+    label.y.npc = "bottom"
+  )
 #
+for_figs$Site <- factor(for_figs$Site , levels=c('5','5a','6','3','7','13','6a','9','15'))
+
+ggplot(for_figs, aes(x=Q, y=C, color=type)) +
+  geom_point(size=2)+
+  ylab('mg/L')+
+  xlab(expression('Discharge'~m^3))+
+  facet_wrap(~ Site, ncol=3, scales = "free")+
+  scale_x_log10()+scale_y_log10()+
+  stat_poly_line(method = "lm", formula = y ~ x, se = FALSE) +
+  stat_poly_eq(
+    aes(label = ifelse(..p.value.. < 0.05,
+                       paste("bold(", ..eq.label.., ") *','~", ..rr.label.., "*','~bold(", ..p.value.label.., ")"),
+                       paste(..eq.label.., "*','~", ..rr.label.., "*','~", ..p.value.label..))),
+    formula = y ~ x,
+    parse = TRUE,
+    label.x.npc = "left",
+    label.y.npc = "bottom"
+  )
+#
+DOC$Site <- factor(DOC$Site , levels=c('5','5a','6'))
+
+label_data_DOC <- DOC %>%
+  group_by(Site) %>%
+  summarise(
+    mean_val = mean(C, na.rm = TRUE),
+    min_val = min(C, na.rm = TRUE),
+    max_val = max(C, na.rm = TRUE),
+    Q_val = min(Q, na.rm = TRUE)) %>%
+  mutate(
+    label_other = paste0("Min: ", round(min_val, 2), "\nMax: ", round(max_val, 2)),
+    label_mean = paste0("Mean: ", round(mean_val, 2))
+  )
+
+
+a<-ggplot(DOC %>%filter(Site %in% c('5','5a','6')), aes(x=Q, y=C)) +
+  geom_point(size=2)+
+  ylab('DOC mg/L')+
+  xlab(expression('Discharge'~m^3))+
+  facet_wrap(~ Site, ncol=4, scales = "free")+
+  scale_x_log10()+scale_y_log10()+
+  stat_poly_line(method = "lm", formula = y ~ x, se = FALSE) +
+  stat_poly_eq(
+    aes(label = paste(..eq.label.., ..rr.label..,..p.value.label.., sep = "~~~~~")),
+    formula = y ~ x,
+    parse = TRUE,
+    label.x.npc = "left",
+    label.y.npc = "bottom")+
+  geom_text(data = label_data_DOC%>%filter(Site %in% c('5','5a','6')),
+            aes(x = Q_val, y = max_val, label = label_other),
+            inherit.aes = FALSE,
+            hjust = 0, vjust = 1.5, size = 3, color = "darkblue") +
+
+  # Red and bold label for mean
+  geom_text(data = label_data_DOC%>%filter(Site %in% c('5','5a','6')),
+            aes(x = Q_val, y = max_val, label = label_mean),
+            inherit.aes = FALSE,
+            hjust = 0, vjust = 0.3, size = 4, color = "red", fontface = "bold")
+
+
+
+
 ggplot(stream, aes(x=Date, y=DOC)) +
   geom_point(size=2)+facet_wrap(~ Site, ncol=5, scales = "free")+
   scale_y_log10()+ geom_smooth(method='lm')
@@ -189,9 +275,6 @@ ggplot(stream, aes(x=depth)) +
   geom_point(aes(y=DIC,color='DIC'), size=2)+
   facet_wrap(~ Site, ncol=5, scales = "free")+scale_x_log10()+scale_y_log10()
 
-write_csv(RC, "04_Output/TDC_RC.csv")
-write_csv(stream, "04_Output/TDC_stream.csv")
-write_csv(long, "04_Output/TDC_long.csv")
 
 #Checks#########
 test<-dissolved %>% filter(complete.cases(NPDOC, DOC))%>%

@@ -240,7 +240,8 @@ ggplot(stream_depth, aes(x=Q))+
 ggplot(stream_depth, aes(x=Q))+
   geom_point(aes(y=CO2_sat, color='CO2_sat'))+
   geom_point(aes(y=CH4_sat, color='CH4_sat'))+
-  geom_point(aes(y=N2O_sat, color='N2O_sat'))+scale_y_log10()+scale_x_log10()+
+  #geom_point(aes(y=N2O_sat, color='N2O_sat'))+
+  scale_y_log10()+scale_x_log10()+
   facet_wrap(~ ID, ncol=3)+ylab('umol_L')
 
 RChydro <- read_csv("02_Clean_data/allC_RC.csv")
