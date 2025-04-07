@@ -212,18 +212,18 @@ ggplot(chimney%>% filter(!ID=='6a'& reactor_tot<1),
   scale_y_log10()+
   facet_wrap(~ID, scales='free')
 
-b<-ggplot(chimney%>%filter(ID %in% c('5','5a','6')), aes(Q, y=reactor_tot))+
+b<-ggplot(chimney%>%filter(ID %in% c('5','15','3','7','9')), aes(Q, y=reactor_tot))+
   geom_point(size=2, shape=1)+
   ylab(expression('Active'~CO[2]/ 'Total'~CO[2]))+
   xlab(expression('Discharge'~m^3))+
   ggtitle(expression(Proportion~of~Active~CO[2]))+
-  facet_wrap(~ ID, ncol=4, scale='free')+
+  facet_wrap(~ ID, ncol=5, scale='free')+
   scale_y_log10()+ scale_x_log10()+
-  geom_text(data = label_data%>% filter(ID %in% c('5','5a','6')),
+  geom_text(data = label_data%>%filter(ID %in% c('5','15','3','7','9')),
             aes(x = Q_val, y = max_val, label = label_other),
             inherit.aes = FALSE,
             hjust = 0, vjust = 1.5, size = 3, color = "darkblue") +
-  geom_text(data = label_data%>% filter(ID %in% c('5','5a','6')),
+  geom_text(data = label_data%>% filter(ID %in% c('5','15','3','7','9')),
             aes(x = Q_val, y = max_val, label = label_mean),
             inherit.aes = FALSE,
             hjust = 0, vjust = 0.3, size = 4, color = "red", fontface = "bold")+

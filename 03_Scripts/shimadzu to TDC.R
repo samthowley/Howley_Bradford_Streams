@@ -219,7 +219,7 @@ ggplot(for_figs, aes(x=Q, y=C, color=type)) +
     label.y.npc = "bottom"
   )
 #
-DOC$Site <- factor(DOC$Site , levels=c('5','5a','6'))
+DOC$Site <- factor(DOC$Site , levels=c('5','15','3','7','9'))
 
 label_data_DOC <- DOC %>%
   group_by(Site) %>%
@@ -234,11 +234,11 @@ label_data_DOC <- DOC %>%
   )
 
 
-a<-ggplot(DOC %>%filter(Site %in% c('5','5a','6')), aes(x=Q, y=C)) +
+a<-ggplot(DOC %>%filter(Site %in% c('5','15','3','7','9')), aes(x=Q, y=C)) +
   geom_point(size=2)+
   ylab('DOC mg/L')+
   xlab(expression('Discharge'~m^3))+
-  facet_wrap(~ Site, ncol=4, scales = "free")+
+  facet_wrap(~ Site, ncol=5, scales = "free")+
   scale_x_log10()+scale_y_log10()+
   stat_poly_line(method = "lm", formula = y ~ x, se = FALSE) +
   stat_poly_eq(
@@ -253,7 +253,7 @@ a<-ggplot(DOC %>%filter(Site %in% c('5','5a','6')), aes(x=Q, y=C)) +
             hjust = 0, vjust = 1.5, size = 3, color = "darkblue") +
 
   # Red and bold label for mean
-  geom_text(data = label_data_DOC%>%filter(Site %in% c('5','5a','6')),
+  geom_text(data = label_data_DOC%>%filter(Site %in% c('5','15','3','7','9')),
             aes(x = Q_val, y = max_val, label = label_mean),
             inherit.aes = FALSE,
             hjust = 0, vjust = 0.3, size = 4, color = "red", fontface = "bold")
