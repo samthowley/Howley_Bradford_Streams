@@ -75,30 +75,52 @@ metabolism_K <- function(site) {
 
 
 #K600 interpolation#####
-sheet_names <- excel_sheets("04_Output/rC_K600_edited.xlsx")
+sheet_names <- excel_sheets("04_Output/rC_K600.xlsx")
 
 list_of_dfs <- list()
 for (sheet in sheet_names) {
-  df <- read_excel("04_Output/rC_K600_edited.xlsx", sheet = sheet)
+  df <- read_excel("04_Output/rC_K600.xlsx", sheet = sheet)
   list_of_dfs[[sheet]] <- df
 }
 
-K600 <- bind_rows(list_of_dfs)
+k600 <- bind_rows(list_of_dfs)%>% select(ID, Date, k600_dh, Q)%>%filter(ID==6)
 
-rC <- lmList(logQ ~ log_K600 | ID, data=K600)
-(cf <- coef(rC))
+kq_nodes <- k600 %>%
+  filter(!is.na(Q), !is.na(k600_dh)) %>%
+  group_by(ID) %>%
+  summarise(
+    Q_nodes = list(quantile(Q, probs = c(0.1, 0.3, 0.5, 0.7, 0.9), na.rm = TRUE)),
+    K_nodes = list(approx(Q, k600_dh, xout = quantile(Q, probs = c(0.1, 0.3, 0.5, 0.7, 0.9), na.rm = TRUE))$y)
+  )
 
-k600_interpolated <- input %>%
-  mutate(log_K600= case_when(
-    ID== '13'~ (10^cf[1,1]+Q*10^(cf[1,2]),
-    ID== '15'~ (10^cf[2,1])+Q*10^(cf[2,2]),
-    ID== '3'~ (10^cf[3,1])+Q*10^(cf[3,2]),
-    ID== '5'~ (10^cf[4,1])+Q*10^(cf[4,2]),
-    ID== '5a'~ (10^cf[5,1])+Q*10^(cf[5,2]),
-    ID== '6'~ (10^cf[6,1])+Q*10^(cf[6,2]),
-    ID== '6a'~ (10^cf[7,1])+Q*10^(cf[7,2]),
-    ID== '7'~ (10^cf[8,1])+Q*10^(cf[8,2]),
-    ID== '9'~ (10^cf[9,1])+Q*10^(cf[9,2]))))
+
+site_id <- kq_nodes$ID[1]
+Q_vals <- kq_nodes$Q_nodes[[1]]
+K_vals <- kq_nodes$K_nodes[[1]]
+
+# Build specs
+bayes_specs <- specs(
+  mm_name(type = "bayes", pool_K600 = "binned", err_obs_iid = TRUE, err_proc_iid = TRUE),
+  K600_lnQ_nodes_centers = Q_vals,
+  K600_lnQ_nodes_meanlog = log(K_vals),
+  K600_lnQ_nodes_sdlog = 0.1,
+  K600_lnQ_nodediffs_sdlog = 0.05,
+  K600_daily_sigma_sigma = 0.24,
+  burnin_steps = 1000,
+  saved_steps = 1000
+)
+# Subset your full dataset to that site (make sure `site_data` exists)
+site_data <- filter(full_data, ID == site_id)
+s6<-filter(input, ID=='6')
+s6<-s6 %>% select(-ID)%>%arrange(solar.time)
+# Run model
+mm <- metab(bayes_specs, data = s6)
+
+
+
+
+
+
 
 
 #model######
@@ -179,6 +201,12 @@ bins<- function(site) {
                        burnin_steps=1000, saved_steps=1000)
 
   return(bayes_specs)}
+
+
+
+mm <- metab(bayes_specs, data=site1)
+
+
 bayes_name <- mm_name(type='bayes', pool_K600="binned", err_obs_iid=TRUE, err_proc_iid=TRUE)
 
 
