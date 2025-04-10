@@ -115,14 +115,14 @@ DG_rC<- DG_rC %>% mutate(logQ=log10(Q),logh=log10(depth_mean)) %>%
   mutate(Q = if_else(ID=='5a' & depth_mean< 0.5, NA, Q))%>%
   mutate(Q = if_else(ID=='6a' & depth_mean> 300, NA, Q))%>%
   mutate(Q = if_else(ID=='6a' & depth_mean<0.3 & Q>50, NA, Q))%>%
-  filter(ID!='14')
+  filter(!ID %in% c('14', '6.3', '9.2'))
 
-ggplot(DG_rC, aes(x = depth_mean, y = Q)) +
-  geom_point(size = 2, color = "black") +
-  geom_smooth(method = "lm", se = FALSE, color = "blue") +
-  facet_wrap(~ ID, ncol = 5, scales = 'free') +
-  scale_x_log10()+scale_y_log10()+
-  ylab(expression('Discharge'~'ft'^3/sec))+xlab("Depth (m)")
+# ggplot(DG_rC, aes(x = depth_mean, y = Q)) +
+#   geom_point(size = 2, color = "black") +
+#   geom_smooth(method = "lm", se = FALSE, color = "blue") +
+#   facet_wrap(~ ID, ncol = 5, scales = 'free') +
+#   scale_x_log10()+scale_y_log10()+
+#   ylab(expression('Discharge'~'ft'^3/sec))+xlab("Depth (m)")
 
 split<-DG_rC %>% split(DG_rC$ID)
 write.xlsx(split, file = '04_Output/rC_DG.xlsx')
@@ -131,7 +131,7 @@ rC <- lmList(logQ ~ logh | ID, data=DG_rC)
 (cf <- coef(rC))
 
 depth<-read_csv('02_Clean_data/depth.csv')
-depth <- depth %>% filter(!ID %in% c('6.3','9.2'))%>%
+discharge <- depth %>% filter(!ID %in% c('6.3','9.2'))%>%
   mutate(Q= case_when(
     ID== '13'~ (10^cf[1,1])*depth^(cf[1,2]),
     ID== '15'~ (10^cf[2,1])*depth^(cf[2,2]),
@@ -143,7 +143,7 @@ depth <- depth %>% filter(!ID %in% c('6.3','9.2'))%>%
     ID== '7'~ (10^cf[8,1])*depth^(cf[8,2]),
     ID== '9'~ (10^cf[9,1])*depth^(cf[9,2])))%>% select(Date, ID, Q)
 
-discharge <- depth %>% group_by(ID) %>%
+discharge <- discharge %>% group_by(ID) %>%
   mutate(Qbase = gr_baseflow(Q, method = 'jakeman',a = 0.925, passes = 3))
 
 discharge<-discharge %>% group_by(ID) %>%
@@ -154,16 +154,39 @@ discharge<-discharge %>% group_by(ID) %>%
          Qbase = if_else(Qbase<0, NA, Qbase),
          Qsurficial= if_else(Qsurficial<0, NA, Qsurficial))
 
-ggplot(discharge, aes(Date)) +
-  geom_line(aes(y=Qsurficial, color='runoff'))+
-  geom_line(aes(y=Qbase, color='base'))+scale_y_log10()+
+
+u_rC <- lmList(log10(depth_mean) ~ log10(u_mean) | ID, data=DG_rC)
+(u_cf <- coef(u_rC))
+
+V <- depth %>%
+  mutate(u= case_when(
+    ID== '13'~ (10^u_cf[1,1])*depth^(u_cf[1,2]),
+    ID== '15'~ (10^u_cf[2,1])*depth^(u_cf[2,2]),
+    ID== '3'~ (10^u_cf[3,1])*depth^(u_cf[3,2]),
+    ID== '5'~ (10^u_cf[4,1])*depth^(u_cf[4,2]),
+    ID== '5a'~ (10^u_cf[5,1])*depth^(u_cf[5,2]),
+    ID== '6'~ (10^u_cf[6,1])*depth^(u_cf[6,2]),
+    ID== '6a'~ (10^u_cf[7,1])*depth^(u_cf[7,2]),
+    ID== '7'~ (10^u_cf[8,1])*depth^(u_cf[8,2]),
+    ID== '9'~ (10^u_cf[9,1])*depth^(u_cf[9,2])))
+
+write_csv(V, "02_Clean_data/velocity.csv")
+
+ggplot(DG_rC, aes(x=depth_mean, y=u_mean)) +
+  geom_point()+
+  geom_smooth(method = lm)+
+  scale_y_log10()+scale_x_log10()+
   facet_wrap(~ ID, ncol=5, scales = 'free')
 
 ggplot(discharge, aes(Date)) +
   geom_line(aes(y=depth, color='runoff'))+
   facet_wrap(~ ID, ncol=5, scales = 'free')
 
-test<-depth%>% filter(ID=='5') %>% filter(Date>'2025-03-30')
+ggplot(V%>% filter(!ID=='14'), aes(Date)) +
+  geom_line(aes(y=u))+
+  ylab('Velocity m/s')+
+  facet_wrap(~ ID, ncol=5, scales = 'free')
+
 write_csv(discharge, "02_Clean_data/discharge.csv")
 
 #Figures##########
