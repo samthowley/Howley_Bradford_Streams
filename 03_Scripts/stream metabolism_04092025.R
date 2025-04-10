@@ -13,53 +13,6 @@ library(weathermetrics)
 library('StreamMetabolism')
 library(lme4)
 
-metabolism <- function(site) {
-
-  site<-site%>%select(-ID, Q)
-  site<-site[order(as.Date(site$Date, format="%Y-%m-%d %H:%M:%S")),]
-  site<-left_join(samplingperiod,site)
-  site$Temp_C<- fahrenheit.to.celsius(site$Temp)
-
-  site <- site[!duplicated(site[c('Date')]),]
-
-  site<-rename(site,'DO.obs'='DO','temp.water'='Temp_C')
-  site$DO.sat<-Cs(site$temp.water)
-  site$solar.time <-as.POSIXct(site$Date, format="%Y-%m-%d %H:%M:%S", tz="UTC")
-  site<-site[,-c(1)]
-  site$light<-calc_light(site$solar.time,  29.8, -82.6)
-  y<-c("DO.obs","depth","temp.water", "DO.sat","solar.time","light" )
-  site<-site[,y]
-  mm <- metab(bayes_specs, data=site)
-  prediction2 <- mm@fit$daily %>% select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean,
-                                         GPP_Rhat,ER_Rhat,K600_daily_Rhat)
-  prediction2<- prediction2 %>% filter(ER_Rhat> 0.9 & ER_Rhat<1.05)%>% filter(K600_daily_Rhat> 0.9 & K600_daily_Rhat<1.05)%>%
-    select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean)
-
-  return(prediction2)}
-metabolism_K <- function(site) {
-
-  site<-site%>%select(-ID, log_K600)
-  site<-site[order(as.Date(site$Date, format="%Y-%m-%d %H:%M:%S")),]
-  site<-left_join(samplingperiod,site)
-  site$Temp_C<- fahrenheit.to.celsius(site$Temp)
-
-  site <- site[!duplicated(site[c('Date')]),]
-
-  site<-rename(site,'DO.obs'='DO','temp.water'='Temp_C')
-  site$DO.sat<-Cs(site$temp.water)
-  site$solar.time <-as.POSIXct(site$Date, format="%Y-%m-%d %H:%M:%S", tz="UTC")
-  site<-site[,-c(1)]
-  site$light<-calc_light(site$solar.time,  29.8, -82.6)
-  y<-c("DO.obs","depth","temp.water", "DO.sat","solar.time","light" )
-  site<-site[,y]
-  mm <- metab(bayes_specs, data=site)
-  prediction2 <- mm@fit$daily %>% select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean,
-                                         GPP_Rhat,ER_Rhat,K600_daily_Rhat)
-  prediction2<- prediction2 %>% filter(ER_Rhat> 0.9 & ER_Rhat<1.05)%>% filter(K600_daily_Rhat> 0.9 & K600_daily_Rhat<1.05)%>%
-    select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean)
-
-  return(prediction2)}
-
 #constants######
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
                                             to=as.POSIXct("2025-03-28 00:00", tz="UTC"),by="hour")))
@@ -158,6 +111,30 @@ metab_results <- mapply(function(site_data, site_spec) {
   metab(site_spec, data = site_data)
 }, site_data = valid_streams, site_spec = valid_specs, SIMPLIFY = FALSE)
 
-met_df <- bind_rows(metab_results, .id = "ID")
+
+
+met_list <- lapply(metab_results, function(metab_results) {
+  prediction2 <- metab_results@fit$daily %>%
+    select(date, GPP_daily_mean, ER_daily_mean, K600_daily_mean,
+           GPP_Rhat, ER_Rhat, K600_daily_Rhat) %>%
+    filter(ER_Rhat > 0.9 & ER_Rhat < 1.05,
+           K600_daily_Rhat > 0.9 & K600_daily_Rhat < 1.05) %>%
+    select(date, GPP_daily_mean, ER_daily_mean, K600_daily_mean)
+
+  return(prediction2)
+})
+
+met_df <- bind_rows(met_list, .id = "ID")
+
+
+ggplot(met_df, aes(date)) +
+  geom_point(aes(y = ER_daily_mean, color = 'ER')) +
+  geom_point(aes(y = GPP_daily_mean, color = 'GPP')) +
+  facet_wrap(~ ID, ncol = 3, scale = 'free') +
+  ylab(expression(O[2]~'g'/m^2/'day')) +
+  xlab("Date")
+
+
+
 
 write_csv(met_df, "04_Output/metabolism_04092025.csv")
