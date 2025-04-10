@@ -71,53 +71,93 @@ data <- lapply(file.names,function(x) {read_csv(x, col_types = cols(ID = col_cha
 merged_data <- reduce(data, left_join, by = c("ID", 'Date'))
 
 input <- merged_data %>%
-  filter(depth > 0, Date > "2023-10-06", ID != '14')%>%
- rename('DO.obs'='DO','temp.water'='Temp_PT.x', discharge=Q)%>%
-  mutate(DO.sat=Cs(temp.water),
-         solar.time=as.POSIXct(Date, format="%Y-%m-%d %H:%M:%S", tz="UTC"))%>%
+  filter(depth > 0,ID != '14')%>%
+ rename('DO.obs'='DO', discharge=Q)%>%
+  mutate(
+    temp.water=fahrenheit.to.celsius(Temp_PT.x))%>%
+  mutate(
+    DO.sat=Cs(temp.water),
+         solar.time=as.POSIXct(Date, format="%Y-%m-%d %H:%M:%S", tz="UTC"),
+         )%>%
   mutate(
     light=calc_light(solar.time,  29.8, -82.6))%>%
   select(solar.time, light, depth, DO.sat, DO.obs, temp.water, discharge, ID)
 
-
+for_k600<-input%>% filter(!ID %in% c('5a', '6a'))
 cols <- c('solar.time', 'light', 'depth', 'DO.sat', 'DO.obs', 'temp.water', 'discharge', 'ID')
-unique_sites <- unique(input$ID[!is.na(input$ID)])
+unique_sites <- unique(for_k600$ID[!is.na(for_k600$ID)])
 
-df_list <- setNames(
+streams <- setNames(
   lapply(unique_sites, function(ID) {
-    df_subset <- input %>%
+    df_subset <- for_k600 %>%
       filter(ID == ID) %>%
       select(all_of(cols))
-    return(df_subset)
-  }),
+    return(df_subset)}),
   unique_sites
 )
 
-# met_prep <- lapply(df_list, function(df) {
-#
-#   return(df)
-# })
+streams_edited <- lapply(streams, function(df) {
+  df %>%
+    select(-ID)%>%
+    arrange(solar.time) %>%
+    filter(c(TRUE, diff(solar.time) > 0))
+})
 
 #K600#############
 sheet_names <- excel_sheets("04_Output/rC_K600.xlsx")
+ks <- sheet_names[!sheet_names %in% c("5a", "6a")]
 
 list_of_ks <- list()
-for (sheet in sheet_names) {
+for (sheet in ks) {
   df <- read_excel("04_Output/rC_K600.xlsx", sheet = sheet)
   list_of_ks[[sheet]] <- df
 }
 
-
-kq_nodes_list<- lapply(list_of_ks, function(k600_df){
+kq_nodes_list <- lapply(list_of_ks, function(k600_df) {
   kq_nodes <- k600_df %>%
     filter(!is.na(Q), !is.na(k600_dh)) %>%
     group_by(ID) %>%
+    filter(n() >= 2) %>%  # Ensure enough points for interpolation
     summarise(
       Q_nodes = list(quantile(Q, probs = c(0.1, 0.3, 0.5, 0.7, 0.9), na.rm = TRUE)),
-      K_nodes = list(approx(Q, k600_dh, xout = quantile(Q, probs = c(0.1, 0.3, 0.5, 0.7, 0.9), na.rm = TRUE))$y))
+      K_nodes = list(approx(Q, k600_dh,
+                            xout = quantile(Q, probs = c(0.1, 0.3, 0.5, 0.7, 0.9), na.rm = TRUE))$y)
+    )
 
-  return(k600_df)
+  return(kq_nodes)
 })
 
+specs <- lapply(kq_nodes_list, function(kq_nodes) {
+  site_id <- kq_nodes$ID[1]
+  Q_vals <- kq_nodes$Q_nodes[[1]]
+  K_vals <- kq_nodes$K_nodes[[1]]
 
-)
+  # Handle missing or NA values in K_vals
+  if (all(is.na(K_vals))) {
+    warning(paste("Skipping site", site_id, "- K_vals all NA"))
+    return(NULL)
+  }
+
+  # Build specs
+  bayes_specs <- specs(
+    mm_name(type = "bayes", pool_K600 = "binned", err_obs_iid = TRUE, err_proc_iid = TRUE),
+    K600_lnQ_nodes_centers = Q_vals,
+    K600_lnQ_nodes_meanlog = log(K_vals),
+    K600_lnQ_nodes_sdlog = 0.1,
+    K600_lnQ_nodediffs_sdlog = 0.05,
+    K600_daily_sigma_sigma = 0.24,
+    burnin_steps = 1000,
+    saved_steps = 1000)})
+
+valid_ids <- names(specs)[!sapply(specs, is.null)]
+valid_streams <- streams_edited[valid_ids]
+valid_specs <- specs[valid_ids]
+
+# Run streamMetabolizer on each valid site
+metab_results <- mapply(function(site_data, site_spec) {
+  metab(site_spec, data = site_data)
+}, site_data = valid_streams, site_spec = valid_specs, SIMPLIFY = FALSE)
+
+met_df <- bind_rows(metab_results, .id = "ID")
+
+write_csv(met_df, "04_Output/metabolism_04092025.csv")
