@@ -102,6 +102,8 @@ specs <- lapply(kq_nodes_list, function(kq_nodes) {
     burnin_steps = 1000,
     saved_steps = 1000)})
 
+
+
 valid_ids <- names(specs)[!sapply(specs, is.null)]
 valid_streams <- streams_edited[valid_ids]
 valid_specs <- specs[valid_ids]
