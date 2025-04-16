@@ -2,13 +2,13 @@
 rm(list=ls())
 
 library(tidyverse)
-library(writexl)
 library(readxl)
-library(lubridate)
+library(measurements)
 library(cowplot)
-library(weathermetrics)
-library(ggtern)
-library(ggpmisc)
+library(mmand)
+library(zoo)
+library(plotly)
+library(broom)
 
 theme_set(theme(axis.text.x = element_text(size = 10),
                 axis.text.y = element_text(size = 10),
@@ -57,11 +57,16 @@ ggplot(dim, aes(x = Q))+
 
 #Chimney Pathway#####
 
-resp<-read_csv('04_Output/master_metabolism.csv')
-resp<-resp %>% filter(ER< -3) %>% filter(GPP>0)%>%filter(ER>-20)%>%mutate(NEP=abs(GPP+ER))
+resp<-read_csv('04_Output/master_metabolism.csv')%>%
+  filter(ER< -3 & ER>-20, GPP>0) %>%
+  mutate(NEP=GPP+ER)%>%
+  filter(NEP<0)
 
 resp<-left_join(resp,dim, by=c('Date','ID'))
-KH<-resp %>%filter(depth>0)%>%  mutate(Temp_C=fahrenheit.to.celsius(Temp_PT)) %>%mutate(Temp_K=Temp_C+273.15)%>%mutate(
+
+KH<-resp %>%filter(depth>0)%>%
+  mutate(Temp_C=fahrenheit.to.celsius(Temp_PT)) %>%
+  mutate(Temp_K=Temp_C+273.15)%>%mutate(
   KH=0.034*exp(2400*((1/Temp_K)-(1/298.15))))
 
 KCO2<-KH %>%
@@ -69,60 +74,69 @@ KCO2<-KH %>%
          SchmidtCO2hi=1742-91.24*Temp_C+2.208*Temp_C^2-0.0219*Temp_C^3)%>%
   mutate(KCO2_m.d=K600_m.d/((600/SchmidtCO2hi)^(-2/3))) %>%
   mutate(KCO2_d=KCO2_m.d/depth)%>%
-  rename(day=Date) #%>% select(day, ID, reactor, Q, Qbase, depth, KCO2_d, KH)
+  rename(day=Date)
 
-CO2_hourly<-read_csv("02_Clean_data/CO2_cleaned.csv")
-CO2<-CO2_hourly%>% mutate(day=as.Date(Date))
+CO2<-read_csv("02_Clean_data/CO2_cleaned.csv")%>% mutate(day=as.Date(Date))
 
-chimney<-left_join(CO2,KCO2, by=c('day','ID'))
-chimney <- chimney  %>%
-  mutate(CO2_flux=KCO2_m.d*(CO2-400)*KH*(1/10^6)*44*1000)%>%
+flux<-left_join(CO2,KCO2, by=c('day','ID'))%>%
   group_by(day,ID)%>%
-  mutate(mean_CO2flux=mean(CO2_flux, na.rm = T),
-         Reactor_C=NEP*0.8)%>%
-  ungroup()%>%
-  mutate(reactor_tot= Reactor_C/mean_CO2flux,
-        passive=mean_CO2flux-Reactor_C)%>%
-  ungroup%>%
-  mutate(Basin=case_when(ID=='5'~'5',ID=='5a'~'5',ID=='15'~'15',
+  mutate(CO2_day=mean(CO2, na.rm = T))%>%
+  ungroup()%>%group_by(ID)%>%
+  distinct(day,ID, .keep_all = T)%>%
+  mutate(across(c(CO2_day), ~rollmean(.x, k = 5, fill = NA, align = "center"), .names = "{.col}"))%>%
+  ungroup()%>%select(-CO2)%>%
+  mutate(CO2_flux=KCO2_m.d*(CO2_day-400)*KH*(1/10^6)*44*1000)
+
+ggplot(flux %>% filter(ID=='5'), aes(x=Q, y=CO2_flux))+
+  geom_point()
+
+
+active<-flux%>%
+  mutate(active=NEP*0.8)%>%
+  mutate(active.tot= active/CO2_flux,
+        passive=CO2_flux-active)%>%
+  mutate(active.passive=active/passive,
+    Basin=case_when(ID=='5'~'5',ID=='5a'~'5',ID=='15'~'15',
                          ID=='3'~'6',ID=='7'~'7',ID=='6'~'6',ID=='6a'~'6',
                          ID=='9'~'9', ID=='13'~'13'))%>%
   select(-Qbase, -Qsurficial, -Temp_PT, -Temp_K, -KH, -K600_m.d, -SchmidtCO2hi, -KCO2_m.d,
-         -KCO2_d)%>% filter(reactor_tot<1)%>%
-  distinct(ID,Date,CO2_flux, .keep_all = T)%>%
+         -KCO2_d)%>%
+  filter(active.tot<1)%>%
   filter(!ID=='6a')
 
-chimney <- chimney[complete.cases(chimney[ , c('CO2_flux')]), ]
-
+active <- active[complete.cases(active[ , c('CO2_flux')]), ]
 
 #########################
 ###Figures#############
 ######################
 
-chimney$ID <- factor(chimney$ID , levels=c('5','5a','13','7','3','6','6a','9','15'))
+active$ID <- factor(active$ID , levels=c('5','5a','13','7','3','6','6a','9','15'))
 
-reactive<-chimney%>% select(Reactor_C, Q, Temp_C,ID, Date) %>% rename(C=Reactor_C)%>%
+active.only<-active%>% select(active, Q, Temp_C,ID, Date) %>% rename(C=active)%>%
   mutate(type="reactor")
-passive<-chimney%>% select(passive, Q, Temp_C,ID, Date) %>% rename(C=passive)%>%
+passive<-active%>% select(passive, Q, Temp_C,ID, Date) %>% rename(C=passive)%>%
   mutate(type="passive")
-for_histogram<-rbind(reactive, passive)%>%
-  group_by(ID)%>%
-  mutate(T_quartile = ntile(Temp_C, 4),
-         Q_quartile = ntile(Q, 4))%>% ungroup
 
-ggplot(chimney %>% filter(!ID=='6a'), aes(x=Q, y=CO2_flux))+
+ggplot(CO2, aes(x=Q, y=CO2))+
   geom_point() +
-  ylab(expression(CO[2]~~'g'/m^2/'day'))+
+  ylab(expression(CO[2]~~'ppm'))+
   facet_wrap(~ ID, ncol=3, scale='free')+
   theme(legend.position = "bottom")+
   xlab(expression(Discharge~m^3/sec))+
-  ggtitle('Active-Passive Carbon')+
+  ggtitle(expression(CO[2]~C-Q~Relationship))+
   scale_y_log10()+ scale_x_log10()+
   stat_poly_line()+
 stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
              formula = y ~ I(log10(x)),  # If you're plotting log10 on the x-axis only
              parse = TRUE, color = 'darkred',
              label.x.npc = "right", label.y.npc = "bottom")
+
+
+for_histogram<-rbind(active.only, passive)%>%
+  group_by(ID)%>%
+  mutate(T_quartile = ntile(Temp_C, 4),
+         Q_quartile = ntile(Q, 4))%>% ungroup
+
 
 ggplot(for_histogram %>% filter(!ID=='6a'), aes(x=Q, y=C, color=type))+
   geom_point() +
