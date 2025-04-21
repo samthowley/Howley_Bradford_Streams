@@ -7,7 +7,7 @@ library(weathermetrics)
 library(tools)
 library(cowplot)
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2024-05-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2025-03-28 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2025-04-28 00:00", tz="UTC"),by="hour")))
 theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
                              axis.text.y = element_text(size = 17, angle=0),
                              axis.title =element_text(size = 17, angle=0),

@@ -87,9 +87,13 @@ for(i in file.names){
   gas<-GasDome(gas,stream)
   gasdome<-rbind(gasdome, gas)}
 
-gasdome_cleaned <- gasdome[!duplicated(gasdome[c("day", "ID")]), ]
-gasdome_cleaned<-gasdome_cleaned %>%
-  filter(ID!='14')%>%select(-day)%>%
+write_csv(gasdome, "01_Raw_data/GD/GasDome_compiled_raw.csv")
+
+gasdome<-read_csv("01_Raw_data/GD/GasDome_compiled_raw.csv")
+
+gasdome_cleaned<-gasdome %>%
+  filter(ID!='14')%>%distinct(day, ID, .keep_all = T)%>%select(-day)%>%
+  arrange(ID, Date)%>%
   mutate(k600_dh=abs(k600_dh), KCO2_1d=abs(KCO2_dh), logQ=log10(Q)) %>%
   mutate(log_K600=log10(k600_dh))%>% select(logQ, everything())
 
@@ -109,15 +113,15 @@ split<-gasdome_cleaned %>% split(gasdome_cleaned$ID)
 write.xlsx(split, file = '04_Output/rC_k600.xlsx')
 
 #organize data file##########
-gas<- read_csv("01_Raw_data/GD/raw/GasDome_03262025.dat",skip = 3)
+gas<- read_csv("01_Raw_data/GD/raw/GasDome_04162025.dat",skip = 3)
 gas<-gas[,c(1,5)]
 colnames(gas)[1] <- "Date"
 colnames(gas)[2] <- "CO2"
-gas<-gas %>% mutate(CO2=CO2*6) %>%filter(Date>'2025-03-20')
+gas<-gas %>% mutate(CO2=CO2*6) %>%filter(Date>'2025-03-30')
 
 ggplot(gas, aes(x=Date, y=CO2)) +geom_point()
 
-write_csv(gas, "01_Raw_data/GD/raw/GasDome_03262025.csv")
+write_csv(gas, "01_Raw_data/GD/raw/GasDome_04162025.csv")
 
 #Visualize K600##########
 
