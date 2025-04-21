@@ -35,9 +35,9 @@ write_csv(DG, '01_Raw_data/DG/seperated/03112025_9.2.csv')
 
 ###### compile ####
 DG_all<-data.frame()
-file.names <- list.files(path="01_Raw_data/DG/raw", pattern=".csv", full.names=TRUE)
+file.names <- list.files(path="01_Raw_data/DG/seperated", pattern=".csv", full.names=TRUE)
 for(i in file.names){
-  DG<-read_csv(i, skip=1)%>%select(2:4)
+  DG<-read_csv(i, skip=1)%>%select(1:3)
   colnames(DG)[1] <- "Date"
   colnames(DG)[2] <- "LowSpC"
   colnames(DG)[3] <- "FullSpC"
@@ -54,75 +54,58 @@ notes<- read_csv("01_Raw_data/DG/Streams_dilution_gauging.csv",
 notes<-notes[,c(1,2,3,6)]
 notes<-rename(notes, 'day'='Date', 'ID'='Site')
 
-DG<- read_csv("01_Raw_data/DG/compiled_DG.csv")
+DG<- read_csv("01_Raw_data/DG/compiled_DG.csv")%>%mutate(day=as.Date(Date))
 
-DG<-DG_all%>%mutate(Date=ymd_hms(Date))%>%
-  mutate(day=as.Date(Date))
+DG_notes<-left_join(DG, notes, by=c('day','ID'))
 
-DG<-left_join(DG, notes, by=c('day','ID'))
+DG<-DG_notes %>% group_by(day,ID) %>%
+  mutate(elapsed = as.numeric(Date-Date[1]))%>%ungroup()
 
-DG<-DG %>% group_by(day,ID) %>% mutate(elapsed = as.numeric(Date-Date[1]))
+DG_edit <- DG %>%
+  filter(Date>'2021-01-01', !ID %in% c('9.2', '6.3', '14'))%>%
+  mutate(time_group =  case_when(elapsed <= 5 ~ "prior",elapsed >= 5 ~ "after"))
 
-DG <- DG %>%
-  mutate(time_group =  case_when(elapsed <= 3 ~ "prior",elapsed >= 3 ~ "after"))%>%
-  group_by(day,ID,time_group)%>%
-  summarise(mean_prior = mean(LowSpC)) %>%
-  ungroup() %>%
-  filter(time_group== 'prior') %>%
-  left_join(DG, prio_calc, by=c('day', 'ID'))
+DG_prior <- DG_edit %>%
+  group_by(day, ID, time_group) %>%
+  summarize(mean_prior = mean(LowSpC, na.rm = TRUE), .groups = "drop")%>%
+  filter(time_group=='prior')
 
-DG$SpC_cor<-(DG$LowSpC-DG$mean_prior)
-DG$NaCl<-DG$SpC_cor*0.51
+DG_calc<-left_join(DG_edit, DG_prior, by=c('day', 'ID'))%>%
+  mutate(LowSpC = as.numeric(LowSpC))%>%
+  mutate(SpC_cor=LowSpC-mean_prior)%>%
+  mutate(NaCl=SpC_cor*0.51)%>%
+  mutate(tC=elapsed*NaCl, single_mass=NaCl*5)%>%
+  arrange(day,ID)%>%group_by(day,ID)%>%
+  mutate(total_mass=cumsum(single_mass))%>% ungroup()
 
-DG$tC<-DG$elapsed*DG$NaCl
-DG$single_mass<-DG$NaCl*5
-DG$total_mass<-cumsum(DG$single_mass)
+DG_Q <- DG_calc %>% group_by(day,ID)%>%
+  mutate(m_0= sum(NaCl, na.rm=T)*5)%>%
+  mutate(m_1= sum(tC, na.rm = T)*5)%>% ungroup %>%
+  mutate(t_star=m_1/m_0,u_mean=Reach_m/t_star, Q=(NaCl_g*1000)/m_0)%>%ungroup()%>%
+  distinct(ID, day, .keep_all=T)
 
-DG<-DG %>% arrange(day,ID)%>%group_by(day,ID)%>%mutate(total_mass = cumsum(single_mass))
-
-DG <- DG %>% group_by(day,ID)%>% mutate(m_0= sum(NaCl, na.rm=T)*5)%>%
-  mutate(m_1= sum(tC, na.rm = T)*5)
-
-DG$t_star<-DG$m_1/DG$m_0
-DG$u_mean<-DG$Reach_m/DG$t_star
-DG$Q<-(DG$NaCl_g*1000)/DG$m_0
-
-DG<-DG%>% group_by(ID)%>%
-  summarize(Q=mean(Q, na.rm=T),
-            Reach_m=mean(Reach_m, na.rm=T),
-            NaCl_g=mean(NaCl_g, na.rm=T),
-            m_0=mean(m_0, na.rm=T),
-            m_1=mean(m_1, na.rm=T))
-
-
-write_csv(DG, "04_Output/compiled_DG.csv")
+write_csv(DG_Q, "04_Output/compiled_DG.csv")
 
 #Calculate Q####
-DG<-read_csv('04_Output/compiled_DG.csv')
-DG<-DG %>%mutate(hr=hour(Date), day=day(Date),month=month(Date), yr=year(Date))
+DG<-read_csv('04_Output/compiled_DG.csv')%>%mutate(day=as.Date(Date))
 
-depth <- read_csv("02_Clean_data/depth.csv")
-depth<-depth %>%mutate(hr=hour(Date), day=day(Date),month=month(Date), yr=year(Date))
-depth<- depth %>% group_by(ID, day, month, yr) %>% mutate(depth_mean=mean(depth, na.rm=T))
-range(depth$Date, na.rm = T)
+depth <- read_csv("02_Clean_data/depth.csv")%>%
+  mutate(day=as.Date(Date))%>%
+  group_by(day, ID)%>%summarize(depth=mean(depth, na.rm=T))%>%
+  distinct(day, ID, .keep_all = T)
 
-DG_rC<-left_join(DG, depth, by=c('ID', 'hr','day', 'month', 'yr'))
-DG_rC <- DG_rC[!duplicated(DG_rC[c( 'date','ID')]),]
-x<-c("date","ID","Q","u_mean" ,"depth_mean","m_0","m_1")
-DG_rC<-DG_rC[,x]
+DG_rC<-left_join(DG, depth, by=c('ID', 'day'))%>%
+  select(Date, ID, Q, u_mean, m_0, m_1, depth)
 
-DG_rC<- DG_rC %>% mutate(logQ=log10(Q),logh=log10(depth_mean)) %>%
-  mutate(Q = if_else(ID=='5a' & depth_mean< 0.5, NA, Q))%>%
-  mutate(Q = if_else(ID=='6a' & depth_mean> 300, NA, Q))%>%
-  mutate(Q = if_else(ID=='6a' & depth_mean<0.3 & Q>50, NA, Q))%>%
+DG_rC<- DG_rC %>% mutate(logQ=log10(Q),logh=log10(depth)) %>%
   filter(!ID %in% c('14', '6.3', '9.2'))
 
-# ggplot(DG_rC, aes(x = depth_mean, y = Q)) +
-#   geom_point(size = 2, color = "black") +
-#   geom_smooth(method = "lm", se = FALSE, color = "blue") +
-#   facet_wrap(~ ID, ncol = 5, scales = 'free') +
-#   scale_x_log10()+scale_y_log10()+
-#   ylab(expression('Discharge'~'ft'^3/sec))+xlab("Depth (m)")
+ggplot(DG_rC, aes(x = depth, y = Q)) +
+  geom_point(size = 2, color = "black") +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  facet_wrap(~ ID, ncol = 5, scales = 'free') +
+  scale_x_log10()+scale_y_log10()+
+  ylab(expression('Discharge'~'ft'^3/sec))+xlab("Depth (m)")
 
 split<-DG_rC %>% split(DG_rC$ID)
 write.xlsx(split, file = '04_Output/rC_DG.xlsx')
@@ -155,7 +138,7 @@ discharge<-discharge %>% group_by(ID) %>%
          Qsurficial= if_else(Qsurficial<0, NA, Qsurficial))
 
 
-u_rC <- lmList(log10(depth_mean) ~ log10(u_mean) | ID, data=DG_rC)
+u_rC <- lmList(log10(depth) ~ log10(u_mean) | ID, data=DG_rC)
 (u_cf <- coef(u_rC))
 
 V <- depth %>%
@@ -170,13 +153,15 @@ V <- depth %>%
     ID== '7'~ (10^u_cf[8,1])*depth^(u_cf[8,2]),
     ID== '9'~ (10^u_cf[9,1])*depth^(u_cf[9,2])))
 
-write_csv(V, "02_Clean_data/velocity.csv")
-
-ggplot(DG_rC, aes(x=depth_mean, y=u_mean)) +
+ggplot(DG_rC, aes(x=depth, y=u_mean)) +
   geom_point()+
   geom_smooth(method = lm)+
   scale_y_log10()+scale_x_log10()+
   facet_wrap(~ ID, ncol=5, scales = 'free')
+
+write_csv(V, "02_Clean_data/velocity.csv")
+
+
 
 ggplot(discharge, aes(Date)) +
   geom_line(aes(y=depth, color='runoff'))+
