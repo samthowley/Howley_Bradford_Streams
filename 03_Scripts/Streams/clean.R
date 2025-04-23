@@ -6,6 +6,8 @@ library(lubridate)
 library(weathermetrics)
 library(tools)
 library(cowplot)
+
+#helping matthew
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
                                             to=as.POSIXct("2025-03-28 00:00", tz="UTC"),by="hour")))
 
