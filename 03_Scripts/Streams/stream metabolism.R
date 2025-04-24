@@ -14,7 +14,7 @@ library('StreamMetabolism')
 library(lme4)
 #constants######
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2025-03-28 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2025-04-17 00:00", tz="UTC"),by="hour")))
 samplingperiod<-samplingperiod %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
@@ -23,199 +23,74 @@ data <- lapply(file.names,function(x) {read_csv(x, col_types = cols(ID = col_cha
 merged_data <- reduce(data, left_join, by = c("ID", 'Date'))
 ggplot(merged_data, aes(Date, DO)) + geom_point() + facet_wrap(~ ID, ncol=4)
 
-input<-merged_data %>%rename('Temp'='Temp_PT.x')%>% select(ID,Date, DO, depth, Q, Temp)%>%
-  filter(depth>0)
-
-metabolism <- function(site) {
-
-  site<-site%>%select(-ID, Q)
-  site<-site[order(as.Date(site$Date, format="%Y-%m-%d %H:%M:%S")),]
-  site<-left_join(samplingperiod,site)
-  site$Temp_C<- fahrenheit.to.celsius(site$Temp)
-
-  site <- site[!duplicated(site[c('Date')]),]
-
-  site<-rename(site,'DO.obs'='DO','temp.water'='Temp_C')
-  site$DO.sat<-Cs(site$temp.water)
-  site$solar.time <-as.POSIXct(site$Date, format="%Y-%m-%d %H:%M:%S", tz="UTC")
-  site<-site[,-c(1)]
-  site$light<-calc_light(site$solar.time,  29.8, -82.6)
-  y<-c("DO.obs","depth","temp.water", "DO.sat","solar.time","light" )
-  site<-site[,y]
-  mm <- metab(bayes_specs, data=site)
-  prediction2 <- mm@fit$daily %>% select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean,
-                                         GPP_Rhat,ER_Rhat,K600_daily_Rhat)
-  prediction2<- prediction2 %>% filter(ER_Rhat> 0.9 & ER_Rhat<1.05)%>% filter(K600_daily_Rhat> 0.9 & K600_daily_Rhat<1.05)%>%
-    select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean)
-
-  return(prediction2)}
-metabolism_K <- function(site) {
-
-  site<-site%>%select(-ID, log_K600)
-  site<-site[order(as.Date(site$Date, format="%Y-%m-%d %H:%M:%S")),]
-  site<-left_join(samplingperiod,site)
-  site$Temp_C<- fahrenheit.to.celsius(site$Temp)
-
-  site <- site[!duplicated(site[c('Date')]),]
-
-  site<-rename(site,'DO.obs'='DO','temp.water'='Temp_C')
-  site$DO.sat<-Cs(site$temp.water)
-  site$solar.time <-as.POSIXct(site$Date, format="%Y-%m-%d %H:%M:%S", tz="UTC")
-  site<-site[,-c(1)]
-  site$light<-calc_light(site$solar.time,  29.8, -82.6)
-  y<-c("DO.obs","depth","temp.water", "DO.sat","solar.time","light" )
-  site<-site[,y]
-  mm <- metab(bayes_specs, data=site)
-  prediction2 <- mm@fit$daily %>% select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean,
-                                         GPP_Rhat,ER_Rhat,K600_daily_Rhat)
-  prediction2<- prediction2 %>% filter(ER_Rhat> 0.9 & ER_Rhat<1.05)%>% filter(K600_daily_Rhat> 0.9 & K600_daily_Rhat<1.05)%>%
-    select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean)
-
-  return(prediction2)}
+input <- merged_data %>%
+  filter(depth > 0,ID != '14')%>%
+  rename('DO.obs'='DO', discharge=Q)%>%
+  mutate(
+    temp.water=fahrenheit.to.celsius(Temp_PT.x))%>%
+  mutate(
+    DO.sat=Cs(temp.water),
+    solar.time=as.POSIXct(Date, format="%Y-%m-%d %H:%M:%S", tz="UTC"),
+  )%>%
+  mutate(
+    light=calc_light(solar.time,  29.8, -82.6))%>%
+  select(solar.time, light, depth, DO.sat, DO.obs, temp.water, ID)
 
 
-#K600 interpolation#####
-sheet_names <- excel_sheets("04_Output/rC_K600.xlsx")
+cols <- c('solar.time', 'light', 'depth', 'DO.sat', 'DO.obs', 'temp.water', 'ID')
+unique_sites <- unique(input$ID[!is.na(input$ID)])
 
-list_of_dfs <- list()
-for (sheet in sheet_names) {
-  df <- read_excel("04_Output/rC_K600.xlsx", sheet = sheet)
-  list_of_dfs[[sheet]] <- df
-}
-
-k600 <- bind_rows(list_of_dfs)%>% select(ID, Date, k600_dh, Q)%>%filter(ID==6)
-
-kq_nodes <- k600 %>%
-  filter(!is.na(Q), !is.na(k600_dh)) %>%
-  group_by(ID) %>%
-  summarise(
-    Q_nodes = list(quantile(Q, probs = c(0.1, 0.3, 0.5, 0.7, 0.9), na.rm = TRUE)),
-    K_nodes = list(approx(Q, k600_dh, xout = quantile(Q, probs = c(0.1, 0.3, 0.5, 0.7, 0.9), na.rm = TRUE))$y)
-  )
-
-
-site_id <- kq_nodes$ID[1]
-Q_vals <- kq_nodes$Q_nodes[[1]]
-K_vals <- kq_nodes$K_nodes[[1]]
-
-# Build specs
-bayes_specs <- specs(
-  mm_name(type = "bayes", pool_K600 = "binned", err_obs_iid = TRUE, err_proc_iid = TRUE),
-  K600_lnQ_nodes_centers = Q_vals,
-  K600_lnQ_nodes_meanlog = log(K_vals),
-  K600_lnQ_nodes_sdlog = 0.1,
-  K600_lnQ_nodediffs_sdlog = 0.05,
-  K600_daily_sigma_sigma = 0.24,
-  burnin_steps = 1000,
-  saved_steps = 1000
+streams <- setNames(
+  lapply(unique_sites, function(ID) {
+    df_subset <- input %>%
+      filter(ID == ID) %>%
+      select(all_of(cols))
+    return(df_subset)}),
+  unique_sites
 )
-# Subset your full dataset to that site (make sure `site_data` exists)
-site_data <- filter(full_data, ID == site_id)
-s6<-filter(input, ID=='6')
-s6<-s6 %>% select(-ID)%>%arrange(solar.time)
-# Run model
-mm <- metab(bayes_specs, data = s6)
+
+streams_edited <- lapply(streams, function(df) {
+  df %>%
+    select(-ID)%>%
+    arrange(solar.time) %>%
+    filter(c(TRUE, diff(solar.time) > 0))
+})
 
 
-
-
-
-
-
-
-#model######
-
-#no k600
 bayes_name <- mm_name(type='bayes', pool_K600='normal', err_obs_iid=TRUE, err_proc_iid=TRUE)
 bayes_specs <- specs(bayes_name, K600_daily_meanlog_meanlog=0.1, K600_daily_meanlog_sdlog=0.001, GPP_daily_lower=0,
                      burnin_steps=1000, saved_steps=1000)
 
-s3<-filter(input, ID=='3')
-s3_ouput<-metabolism(s3)
-s3_ouput$ID<-'3'
+spec_list <- replicate(length(streams_edited), bayes_specs, simplify = FALSE)
+safe_metab <- safely(metab)
 
-s9<-filter(input, ID=='9')
-s9_ouput<-metabolism(s9)
-s9_ouput$ID<-'9'
+metab_results <- map2(spec_list, streams_edited, function(spec, data) {
+  safe_metab(spec, data = data)
+})
 
-s13<-filter(input, ID=='13')
-s13_ouput<-metabolism(s13)
-s13_ouput$ID<-'13'
+successful_models <- map(metab_results, "result")
+failed_indices <- which(map_lgl(metab_results, ~ !is.null(.x$error)))
+error_messages <- map(metab_results, "error")
 
-s5<-filter(input, ID=='5')
-s5_ouput<-metabolism(s5)
-s5_ouput$ID<-'5'
-
-s6<-filter(input, ID=='6')
-s6_ouput<-metabolism(s6)
-s6_ouput$ID<-'6' #NOT WORKING
-
-s6a<-filter(input, ID=='6a')
-s6a_ouput<-metabolism(s6a)
-s6a_ouput$ID<-'6a'
-
-s7<-filter(input, ID=='7')
-s7_ouput<-metabolism(s7)
-s7_ouput$ID<-'7'
-
-s15<-filter(input, ID=='15')
-s15_ouput<-metabolism(s15)
-s15_ouput$ID<-'15'
-
-s5a<-filter(input, ID=='5a')
-s5a_ouput<-metabolism(s5a)
-s5a_ouput$ID<-'5a'
+# Print all non-null error messages
+walk2(error_messages, seq_along(error_messages), function(err, i) {
+  if (!is.null(err)) {
+    cat("\n--- Error in model", i, "---\n")
+    print(err$message)
+  }
+})
+met_df <- bind_rows(met_list, .id = "ID")
 
 
-#k600
-bins<- function(site) {
-  site_positive<- site %>% filter(K600_1d>0)
-
-  IQR<-quantile(site_positive$Q_m.s, probs = c(0,0.25,0.5,0.75,1), na.rm=T)
-  bin<-filter(site_positive, Q_m.s<=IQR[1])
-  (Q<-mean(bin$Q_m.s))
-  (K<-mean(bin$K600_1d))
-
-  bin2<-filter(site_positive, Q_m.s<=IQR[2])
-  (Q2<-mean(bin2$Q_m.s))
-  (K2<-mean(bin2$K600_1d))
-
-  bin3<-filter(site_positive, Q_m.s<=IQR[3])
-  (Q3<-mean(bin3$Q_m.s))
-  (K3<-mean(bin3$K600_1d, na.rm=T))
-
-  bin4<-filter(site_positive, Q_m.s>=IQR[4])
-  (Q4<-mean(bin4$Q_m.s))
-  (K4<-mean(bin4$K600_1d, na.rm=T))
-
-  bin5<-filter(site_positive, Q_m.s>=IQR[5])
-  (Q5<-mean(bin5$Q_m.s))
-  (K5<-mean(bin5$K600_1d, na.rm=T))
-
-  bayes_specs <- specs(bayes_name,
-                       K600_lnQ_nodes_centers = c(Q,Q2,Q3,Q4,Q5),
-                       K600_lnQ_nodes_meanlog= log(c(K,K2,K3,K4,K5)),
-                       K600_lnQ_nodes_sdlog= 0.1,
-                       K600_lnQ_nodediffs_sdlog = 0.05,
-                       K600_daily_sigma_sigma= 0.24,
-                       burnin_steps=1000, saved_steps=1000)
-
-  return(bayes_specs)}
+ggplot(met_df, aes(date)) +
+  geom_point(aes(y = ER_daily_mean, color = 'ER')) +
+  geom_point(aes(y = GPP_daily_mean, color = 'GPP')) +
+  facet_wrap(~ ID, ncol = 3, scale = 'free') +
+  ylab(expression(O[2]~'g'/m^2/'day')) +
+  xlab("Date")
 
 
-
-mm <- metab(bayes_specs, data=site1)
-
-
-bayes_name <- mm_name(type='bayes', pool_K600="binned", err_obs_iid=TRUE, err_proc_iid=TRUE)
-
-
-master<-rbind(s3_ouput, s5_ouput, s5a_ouput, s6_ouput,s6a_ouput, s7_ouput, s9_ouput,
-              s13_ouput,s15_ouput)
-master<- master %>% rename('ER'="ER_daily_mean", 'GPP'="GPP_daily_mean", 'Date'='date')%>%
-  filter(ER>-30 & ER<0)
-
-write_csv(master, "04_Output/master_metabolism.csv")
+write_csv(met_df, "04_Output/master_metabolism.csv")
 
 #############
 
