@@ -15,7 +15,7 @@ library(lme4)
 
 #constants######
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2025-03-28 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2025-04-17 00:00", tz="UTC"),by="hour")))
 samplingperiod<-samplingperiod %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
 
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
@@ -36,7 +36,7 @@ input <- merged_data %>%
     light=calc_light(solar.time,  29.8, -82.6))%>%
   select(solar.time, light, depth, DO.sat, DO.obs, temp.water, discharge, ID)
 
-for_k600<-input%>% filter(!ID %in% c('5a', '6a'))
+for_k600<-input
 cols <- c('solar.time', 'light', 'depth', 'DO.sat', 'DO.obs', 'temp.water', 'discharge', 'ID')
 unique_sites <- unique(for_k600$ID[!is.na(for_k600$ID)])
 

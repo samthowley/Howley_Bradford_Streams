@@ -1,19 +1,19 @@
+#BY sam
 #packages#####
 library(tidyverse)
 library(writexl)
 library(readxl)
-library(lubridate)
 library(weathermetrics)
-library(tools)
+library(measurements)
 library(cowplot)
 
 #helping matthew
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2025-03-28 00:00", tz="UTC"),by="hour")))
+                                 to=as.POSIXct("2025-03-28 00:00", tz="UTC"),by="hour")))
 
 clean_DO <- function(fil) {
-  DO <- read_csv(fil,skip= 1)
-  DO<-DO[,c(2,3,4)]
+  DO <- read_csv(fil,skip= 1) # read csv
+  DO<-DO[,c(2,3,4)] #these columns
   colnames(DO)[1] <- "Date"
   colnames(DO)[2] <- "DO"
   colnames(DO)[3] <- "Temp_DO"
