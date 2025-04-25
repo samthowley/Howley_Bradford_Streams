@@ -68,7 +68,7 @@ for (sheet in ks) {
 
 kq_nodes_list <- lapply(list_of_ks, function(k600_df) {
   kq_nodes <- k600_df %>%
-    filter(!is.na(Q), !is.na(k600_dh)) %>%
+    filter(!is.na(Q), !is.na(mean_K600)) %>%
     group_by(ID) %>%
     filter(n() >= 2) %>%  # Ensure enough points for interpolation
     summarise(

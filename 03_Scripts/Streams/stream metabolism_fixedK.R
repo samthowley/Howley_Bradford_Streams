@@ -37,24 +37,23 @@ input <- merged_data %>%
   select(solar.time, light, depth, DO.sat, DO.obs, temp.water, ID)
 
 
-cols <- c('solar.time', 'light', 'depth', 'DO.sat', 'DO.obs', 'temp.water', 'ID')
-unique_sites <- unique(input$ID[!is.na(input$ID)])
-
-streams <- setNames(
-  lapply(unique_sites, function(ID) {
-    df_subset <- input %>%
-      filter(ID == ID) %>%
-      select(all_of(cols))
-    return(df_subset)}),
-  unique_sites
-)
-
-streams_edited <- lapply(streams, function(df) {
-  df %>%
-    select(-ID)%>%
-    arrange(solar.time) %>%
-    filter(c(TRUE, diff(solar.time) > 0))
-})
+# cols <- c('solar.time', 'light', 'depth', 'DO.sat', 'DO.obs', 'temp.water', 'ID')
+# unique_sites <- unique(input$ID[!is.na(input$ID)])
+#
+# streams <- setNames(
+#   lapply(unique_sites, function(ID) {
+#     df_subset <- input %>%
+#       filter(ID == ID) %>%
+#       select(all_of(cols))
+#     return(df_subset)}),
+#   unique_sites
+# )
+#
+# streams_edited <- lapply(streams, function(df) {
+#   df %>%
+#     arrange(solar.time) %>%
+#     filter(c(TRUE, diff(solar.time) > 0))
+# })
 
 
 
@@ -67,22 +66,81 @@ for (sheet in ks) {
   list_of_ks[[sheet]] <- df
 }
 
-kfixed_list <- lapply(list_of_ks, function(k600_df) {
-  kfixed <- k600_df %>%
-    group_by(ID) %>%
-    summarise(
-      kfixed = mean(mean_K600, na.rm=T))
+K600_df <- bind_rows(list_of_ks, .id = "ID")%>% select(ID, mean_K600)%>% distinct() %>%
+  rename(K600=mean_K600)%>% filter(!is.na(K600))
 
-  return(kfixed)
-})
+merged_data<-left_join(input, K600_df, by='ID')
 
 
+site_ids <- unique(merged_data$ID)
+model_results <- list()
+
+for (site in site_ids) {
+  message("Running model for site: ", site)
+
+  # Filter data for the site
+  site_data <- merged_data %>% filter(ID == site)
+
+  # Extract fixed K600 value for this site
+  site_k600 <- unique(site_data$K600)
+
+  # Create model specs with fixed K600
+  metab_spec <- specs(
+    mm_name("bayes", err_obs_iid = TRUE),
+    K600.daily = "data"
+  )
+
+  # Fit the model
+  tryCatch({
+    model <- metab(metab_spec, data = site_data, info = list(site = site))
+    model_results[[site]] <- model
+  }, error = function(e) {
+    message("Failed for site: ", site, " - ", e$message)
+  })
+}
 
 
 
 
 
-# Create a daily K600 dataframe
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Create a daimean_K600# Create a daily K600 dataframe
 K600_daily <- data.frame(
   date = unique(your_data$solar.time),  # adjust if needed
   K600 = 25  # or vary per day if you prefer
