@@ -109,7 +109,6 @@ ggplot(gasdome_cleaned, aes(x = Q, y = k600_dh)) +
   geom_smooth(method = "lm", se = FALSE, color = "blue") +
   facet_wrap(~ ID, ncol = 5, scales = 'free') +
   scale_x_log10()+scale_y_log10()+
-  stat_poly_line()+
   theme_minimal() +
   theme(legend.position = "bottom")
 

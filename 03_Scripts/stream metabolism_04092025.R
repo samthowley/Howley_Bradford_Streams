@@ -75,7 +75,6 @@ for (sheet in ks) {
 #specs######
 kq_nodes_list <- lapply(list_of_ks, function(k600_df) {
   kq_nodes <- k600_df %>%
-    filter(!is.na(Q), !is.na(mean)) %>%
     group_by(ID) %>%
     filter(n() >= 2) %>%
     summarise(
