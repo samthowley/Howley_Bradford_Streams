@@ -94,8 +94,14 @@ gasdome<-read_csv("01_Raw_data/GD/GasDome_compiled_raw.csv")
 gasdome_cleaned<-gasdome %>%
   filter(ID!='14')%>%distinct(day, ID, .keep_all = T)%>%select(-day)%>%
   arrange(ID, Date)%>%
-  mutate(k600_dh=abs(k600_dh), KCO2_1d=abs(KCO2_dh), logQ=log10(Q)) %>%
-  mutate(log_K600=log10(k600_dh))%>% select(logQ, everything())
+  mutate(
+    k600_dh=abs(k600_dh),
+    KCO2_1d=abs(KCO2_dh),
+    logQ=log(Q)) %>%
+  mutate(log_K600=log(k600_dh))%>%
+  mutate(
+    sd=sd(k600_dh, na.rm = T),
+    mean=mean(k600_dh, na.rm = T))
 
 
 ggplot(gasdome_cleaned, aes(x = Q, y = k600_dh)) +

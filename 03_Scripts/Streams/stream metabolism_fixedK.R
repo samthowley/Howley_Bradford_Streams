@@ -57,9 +57,49 @@ streams_edited <- lapply(streams, function(df) {
 })
 
 
+kfixed_list <- lapply(list_of_ks, function(k600_df) {
+  k600_df %>%
+    group_by(ID) %>%
+    summarise(kfixed = mean(mean_K600, na.rm = TRUE), .groups = "drop")
+})
 
-sheet_names <- excel_sheets("04_Output/rC_K600.xlsx")
-ks <- sheet_names[!sheet_names %in% c("6a")]
+mm_name_fixed <- mm_name(type = "mle", pool_K600 = "none")
+
+spec_list <- lapply(kfixed_list, function(kfixed) {
+  specs(mm_name_fixed)
+})
+
+streams_k_fixed <- mapply(function(streams_edited, kfixed) {
+  k_val <- kfixed$kfixed[1]
+  streams_edited$K600 <- k_val
+  return(streams_edited)
+}, streams_edited, kfixed_list, SIMPLIFY = FALSE)
+
+
+
+metab_results <- mapply(function(site_data, site_spec) {
+  metab(site_spec, data = site_data)
+}, site_data = streams_k_fixed, site_spec = spec_list, SIMPLIFY = FALSE)
+
+
+streams_k_clean <- lapply(streams_k_fixed, function(df) {
+  df %>% select(-K600)
+})
+
+
+metab_results <- mapply(function(site_data, site_spec) {
+  metab(site_spec, data = site_data)
+}, site_data = streams_k_clean, site_spec = spec_list, SIMPLIFY = FALSE)
+
+
+metab_fixed <- metab(mm_specs_fixed, data = your_data)
+
+
+
+
+##################
+##Attempt#########
+################
 
 list_of_ks <- list()
 for (sheet in ks) {
@@ -67,29 +107,71 @@ for (sheet in ks) {
   list_of_ks[[sheet]] <- df
 }
 
-kfixed_list <- lapply(list_of_ks, function(k600_df) {
-  kfixed <- k600_df %>%
+kq_nodes_list <- lapply(list_of_ks, function(k600_df) {
+  kq_nodes <- k600_df %>%
+    filter(!is.na(Q), !is.na(k600_dh)) %>%
     group_by(ID) %>%
+    filter(n() >= 2) %>%  # Ensure enough points for interpolation
     summarise(
-      kfixed = mean(mean_K600, na.rm=T))
+      Q_nodes = list(quantile(Q, probs = c(0.1, 0.3, 0.5, 0.7, 0.9), na.rm = TRUE)),
+      K_nodes = list(approx(Q, mean_K600,
+                            xout = quantile(Q, probs = c(0.1, 0.3, 0.5, 0.7, 0.9), na.rm = TRUE))$y)
+    )
 
-  return(kfixed)
+  return(kq_nodes)
 })
 
+specs <- lapply(kq_nodes_list, function(kq_nodes) {
+  site_id <- kq_nodes$ID[1]
+  Q_vals <- kq_nodes$Q_nodes[[1]]
+  K_vals <- kq_nodes$K_nodes[[1]]
+
+  # Handle missing or NA values in K_vals
+  if (all(is.na(K_vals))) {
+    warning(paste("Skipping site", site_id, "- K_vals all NA"))
+    return(NULL)
+  }
+
+  # Build specs
+  bayes_specs <- specs(
+    mm_name(type = "bayes", pool_K600 = "binned", err_obs_iid = TRUE, err_proc_iid = TRUE),
+    K600_lnQ_nodes_centers = Q_vals,
+    K600_lnQ_nodes_meanlog = log(K_vals),
+    K600_lnQ_nodes_sdlog = 0.1,
+    K600_lnQ_nodediffs_sdlog = 0.05,
+    K600_daily_sigma_sigma = 0.24,
+    burnin_steps = 1000,
+    saved_steps = 1000)})
+
+
+
+valid_ids <- names(specs)[!sapply(specs, is.null)]
+valid_streams <- streams_edited[valid_ids]
+valid_specs <- specs[valid_ids]
+
+# Run streamMetabolizer on each valid site
+metab_results <- mapply(function(site_data, site_spec) {
+  metab(site_spec, data = site_data)
+}, site_data = valid_streams, site_spec = valid_specs, SIMPLIFY = FALSE)
+
+
+
+met_list <- lapply(metab_results, function(metab_results) {
+  prediction2 <- metab_results@fit$daily %>%
+    select(date, GPP_daily_mean, ER_daily_mean, K600_daily_mean,
+           GPP_Rhat, ER_Rhat, K600_daily_Rhat) %>%
+    filter(ER_Rhat > 0.9 & ER_Rhat < 1.05,
+           K600_daily_Rhat > 0.9 & K600_daily_Rhat < 1.05) %>%
+    select(date, GPP_daily_mean, ER_daily_mean, K600_daily_mean)
+
+  return(prediction2)
+})
+
+met_df <- bind_rows(met_list, .id = "ID")
 
 
 
 
 
 
-# Create a daily K600 dataframe
-K600_daily <- data.frame(
-  date = unique(your_data$solar.time),  # adjust if needed
-  K600 = 25  # or vary per day if you prefer
-)
 
-# MLE example with fixed K600
-mm_name_fixed <- mm_name(type = "mle", pool_K600 = "none")
-mm_specs_fixed <- specs(mm_name_fixed, K600_daily = K600_daily)
-
-metab_fixed <- metab(mm_specs_fixed, data = your_data)
