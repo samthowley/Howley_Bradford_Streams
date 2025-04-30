@@ -1,9 +1,9 @@
 #Set your main Aqualog folder directory where EVERYTHING lives (projects, scripts, raw data)
 setwd("01_Raw_data/Aqualog_processing")
-project_name <- "07162024"
+project_name <- "04302025"
 dilution_sheet_name <- paste("metatable_dilution_",project_name,".csv",sep = "")
 review_sample <- c('5GW5')
-output_date <- "07162024"
+output_date <- "04302025"
 
 librarian::shelf(
   tidyr,

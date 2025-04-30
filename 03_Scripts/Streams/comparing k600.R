@@ -7,9 +7,9 @@ library(cowplot)
 
 no_bins<- read_csv("04_Output/master_metabolism.csv")%>% rename(SM_K600=K600_daily_mean)%>% select(ID, Date, SM_K600)
 
-binned<- read_csv("04_Output/metabolism_04092025.csv")%>%
-  rename(bin_K600=K600_daily_mean, Date=date)%>%
-  select(ID, Date, bin_K600)%>%
+fixed<- read_csv("04_Output/metabolism_04292025.csv")%>%
+  rename(fixed_K600=K600_daily_mean, Date=date)%>%
+  select(ID, Date, fixed_K600)%>%
   mutate(ID=as.character(ID))
 
 depth <- read_csv("02_Clean_data/depth.csv")%>% select(Date, depth, ID)
@@ -70,13 +70,17 @@ ggplot(raymond, aes(x=Q)) +
   scale_y_log10()+scale_x_log10()+
   facet_wrap(~ ID, ncol=5, scales = 'free')
 
-compare<-left_join(binned, no_bins, by=c('Date','ID'))
+compare<-left_join(fixed, no_bins, by=c('Date','ID'))
 compare<-left_join(h_q,compare, by=c('Date','ID'))
 
-
 ggplot(compare, aes(x=Q)) +
-  geom_point(aes(y=bin_K600, color='binned in SM'))+
-  geom_point(aes(y=SM_K600, color='SM interpolated'))+
+  geom_point(aes(y=fixed_K600, color='fixed_K600'))+
+  geom_point(aes(y=SM_K600, color='SM_K600'))+
   scale_y_log10()+scale_x_log10()+
   facet_wrap(~ ID, ncol=5, scales = 'free')
 dev.new()
+
+compare%>%
+  group_by(ID)%>%
+  summarize(fixed=mean(fixed_K600, na.rm=T),
+            SM=mean(SM_K600, na.rm=T))

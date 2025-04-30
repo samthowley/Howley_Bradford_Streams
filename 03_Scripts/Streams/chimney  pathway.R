@@ -9,9 +9,11 @@ library(mmand)
 library(zoo)
 library(plotly)
 library(broom)
+library(weathermetrics)
+library(ggpmisc)
 
-theme_set(theme(axis.text.x = element_text(size = 10),
-                axis.text.y = element_text(size = 10),
+theme_set(theme(axis.text.x = element_text(size = 17),
+                axis.text.y = element_text(size = 17),
                 axis.title.y = element_text(size = 17, angle = 90),
                 axis.title.x = element_text(size = 17),
                 plot.title = element_text(size = 17),
@@ -19,8 +21,6 @@ theme_set(theme(axis.text.x = element_text(size = 10),
                 legend.text=element_text(size = 12),
                 legend.title =element_blank(),
                 legend.position ="bottom",
-                panel.grid.major.x = element_line(color = "black"),  # Customize x-axis major gridlines
-                panel.grid.minor.y = element_line(color = "black", linetype = "dashed"),
                 panel.background = element_rect(fill = 'white'),
                 axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "gray"),
                 axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "gray")))
@@ -50,7 +50,11 @@ Q<-Q %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>%
   select(Date, ID, Q,Qbase,Qsurficial)%>%
   distinct(Date, ID, .keep_all = T)
 
-dim<-left_join(Q, depth, by=c('ID', 'Date'))
+dim<-left_join(Q, depth, by=c('ID', 'Date'))%>%
+  mutate(Date=as.Date(Date))%>%
+  group_by(ID, Date)%>%
+  mutate(Q=mean(Q, na.rm=T), depth=mean(depth, na.rm=T))%>%
+  distinct(ID, Date, .keep_all = T)
 
 ggplot(dim, aes(x = Q))+
   geom_histogram()+facet_wrap(~ID, scales='free')
@@ -58,9 +62,7 @@ ggplot(dim, aes(x = Q))+
 #Chimney Pathway#####
 
 resp<-read_csv('04_Output/master_metabolism.csv')%>%
-  filter(ER< -3 & ER>-20, GPP>0) %>%
-  mutate(NEP=GPP+ER)%>%
-  filter(NEP<0)
+  mutate(NEP=(GPP+ER)*-1)
 
 resp<-left_join(resp,dim, by=c('Date','ID'))
 
@@ -85,10 +87,12 @@ flux<-left_join(CO2,KCO2, by=c('day','ID'))%>%
   distinct(day,ID, .keep_all = T)%>%
   mutate(across(c(CO2_day), ~rollmean(.x, k = 5, fill = NA, align = "center"), .names = "{.col}"))%>%
   ungroup()%>%select(-CO2)%>%
-  mutate(CO2_flux=KCO2_m.d*(CO2_day-400)*KH*(1/10^6)*44*1000)
+  mutate(CO2_flux=KCO2_m.d*(CO2_day-400)*KH*(1/10^6)*44*1000)%>%
+  mutate(across(c(NEP, CO2_flux, ER, GPP), ~rollmean(.x, k = 3, fill = NA, align = "center"), .names = "{.col}"))
 
-ggplot(flux %>% filter(ID=='5'), aes(x=Q, y=CO2_flux))+
-  geom_point()
+
+ggplot(flux %>% filter(ID=='5'), aes(x=Date, y=CO2_flux))+
+  geom_line()
 
 
 active<-flux%>%
@@ -101,35 +105,139 @@ active<-flux%>%
                          ID=='9'~'9', ID=='13'~'13'))%>%
   select(-Qbase, -Qsurficial, -Temp_PT, -Temp_K, -KH, -K600_m.d, -SchmidtCO2hi, -KCO2_m.d,
          -KCO2_d)%>%
-  filter(active.tot<1)%>%
+  filter(active.tot<1, active.passive<20)%>%
   filter(!ID=='6a')
 
 active <- active[complete.cases(active[ , c('CO2_flux')]), ]
+#################
+#Pull slopes#####
+################
+#test<-active%>% filter(ID=='9')
+
+cols <- c('active', 'passive', 'Q', 'ID')
+unique_sites <- unique(active$ID[!is.na(active$ID)])
+
+streams <- setNames(
+  lapply(unique_sites, function(site_id) {
+    df_subset <- active %>%
+      filter(ID == site_id) %>%
+      select(all_of(cols))
+    return(df_subset)
+  }),
+  unique_sites
+)
+
+streams_edited <- lapply(streams, function(df) {
+  (active.Q<-lm(log10(active) ~ log10(Q), data = df))
+  cf <- coef(active.Q)
+  (Slope.active <- cf[2])
+  (Inter.active <- cf[1])
+
+
+  (passive.Q<-lm(log10(passive) ~ log10(Q), data = df))
+  cf <- coef(passive.Q)
+  (Slope.passive <- cf[2])
+  (Inter.passive <- cf[1])
+
+  df<-df%>%
+    mutate(
+      active_slope=as.numeric(c(Slope.active)),
+      passive_slope=as.numeric(c(Slope.passive)),
+      activeInter=as.numeric(c(Inter.active)),
+      passiveInter=as.numeric(c(Inter.passive))
+    )%>%
+    summarize(
+      active_slope=mean(active_slope, na.rm=T),
+      passive_slope=mean(passive_slope, na.rm=T),
+      activeInter=mean(activeInter, na.rm=T),
+      passiveInter=mean(passiveInter, na.rm=T),
+    )
+})
+
+
+slopes <- bind_rows(streams_edited, .id = "ID")
+
 
 #########################
 ###Figures#############
 ######################
 
-active$ID <- factor(active$ID , levels=c('5','5a','13','7','3','6','6a','9','15'))
+active$ID <- factor(active$ID , levels=c('15','5','5a','3','6','13','7','9','6a'))
+
+
+met_hist.GPP<-active%>%select(Date, ID, GPP)%>% rename(met=GPP)%>%mutate(type='GPP')
+met_hist.ER<-active%>%select(Date, ID, ER)%>% rename(met=ER)%>%mutate(type='ER', met=met*-1)
+met_hist<-rbind(met_hist.GPP, met_hist.ER)
+
+ggplot(met_hist, aes(x = as.factor(ID), y = met, fill = type)) +
+  geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.75)) +
+  scale_fill_manual(values = c('brown','darkgreen')) +
+  scale_y_log10()+
+  ggtitle("Metabolic Regime")+
+  ylab(expression(O[2]~'g' / m^2 / 'day'))+
+  theme(axis.title.x = element_blank())
+
+mean(active$GPP, na.rm=T)
+
+
+ggplot(for_histogram %>% filter(!is.na(Q_quartile)),
+       aes(x = as.factor(Q_quartile), y = C, fill = type)) +
+  geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.75)) +
+  geom_point(data = mean_data,
+             aes(x = as.factor(Q_quartile), y = mean_C, group = type),
+             position = position_dodge(width = 0.75),
+             shape = 21, size = 2, color = "blue", fill = "white") +
+  geom_line(data = mean_data,
+            aes(x = as.factor(Q_quartile), y = mean_C, group = type),
+            position = position_dodge(width = 0.75),
+            color = "blue", linewidth = 0.7) +
+  scale_fill_manual(values = c('red', 'black')) +
+  xlab('IQR of Discharge') +
+  ylab(expression('g' / m^2 / 'day')) +
+  facet_wrap(~ID, scales = 'free')
+
+
 
 active.only<-active%>% select(active, Q, Temp_C,ID, Date) %>% rename(C=active)%>%
-  mutate(type="reactor")
+  mutate(type="Active")
 passive<-active%>% select(passive, Q, Temp_C,ID, Date) %>% rename(C=passive)%>%
-  mutate(type="passive")
+  mutate(type="Passive")
 
-ggplot(CO2, aes(x=Q, y=CO2))+
+
+ggplot(active, aes(x=Q, y=active.passive))+
   geom_point() +
-  ylab(expression(CO[2]~~'ppm'))+
+  ylab(expression('Active/ Passive'))+
   facet_wrap(~ ID, ncol=3, scale='free')+
   theme(legend.position = "bottom")+
   xlab(expression(Discharge~m^3/sec))+
-  ggtitle(expression(CO[2]~C-Q~Relationship))+
+  geom_hline(yintercept = 1, color='red', size=1)+
+  ggtitle("Ratio of Active to Passive")+
+scale_y_log10()+ scale_x_log10()
+
+
+active%>%
+  group_by(ID)%>%
+  summarize(act_dom=sum(active.passive >1 , na.rm = TRUE),
+            pass_dom=sum(active.passive <1 , na.rm = TRUE),
+            tot=sum(active.passive >0 , na.rm = TRUE),
+            act_perc=act_dom/tot*100,
+            pass_perc=pass_dom/tot*100,
+            mean=mean(active.passive, na.rm=T))
+
+ggplot(active, aes(x=Q, y=active.passive))+
+  geom_point() +
+  ylab(expression('Active/ Passive'))+
+  facet_wrap(~ ID, ncol=3, scale='free')+
+  theme(legend.position = "bottom")+
+  xlab(expression(Discharge~m^3/sec))+
+  geom_hline(yintercept = 1, color='red', size=1)+
+  ggtitle("Ratio of Active to Passive")+
   scale_y_log10()+ scale_x_log10()+
   stat_poly_line()+
-stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
-             formula = y ~ I(log10(x)),  # If you're plotting log10 on the x-axis only
-             parse = TRUE, color = 'darkred',
-             label.x.npc = "right", label.y.npc = "bottom")
+  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
+               formula = y ~ I(log10(x)),  # If you're plotting log10 on the x-axis only
+               parse = TRUE, color = 'blue',
+               label.x.npc = "left", label.y.npc = "top")
 
 
 for_histogram<-rbind(active.only, passive)%>%
@@ -137,245 +245,57 @@ for_histogram<-rbind(active.only, passive)%>%
   mutate(T_quartile = ntile(Temp_C, 4),
          Q_quartile = ntile(Q, 4))%>% ungroup
 
+mean_active <- for_histogram %>%
+  filter(!is.na(Q_quartile)) %>%
+  group_by(ID, Q_quartile, type) %>%
+  summarise(mean_C = mean(C, na.rm = TRUE), .groups = "drop")
 
-ggplot(for_histogram %>% filter(!ID=='6a'), aes(x=Q, y=C, color=type))+
-  geom_point() +
-  ylab(expression('g'/m^2/'day'))+
-  facet_wrap(~ ID, ncol=3, scale='free')+
-  theme(legend.position = "bottom")+
-  xlab(expression(Discharge~m^3/sec))+
-  ggtitle('Active-Passive Carbon')+
-  scale_y_log10()+ scale_x_log10()+
-  stat_poly_line()+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label.., sep = "~~~~~")),
-               formula = y ~ x, parse = TRUE,
-               label.x.npc = "left",label.y.npc = "bottom")
-
-names(for_histogram)
-library(lme4)
-library(nlme)
-library(tibble)
-
-rCa <- lmList(log10(C) ~ log10(Q) | ID, data=reactive)
-(cf <- coef(rC))
-active_slope <- coef(rCa) %>%as.data.frame() %>%
-  rownames_to_column("ID") %>%rename(slope="log10(Q)", Intercept="(Intercept)")%>%
-  mutate(type="active")
-
-rCp <- lmList(log10(C) ~ log10(Q) | ID, data=passive)
-(cf <- coef(rC))
-passive_slope <- coef(rCp) %>%as.data.frame() %>%
-  rownames_to_column("ID") %>%rename(slope="log10(Q)", Intercept="(Intercept)")%>%
-  mutate(type="passive")
-
-slope<-rbind(passive_slope, active_slope)
-slope$ID <- factor(slope$ID , levels=c('5','5a','13','7','3','6','6a','9','15'))
-
-ggplot(slope %>% filter(!ID=='6a'), aes(x=ID, y=slope, color=type))+
-  geom_point(size=3) +
-  ylab(expression('Slope'))+
-  geom_hline(yintercept = 0, color='darkred')
+# Plot boxplots and overlay mean points and lines
+ggplot(for_histogram %>% filter(!is.na(Q_quartile)),
+       aes(x = as.factor(Q_quartile), y = C, fill = type)) +
+  geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.75)) +
+  geom_point(data = mean_data,
+             aes(x = as.factor(Q_quartile), y = mean_C, group = type),
+             position = position_dodge(width = 0.75),
+             shape = 21, size = 2, color = "blue", fill = "white") +
+  geom_line(data = mean_data,
+            aes(x = as.factor(Q_quartile), y = mean_C, group = type),
+            position = position_dodge(width = 0.75),
+            color = "blue", linewidth = 0.7) +
+  scale_fill_manual(values = c('red', 'black')) +
+  xlab('IQR of Discharge') +
+  ylab(expression('g' / m^2 / 'day')) +
+  facet_wrap(~ID, scales = 'free')
 
 
-label_data <- chimney %>%
-  filter(ID != '6a', reactor_tot < 1) %>%
-  group_by(ID) %>%
-  summarise(
-    mean_val = mean(reactor_tot, na.rm = TRUE),
-    min_val = min(reactor_tot, na.rm = TRUE),
-    max_val = max(reactor_tot, na.rm = TRUE),
-    Q_val = min(Q, na.rm = TRUE)) %>%
-  mutate(
-    label_other = paste0("Min: ", round(min_val, 2), "\nMax: ", round(max_val, 2)),
-    label_mean = paste0("Mean: ", round(mean_val, 2))
-  )
-
-ggplot(chimney%>%filter(!ID=='6a' & reactor_tot<1), aes(Q, y=reactor_tot))+
-  geom_point(size=2, shape=1)+
-  ylab(expression('Active'~CO[2]/ 'Total'~CO[2]))+
-  xlab(expression('Discharge'~m^3))+
-  ggtitle(expression(Proportion~of~Active~CO[2]))+
-  facet_wrap(~ ID, ncol=3, scale='free')+
-  scale_y_log10()+ scale_x_log10()+
-  geom_text(data = label_data,
-            aes(x = Q_val, y = max_val, label = label_other),
-            inherit.aes = FALSE,
-            hjust = 0, vjust = 1.5, size = 3, color = "darkblue") +
-
-  # Red and bold label for mean
-  geom_text(data = label_data,
-            aes(x = Q_val, y = max_val, label = label_mean),
-            inherit.aes = FALSE,
-            hjust = 0, vjust = 0.3, size = 4, color = "red", fontface = "bold")+
-
-  stat_poly_line()+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label.., sep = "~~~~~")),
-               formula = y ~ x, parse = TRUE,
-               label.x.npc = "left",label.y.npc = "bottom")
+ggplot(active, aes(x = Q)) +
+  geom_point(aes(y = active, color = "Active Pathway")) +
+  geom_point(aes(y = passive, color = "Passive"), shape = 21) +
+  geom_smooth(aes(y = active, color = "Active Pathway"), method = "lm", se = FALSE) +
+  geom_smooth(aes(y = passive, color = "Passive"), method = "lm", se = FALSE) +
+  stat_poly_eq(
+    aes(x = log10(Q), y = log10(active), label = paste(..eq.label.., ..p.value.label.., sep = "~~~"), color = "Active Pathway"),
+    formula = y ~ x, parse = TRUE, size = 3, label.x.npc = "right", label.y.npc = "bottom"
+  ) +
+  stat_poly_eq(
+    aes(x = log10(Q), y = log10(passive), label = paste(..eq.label.., ..p.value.label.., sep = "~~~"), color = "Passive"),
+    formula = y ~ x, parse = TRUE, size = 3, label.x.npc = "right", label.y.npc = -0.85
+  ) +
+  scale_color_manual(values = c('red', 'black')) +
+  ylab(expression('g'/m^2/'day')) +
+  facet_wrap(~ID, ncol = 3, scales = 'free') +
+  theme(legend.position = "bottom") +
+  xlab(expression(Discharge~m^3/sec)) +
+  ggtitle(expression(CO[2]~Flux-Q~Relationship))+
+  scale_x_log10()+scale_y_log10()
 
 
-chimney<-chimney%>%group_by(ID)%>%
-  mutate(T_quartile = ntile(Temp_C, 4),
-         Q_quartile = ntile(Q, 4))%>% ungroup
+ggplot(slopes, aes(x = ID)) +
+  geom_point(aes(y = active_slope, color = "Active Slope"), size=2) +
+  geom_point(aes(y = passive_slope, color = "Passive Slope"), size=2) +
+  scale_color_manual(values = c('red', 'black')) +
+  ylab("Rate of Change (Flux/Q)") +
+  geom_hline(yintercept = 0)+
+  theme(legend.position = "bottom") +
+  ggtitle("Log-Log Relationships of Active vs Passive")
 
-ggplot(chimney%>% filter(!ID=='6a'& reactor_tot<1),
-       aes(x=as.factor(Q_quartile), y=reactor_tot)) +
-  geom_boxplot()+
-  xlab('Discharge IQR')+
-  ylab(expression('Active'~CO[2]/ 'Total'~CO[2]))+
-  scale_y_log10()+
-  facet_wrap(~ID, scales='free')
-
-b<-ggplot(chimney%>%filter(ID %in% c('5','15','3','7','9')), aes(Q, y=reactor_tot))+
-  geom_point(size=2, shape=1)+
-  ylab(expression('Active'~CO[2]/ 'Total'~CO[2]))+
-  xlab(expression('Discharge'~m^3))+
-  ggtitle(expression(Proportion~of~Active~CO[2]))+
-  facet_wrap(~ ID, ncol=5, scale='free')+
-  scale_y_log10()+ scale_x_log10()+
-  geom_text(data = label_data%>%filter(ID %in% c('5','15','3','7','9')),
-            aes(x = Q_val, y = max_val, label = label_other),
-            inherit.aes = FALSE,
-            hjust = 0, vjust = 1.5, size = 3, color = "darkblue") +
-  geom_text(data = label_data%>% filter(ID %in% c('5','15','3','7','9')),
-            aes(x = Q_val, y = max_val, label = label_mean),
-            inherit.aes = FALSE,
-            hjust = 0, vjust = 0.3, size = 4, color = "red", fontface = "bold")+
-  stat_poly_line()+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label.., sep = "~~~~~")),
-               formula = y ~ x, parse = TRUE,
-               label.x.npc = "left",label.y.npc = "bottom")
-
-plot_grid(a, b, nrow=2)
-
-#
-# ggplot(for_histogram %>% filter(!ID=='6a'),
-#        aes(x=as.factor(Q_quartile), y=C, fill=type)) +
-#   geom_boxplot()+
-#   xlab('IQR Discharge')+ylab(expression(CO[2]~'g'/m^2/'day'))+
-#   scale_y_log10()+
-#   facet_wrap(~ID, scales='free')
-#
-# result <- chimney %>%
-#   group_by(ID) %>%
-#   summarise(active_days = sum(reactor_tot >0.5, na.rm = TRUE),
-#             passive_days = sum(passive_tot >0.5, na.rm = TRUE),
-#             passive_prop=mean(passive_tot)*100,
-#             active_prop=mean(reactor_tot)*100) %>% filter(active_prop<100)
-# write_csv(chimney, "04_Output/chimney_reactor.csv")
-
-wetland_cover <- read_csv("01_Raw_data/wetland_cover.csv")%>%
-  rename("Basin"="Basin_Name", "wetland_cover_perc"="PERCENTAGE", 'Basin_area'='Shape_Area')%>%
-  select(Basin, wetland_cover_perc, Basin_area)
-wetland_proxim <- read_csv("01_Raw_data/wetland_proxim.csv")%>%
-  rename('wetland_dist'='NEAR_DIST', 'Basin'='Site')%>%select(Basin, wetland_dist)
-
-wetland_x<-left_join(wetland_cover, wetland_proxim, by='Basin')
-
-chimney_wetland<-full_join(chimney, wetland_x, by='Basin')%>%group_by(ID)%>%
-  mutate(T_quartile = ntile(Temp_C, 4),
-         Q_quartile = ntile(Q, 4))%>% ungroup%>%
-  mutate(wetland_cover_perc=round(wetland_cover_perc,2))
-
-
-chimney_wetland$ID <- factor(chimney_wetland$ID , levels=c('5','5a','13','7','3','6','6a','9','15'))
-
-a<-ggplot(chimney_wetland,
-       aes(x=as.factor(wetland_cover_perc), y=passive, fill=ID)) +
-  geom_boxplot()+
-  scale_y_log10()+
-  ylab(expression(Active~CO[2]~~'g'/m^2/'day'))+
-  xlab(expression(Wetland~Area~m^2/Basin~Area~m^2))
-
-b<-ggplot(chimney_wetland %>%filter(Q_quartile==4),
-       aes(x=as.factor(wetland_cover_perc), y=passive, fill=ID)) +
-  geom_boxplot()+
-  scale_y_log10()+
-  ylab(expression(Active~CO[2]~~'g'/m^2/'day'))+
-  xlab(expression(Wetland~Area~m^2/Basin~Area~m^2))+
-  ggtitle('Top 25% of Discharge')
-plot_grid(a,b, ncol=2)
-
-
-wetland_prop <- read_csv("01_Raw_data/wetland proportion buffer.csv")
-chimney_wetland_prop<-left_join(chimney, wetland_prop, by='Basin')%>%group_by(ID)%>%
-  mutate(T_quartile = ntile(Temp_C, 4),
-         Q_quartile = ntile(Q, 4))%>% ungroup%>%
-  mutate(proportion=round(proportion,2))
-
-a<-ggplot(chimney_wetland_prop %>% filter(buffer_radius==2000 & Q_quartile==4),
-       aes(x=as.factor(proportion), y=passive, fill=ID)) +
-  geom_boxplot()+
-  scale_y_log10()+
-  #ylab(expression(Top~'25%'~Active~CO[2]~~'g'/m^2/'day'))+
-  ylab(' ')+
-  xlab(expression(Wetland~Area~m^2/Basin~Area~m^2))+
-  ggtitle('2000m Buffer')+theme(legend.position = 'none')
-
-b<-ggplot(chimney_wetland_prop %>% filter(buffer_radius==1000& Q_quartile==4),
-       aes(x=as.factor(proportion), y=passive, fill=ID)) +
-  geom_boxplot()+
-  scale_y_log10()+
-  ylab(expression(Passive~CO[2]~~'g'/m^2/'day'))+
-  xlab(expression(Wetland~Area~m^2/Basin~Area~m^2))+
-  ggtitle('1000m Buffer')+theme(legend.position = 'none')
-
-c<-ggplot(chimney_wetland_prop %>% filter(buffer_radius==500& Q_quartile==4),
-       aes(x=as.factor(proportion), y=passive, fill=ID)) +
-  geom_boxplot()+
-  scale_y_log10()+
-  #ylab(expression(Top~'25%'~Active~CO[2]~~'g'/m^2/'day'))+
-  ylab(' ')+
-  xlab(expression(Wetland~Area~m^2/Basin~Area~m^2))+
-  ggtitle('500 Buffer')+theme(legend.position = 'none')
-
-d<-ggplot(chimney_wetland_prop %>% filter(buffer_radius==250& Q_quartile==4),
-       aes(x=as.factor(proportion), y=passive, fill=ID)) +
-  geom_boxplot()+
-  scale_y_log10()+
-  ylab(' ')+
-  #ylab(expression(Top~'25%'~Active~CO[2]~~'g'/m^2/'day'))+
-  xlab(expression(Wetland~Area~m^2/Basin~Area~m^2))+
-  ggtitle('250 Buffer')+theme(legend.position = 'none')
-
-plot_grid(a,b,c,d, ncol=2)
-
-
-
-
-a<-ggplot(chimney_wetland_prop %>% filter(buffer_radius==2000),
-          aes(x=as.factor(proportion), y=passive, fill=ID)) +
-  geom_boxplot()+
-  scale_y_log10()+
-  #ylab(expression(Top~'25%'~Active~CO[2]~~'g'/m^2/'day'))+
-  ylab(' ')+
-  xlab(expression(Wetland~Area~m^2/Basin~Area~m^2))+
-  ggtitle('2000m Buffer')+theme(legend.position = 'none')
-
-b<-ggplot(chimney_wetland_prop %>% filter(buffer_radius==1000),
-          aes(x=as.factor(proportion), y=passive, fill=ID)) +
-  geom_boxplot()+
-  scale_y_log10()+
-  ylab(expression(Active~CO[2]~~'g'/m^2/'day'))+
-  xlab(expression(Wetland~Area~m^2/Basin~Area~m^2))+
-  ggtitle('1000m Buffer')+theme(legend.position = 'none')
-
-c<-ggplot(chimney_wetland_prop %>% filter(buffer_radius==500),
-          aes(x=as.factor(proportion), y=passive, fill=ID)) +
-  geom_boxplot()+
-  scale_y_log10()+
-  #ylab(expression(Top~'25%'~Active~CO[2]~~'g'/m^2/'day'))+
-  ylab(' ')+
-  xlab(expression(Wetland~Area~m^2/Basin~Area~m^2))+
-  ggtitle('500 Buffer')+theme(legend.position = 'none')
-
-d<-ggplot(chimney_wetland_prop %>% filter(buffer_radius==250),
-          aes(x=as.factor(proportion), y=passive, fill=ID)) +
-  geom_boxplot()+
-  scale_y_log10()+
-  ylab(' ')+
-  #ylab(expression(Top~'25%'~Active~CO[2]~~'g'/m^2/'day'))+
-  xlab(expression(Wetland~Area~m^2/Basin~Area~m^2))+
-  ggtitle('250 Buffer')+theme(legend.position = 'none')
-
-plot_grid(a,b,c,d, ncol=2)

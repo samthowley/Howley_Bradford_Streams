@@ -65,7 +65,6 @@ theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
                              legend.title =element_text(size = 17),
                              legend.position ="none",
                              panel.background = element_rect(fill = 'white'),
-                             axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "black"),
                              axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "black")))
 
 ####DO######
@@ -211,7 +210,7 @@ write_csv(pH_all, "02_Clean_data/pH_cleaned.csv")
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
 file.names<-file.names[c(5,4,6,7,8,9)]
 data <- lapply(file.names,function(x) {read_csv(x, col_types = cols(ID = col_character()))})
-master <- reduce(data, left_join, by = c("ID", 'Date'))
+master <- reduce(data, full_join, by = c("ID", 'Date'))
 
 master$Temp_PT[master$Temp_PT>87]<-NA
 master$Temp_PT[master$Temp_PT<0]<-NA
@@ -227,52 +226,24 @@ ggplot(master, aes(Date, pH)) + geom_point() + facet_wrap(~ ID, ncol=4)
 
 write_csv(master, "master.csv")
 
-#TEST##########
-depth<-read_csv("02_Clean_data/depth.csv")
-depth<-depth %>% filter(ID!=14)
-ggplot(depth, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=3)+
-  ylab("Depth (m)")
+#Figure##########
+master$ID <- factor(master$ID , levels=c('15','5','5a','3','6','13','7','9','6a')) #order of increasing wetland cover
+
+d<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=SpC)) +
+  scale_y_log10()+xlab('Stream ID')+
+  geom_boxplot()+theme(axis.title.x =element_blank(),axis.text.x =element_blank())
+
+a<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=DO)) +
+  xlab('Stream ID')+ylab('DO mg/L')+
+  geom_boxplot()+theme(axis.title.x =element_blank(),axis.text.x =element_blank())
+
+b<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=pH)) +
+  xlab('Stream ID')+ylab('pH')+
+  geom_boxplot()+theme(axis.title.x=element_blank(),axis.text.x =element_blank())
+
+c<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=CO2)) +
+  xlab('Stream ID')+ylab(expression(CO[2]~ppm))+scale_y_log10()+
+  geom_boxplot()+theme(axis.title.x=element_blank())
 
 
-pH<-read_csv("02_Clean_data/pH_cleaned.csv")
-spc<-read_csv("02_Clean_data/SpC_cleaned.csv")
-do<-read_csv("02_Clean_data/DO_cleaned.csv")
-co2<-read_csv("02_Clean_data/CO2_cleaned.csv")
-master<-left_join(do, spc, by=c('ID', 'Date'))
-master<-left_join(master, pH, by=c('ID', 'Date'))
-master<-left_join(master, co2, by=c('ID', 'Date'))
-master<-master %>%filter(ID!=14)
-master$ID <- factor(master$ID , levels=c('5','5a','15','7','3','6','6a','9','13'))
-
-a<-ggplot(master, aes(x=ID, y=pH)) +
-  geom_boxplot(fill='#A4A4A4', color="black")+ylab('pH')+
-  theme(axis.title.x =element_blank())
-
-b<-ggplot(master, aes(x=ID, y=SpC)) +
-  geom_boxplot(fill='#A4A4A4', color="black")+ylab('SpC')+
-  theme(axis.title.x =element_blank())
-
-c<-ggplot(master, aes(x=ID, y=DO)) +
-  geom_boxplot(fill='#A4A4A4', color="black")+ylab('DO mg/L')+
-  theme(axis.title.x =element_blank())
-
-d<-ggplot(master, aes(x=ID, y=CO2)) +
-  geom_boxplot(fill='#A4A4A4', color="black")+ylab(expression(CO[2]~ppm))
-plot_grid(a,b,c,d, ncol=1, align='v')
-
-O<-read_csv("02_Clean_data/DO_cleaned.csv")
-
-O$ID <- factor(O$ID , levels=c('5','5a','15','7','3','6','6a','9','13'))
-O<-O %>% filter(ID != '14')
-ggplot(O, aes(x=ID, y=DO)) +
-  geom_boxplot(fill='#A4A4A4', color="black")+
-  ylab('Dissolved Oxygen (mg/L)')
-
-CO2<-read_csv("02_Clean_data/CO2_cleaned.csv")
-CO2$ID <- factor(CO2$ID , levels=c('5','5a','15','7','3','6','6a','9','13'))
-CO2<-CO2 %>% filter(ID != '14')
-ggplot(CO2, aes(x=ID, y=CO2)) +
-  geom_boxplot(fill='#A4A4A4', color="black")+
-  ylab('CO2 (mg/L)')
-
-
+plot_grid(a,b,d,c, ncol=1, align = 'v')
