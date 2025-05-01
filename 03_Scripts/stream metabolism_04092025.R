@@ -130,7 +130,7 @@ specs <- lapply(kq_nodes_list, function(kq_nodes) {
     mm_name(type = "bayes", pool_K600 = "binned", err_obs_iid = TRUE, err_proc_iid = TRUE),
     K600_lnQ_nodes_centers = Q_vals,
     K600_lnQ_nodes_meanlog = log(K_vals),
-    K600_lnQ_nodes_sdlog = log(sd_vals),
+    K600_lnQ_nodes_sdlog = 0.15,
     K600_lnQ_nodediffs_sdlog = 0.05,
     K600_daily_sigma_sigma = 0.24,
     burnin_steps = 1000,
@@ -175,4 +175,4 @@ ggplot(met_df, aes(date)) +
 
 
 
-write_csv(met_df, "04_Output/metabolism_04292025.csv")
+write_csv(met_df, "04_Output/metabolism_04302025.csv")
