@@ -31,19 +31,19 @@ ggplot(merged_data, aes(x=ln.Q, y=DO)) +
   facet_wrap(~ ID, ncol = 3, scale = 'free')
 
 input <- merged_data %>%
-  filter(depth > 0, !ID %in% c('14','6a'))%>%
- rename('DO.obs'='DO', discharge=Q)%>%
+  filter(depth > 0,ID != '14')%>%
+  rename('DO.obs'='DO')%>%
   mutate(
     temp.water=fahrenheit.to.celsius(Temp_PT.x))%>%
   mutate(
     DO.sat=Cs(temp.water),
-         solar.time=as.POSIXct(Date, format="%Y-%m-%d %H:%M:%S", tz="UTC"),
-         )%>%
+    solar.time=as.POSIXct(Date, format="%Y-%m-%d %H:%M:%S", tz="UTC"),
+  )%>%
   mutate(
-    light=calc_light(solar.time,  29.8, -82.6))%>%
-  select(solar.time, light, depth, DO.sat, DO.obs, temp.water, discharge, ID)
+    light=calc_light(solar.time,  29.8, -82.6))
 
-cols <- c('solar.time', 'light', 'depth', 'DO.sat', 'DO.obs', 'temp.water', 'discharge', 'ID')
+
+cols <- c('solar.time', 'light', 'depth', 'DO.sat', 'DO.obs', 'temp.water', 'ID', 'Qbase', 'Q')
 unique_sites <- unique(input$ID[!is.na(input$ID)])
 
 streams <- setNames(
@@ -55,11 +55,12 @@ streams <- setNames(
   unique_sites
 )
 
-streams_edited <- lapply(streams, function(df) {
+streams_baseflow<- lapply(streams, function(df) {
   df %>%
-    select(-ID)%>%
     arrange(solar.time) %>%
-    filter(c(TRUE, diff(solar.time) > 0))
+    filter(c(TRUE, diff(solar.time) > 0))%>%
+    filter(Q<= mean(Qbase, na.rm=T))%>%
+    select(-ID, -Qbase, -Q)
 })
 
 #K600#############
@@ -73,51 +74,19 @@ for (sheet in ks) {
 }
 
 #specs######
-kq_nodes_list <- lapply(list_of_ks, function(k600_df) {
-  kq_nodes <- k600_df %>%
+k600_mean_list <- lapply(list_of_ks, function(k600_df) {
+  k600 <- k600_df %>%
     group_by(ID) %>%
-    filter(n() >= 2) %>%
     summarise(
-      Q_nodes = list(quantile(Q, probs = c(0.1, 0.3, 0.5, 0.7, 0.9), na.rm = TRUE)),
-      K_nodes = list({
-        if (sd(mean, na.rm = TRUE) < 1e-6) {
-          rep(unique(mean), 7)
-        } else {
-          approx(Q, mean,
-                 xout = calc_bins(log(Q), 'interval', n = 7)$bounds,
-                 rule = 2)$y
-        }
-      }),
-      sd_nodes = list({
-        if (sd(sd_k600, na.rm = TRUE) < 1e-6) {
-          rep(unique(sd_k600), 7)
-        } else {
-          approx(Q, sd_k600,
-                 xout = calc_bins(log(Q), 'interval', n = 7)$bounds,
-                 rule = 2)$y
-        }
-      }),
-      .groups = "drop"
-    ) %>%
-    mutate(
-      K_nodes = map(K_nodes, ~ {
-        k_mean <- mean(.x, na.rm = TRUE)
-        replace(.x, is.na(.x) | is.nan(.x), k_mean)
-      }),
-      sd_nodes = map(sd_nodes, ~ {
-        sd_mean <- mean(.x, na.rm = TRUE)
-        replace(.x, is.na(.x) | is.nan(.x), sd_mean)
-      })
+      K600=mean((k600_dh/depth),na.rm=T)
     )
 
-  return(kq_nodes)
+  return(k600)
 })
 
-specs <- lapply(kq_nodes_list, function(kq_nodes) {
-  site_id <- kq_nodes$ID[1]
-  Q_vals <- kq_nodes$Q_nodes[[1]]
-  K_vals <- kq_nodes$K_nodes[[1]]
-  sd_vals <- kq_nodes$sd_nodes[[1]]
+specs <- lapply(k600_mean_list, function(K_means) {
+  site_id <- K_means$ID[1]
+  K_vals <- K_means$K600[[1]]
 
   # Handle missing or NA values in K_vals
   if (all(is.na(K_vals))) {
@@ -126,21 +95,21 @@ specs <- lapply(kq_nodes_list, function(kq_nodes) {
   }
 
   # Build specs
-  bayes_specs <- specs(
-    mm_name(type = "bayes", pool_K600 = "binned", err_obs_iid = TRUE, err_proc_iid = TRUE),
-    K600_lnQ_nodes_centers = Q_vals,
-    K600_lnQ_nodes_meanlog = log(K_vals),
-    K600_lnQ_nodes_sdlog = 0.15,
-    K600_lnQ_nodediffs_sdlog = 0.05,
-    K600_daily_sigma_sigma = 0.24,
-    burnin_steps = 1000,
-    saved_steps = 1000)
+  bayes_name <- mm_name(type='bayes',
+                        pool_K600='normal',
+                        err_obs_iid=TRUE, err_proc_iid=TRUE)
+
+  bayes_specs <- specs(bayes_name,
+                       K600_daily_meanlog_meanlog=K_vals,
+                       K600_daily_meanlog_sdlog=0.001,
+                       GPP_daily_lower=0,
+                       burnin_steps=1000,
+                       saved_steps=1000)
   })
 
 
-
 valid_ids <- names(specs)[!sapply(specs, is.null)]
-valid_streams <- streams_edited[valid_ids]
+valid_streams <- streams_baseflow[valid_ids]
 valid_specs <- specs[valid_ids]
 
 # Run streamMetabolizer on each valid site
