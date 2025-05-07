@@ -2,7 +2,7 @@
 setwd("01_Raw_data/Aqualog_processing")
 project_name <- "05012025"
 dilution_sheet_name <- paste("metatable_dilution_",project_name,".csv",sep = "")
-review_sample <- c('5GW5')
+review_sample <- c('5')
 output_date <- "05012025"
 
 librarian::shelf(
@@ -93,19 +93,15 @@ eem_metatemplate(eem_list, absorbance) %>%
   write.csv(file = paste("./projects/Howley_Bradford",dilution_sheet_name,sep = "/"), row.names = FALSE)
 
 library(tidyverse)
-metatable_dilution_07162024 <- read_csv("projects/Bradford Streams/metatable_dilution_07162024.csv")
-metatable_dilution_4302025 <- read_csv("projects/Bradford Streams/metatable_dilution_04302025.csv")
-metatable_dilution<-rbind(metatable_dilution_07162024, metatable_dilution_4302025)%>% distinct(sample, .keep_all = T)
+metatable_dilution_05012025 <- read_csv("projects/Howley_Bradford/metatable_dilution_05012025.csv")
+metatable_dilution_06102024 <- read_csv("projects/Howley_Bradford/metatable_dilution_06102024.csv")
+met<-rbind(metatable_dilution_06102024, metatable_dilution_05012025)%>% distinct(sample, .keep_all = T)
 
-
-write_csv(metatable_dilution, "projects/Bradford Streams/metatable_dilution_04302025.csv")
-
-
-
+write_csv(met, "projects/Howley_Bradford/metatable_dilution_05012025.csv")
 
 #Step 3: read in edited dilution sheet
 meta <-
-  read.table(paste("./projects/Bradford RC",dilution_sheet_name,sep = "/"),
+  read.table(paste("./projects/Howley_Bradford",dilution_sheet_name,sep = "/"),
              header = TRUE,
              sep = ",",
              dec = ".",
@@ -204,7 +200,7 @@ eem_list_rem <-
 #     keep = TRUE,
 #     ignore_case = TRUE)
 # Check Band Removal Widths
-#eem_overview_plot(eem_list_rem_forReview, spp = 9, contour = T)
+# eem_overview_plot(eem_list_rem_forReview, spp = 9, contour = T)
 
 
 # Interpolate EEMs for removed scatter bands
@@ -257,7 +253,7 @@ slope_parms$Date<-str_split_fixed(slope_parms$site_date, "_", 2)[,2]
 slope_parms$Date<-mdy(slope_parms$Date)
 
 write.csv(slope_parms, row.names = FALSE,
-          file = paste("./projects/Bradford RC/outputs/indices_abs_",output_date,".csv",sep = ""))
+          file = paste("./projects/Howley_Bradford/output/indices_abs_",output_date,".csv",sep = ""))
 
 eem_index <-
   cbind.data.frame(
@@ -273,4 +269,4 @@ eem_index$Date<-str_split_fixed(eem_index$site_date, "_", 2)[,2]
 eem_index$Date<-mdy(eem_index$Date)
 
 write.csv(eem_index, row.names = FALSE,
-          file = paste("./projects/Bradford RC/outputs/","indices_eem_",output_date,".csv",sep = ""))
+          file = paste("./projects/Howley_Bradford/output/","indices_eem_",output_date,".csv",sep = ""))

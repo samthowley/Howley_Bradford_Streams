@@ -78,6 +78,16 @@ strm_gas<-Picarro_gas%>%filter(chapter=='stream')%>%select(-Temp_K, -chapter)
 
 all_sampled_C<-full_join(totC,strm_gas)
 
+
+#FDOM##############
+
+eem_stream <- read_csv("04_Output/eem_stream.csv")%>%select(-Rep, -chapter, -Site)
+
+
+all_sampled_C<-full_join(all_sampled_C,eem_stream)
+
+
+
 write_csv(all_sampled_C, "04_Output/stream_sampledC.csv")
 
 #box plots#####
@@ -97,7 +107,7 @@ ggtern(data=totC,aes(DOC,DIC*10,POC*10, colour = ID))+
   theme(legend.position = "bottom",
         axis.title = element_text(size =9))
 
-ggtern(data=totC,aes(DOC,DIC*10,POC*10, colour = depth))+
+ ggtern(data=totC,aes(DOC,DIC*10,POC*10, colour = depth))+
   #scale_color_gradient(low = "blue", high = "red") +
   geom_point(size=2) +labs(x="DOC mg/L",y="DIC deci-mg/L",z="POC deci-mg/L")+
   theme_minimal_grid()+
@@ -110,4 +120,54 @@ ggtern(data=totC%>%filter(ID %in% c('5','6','9')),aes(DOC,DIC*10,POC*10, colour 
   geom_point(size=2) +labs(x="DOC",y="DIC",z="POC")+
   theme_minimal_grid()+theme(legend.position = "bottom")+
   facet_wrap(~ID, scale="free")
+
+
+
+b<-ggplot(all_sampled_C%>%filter(ID != is.na(ID), ID != '6a'), aes(x=Q))+
+  geom_point(aes(y=DOC, color="DOC"),size=3)+
+  geom_point(aes(y=DIC, color= "DIC"), size=3)+
+  geom_point(aes(y=POC, color="POC"), size=3)+
+  scale_colour_manual(values = c("black", "#0000FF", "darkorange"))+
+  scale_x_log10()+scale_y_log10()+
+  xlab(expression('Discharge'~ft^3/s))+ylab('mg/L')+
+  facet_wrap(~ ID, ncol=3, scales='free')+theme(legend.position = 'bottom')+ggtitle("Stream Carbon Species")
+
+FDOM<-all_sampled_C%>%select(Date, ID, hix, bix, fi, Q)%>%
+  filter(!is.na(hix))%>%
+  mutate(fraction=hix/bix)
+
+ggplot(FDOM%>%filter(ID != is.na(ID), ID != '6a'), aes(x=Q))+
+  #geom_point(aes(y=hix, color="hix"), size=2)+
+   geom_point(aes(y=bix, color="bix"), size=2)+
+  # geom_point(aes(y=fi, color="fi"), size=2)+
+  scale_y_log10()+scale_x_log10()+
+  scale_colour_manual(values = c("black", "#0000FF", "darkorange"))+
+  xlab(expression('Discharge'~ft^3/s))+
+  ylab('Biological Index (bix)')+
+  facet_wrap(~ ID, ncol=3, scales='free')+theme(legend.position = 'bottom')+
+  ggtitle("Stream Carbon Quality")
+
+plot_grid(a,b, ncol=1)
+
+
+ggplot(FDOM%>%filter(ID != is.na(ID), ID != '6a'), aes(x=Q))+
+  geom_point(aes(y=fraction, color="fraction"), size=2)+
+  scale_y_log10()+scale_x_log10()+
+  scale_colour_manual(values = c("black", "#0000FF", "darkorange"))+
+  xlab(expression('Discharge'~ft^3/s))+ylab('mg/L')+
+  facet_wrap(~ ID, ncol=3, scales='free')+theme(legend.position = 'bottom')+ggtitle("Stream Carbon Species")
+
+
+for_histogram<-FDOM%>%
+  group_by(ID)%>%
+  mutate(
+         Q_quartile = ntile(Q, 4))%>% ungroup
+
+
+ggplot(for_histogram %>% filter(!is.na(Q_quartile)),
+       aes(x = as.factor(Q_quartile), y = hix)) +
+  geom_boxplot(outlier.shape = NA, position = position_dodge(width = 0.75)) +
+  xlab('IQR of Discharge') +
+  facet_wrap(~ID, scales = 'free')+
+  scale_y_log10()
 
