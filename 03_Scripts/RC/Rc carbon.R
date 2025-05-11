@@ -53,11 +53,6 @@ RC_dims<-full_join(RClog, RC_distance, by=c('Site'))
 RC_dims<-full_join(RC_dims, RC_elevations, by=c('Site'))%>%
   mutate(WT_elevations=surface_elevation_m+surface2WT)
 
-ggplot(RC_dims, aes(surface2WT, WT_elevations)) +
-  geom_point()+
-  facet_wrap(~ ID, ncol=3, scales = 'free')
-
-
 #DOC DIC#########
 
 DC_RC<-read_csv('04_Output/TDC_RC.csv')
@@ -65,9 +60,10 @@ DC_RC<-DC_RC%>%select('Date','Site',"DIC",'DOC')%>%distinct(Site, Date, .keep_al
 
 C_RC<-full_join(DC_RC, RC_dims, by=c("Site", "Date"))
 
-C_RC<-C_RC %>% mutate(ID=as.character(ID), CO2=as.numeric(CO2), pH=as.numeric(pH)) %>%
+C_RC<-C_RC %>% mutate(ID=as.character(ID), CO2=as.numeric(CO2), pH=as.numeric(pH), ID_Well=Site) %>%
   separate(Site, into = c("Stream", "Well"), sep = "GW")
 #include gas sampling#####
+
 Picarro_gas <- read_csv("04_Output/Picarro_gas.csv")
 RC_gas<-Picarro_gas%>%filter(chapter=='RC')%>%
   separate(ID, into = c("Stream", "Well"), sep = "GW")%>%select(-chapter, -Temp_K)%>%
@@ -78,186 +74,285 @@ RC_all<-full_join(C_RC, RC_gas, by=c('Stream', 'Well', 'Date'))%>%
   mutate(CO2=CO2*0.217 - 93.866)%>%
   mutate(CO2 = if_else(CO2<0, NA, CO2))%>%arrange(Date,Stream,Well)
 
-
 #include streams#####
 
 streamC<-read_csv('04_Output/stream_sampledC.csv')
 streamC_edited<-streamC %>%
   filter(ID %in% c("5","6","9"))%>%
   rename(Stream=ID, Temp=Temp_pH)%>%
-  mutate(`Distance (ft)`= -0.5,
-         `Distance_m`= -0.5,
+  mutate(
+    `Distance (ft)`= -0.5,
+    `Distance_m`= -0.5,
          WTdepth_m=0,
-         Well=0, DistanceID='0',
-         ID=Stream,surface2WT=0,
+         Well=0,
+    DistanceID='0',
+         ID=Stream,
+    surface2WT=0,
          surface_elevation_m=0,
-         WT_elevations=0)%>%
+         WT_elevations=depth,
+    ID_Well='5GW0')%>%
   select(Date,Stream,Well,DIC,DOC,ID,surface2WT,CO2,
          pH,Temp, `Distance (ft)`,Distance_m,DistanceID,surface_elevation_m,
-         WT_elevations,CO2_umol_L,CH4_umol_L,N2O_umol_L,CO2_sat,
+         WT_elevations,ID_Well, CO2_umol_L,CH4_umol_L,N2O_umol_L,CO2_sat,
          CH4_sat,N2O_sat)
-
 stream_RC<-rbind(streamC_edited,RC_all)%>%mutate(Stream=as.factor(Stream))
 
-write_csv(RC_all, "02_Clean_data/allC_RC.csv")
+write_csv(stream_RC, "02_Clean_data/allC_RC.csv")
 
 #Figures########
 RC_all<-read_csv("02_Clean_data/allC_RC.csv")
 
+##Boxplots: distance
 
-#DIC
-
-a<-ggplot(
+ggplot(
   RC_all %>% filter(!is.na(Stream)),
   aes(x = Distance_m, y = DIC, fill = as.factor(DistanceID))) +
-  geom_boxplot() +    ylab("DIC mg/L") + xlab("Distance (m)")+
+  geom_violin() +    ylab("DIC mg/L") + xlab("Distance (m)")+
   scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
   facet_wrap(~Stream, scales = 'free') +
   labs(fill = "Wells")
 
-b<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = surface2WT, fill=as.factor(DistanceID))) +
-  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
-  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-    geom_point(aes(y = DIC), shape = 21,size = 2, color = "black", stroke = 0.02) +
-    ylab("DIC mg/L") +
-    xlab("WTdepth") +labs(fill = "Wells")+facet_wrap(~Stream, scale='free')+
-  labs(color = "Wells")+theme(legend.position = 'none')
-
-c<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = WT_elevations, fill=as.factor(DistanceID))) +
-  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
-  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(aes(y = DIC), shape = 21,size = 2, color = "black", stroke = 0.02) +
-  ylab("DIC mg/L") +
-  xlab("WT elevation") +labs(fill = "Wells")+facet_wrap(~Stream, scale='free')+
-  labs(color = "Wells")+theme(legend.position = 'none')
-
-(DIC<-plot_grid(a,b,c, ncol=1))
-
-
-#DOC
-
-a<-ggplot(
+ggplot(
   RC_all %>% filter(!is.na(Stream)),
   aes(x = Distance_m, y = DOC, fill = as.factor(DistanceID))) +
-  geom_boxplot() +    ylab("DOC mg/L") + xlab("Distance (m)")+
+  geom_violin() +    ylab("DOC mg/L") + xlab("Distance (m)")+
   scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
   facet_wrap(~Stream, scales = 'free') +
   labs(fill = "Wells")
 
-b<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = surface2WT, fill=as.factor(DistanceID))) +
-  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
-  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(aes(y = DOC),  shape = 21,size = 2, color = "black", stroke = 0.02) +
-  ylab("DOC mg/L") +
-  xlab("WTdepth") +labs(fill = "Wells")+facet_wrap(~Stream, scale='free')+
-  labs(color = "Wells")
 
-c<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = WT_elevations, fill=as.factor(DistanceID))) +
-  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
-  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(aes(y = DOC), shape = 21,size = 2, color = "black", stroke = 0.02) +
-  ylab("DOC mg/L") +
-  xlab("WT elevation") +labs(fill = "Wells")+facet_wrap(~Stream, scale='free')+
-  labs(color = "Wells")
-
-(DOC<-plot_grid(a,b,c, ncol=1))
-
-#CO2
-a<-ggplot(
-  RC_all %>% filter(!is.na(Stream)),
-  aes(x = Distance_m, y = CO2_sat, fill = as.factor(DistanceID))) +
-  geom_boxplot() +    ylab("CO2 Saturation") + xlab("Distance (m)")+
-  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
-  facet_wrap(~Stream, scales = 'free') +
-  labs(fill = "Wells")
-
-b<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = surface2WT, fill=as.factor(DistanceID))) +
-  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
-  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(aes(y = CO2_sat), shape = 21,size = 2, color = "black", stroke = 0.02) +
-  ylab("CO2 Saturation") +
-  xlab("WTdepth") +labs(fill = "Wells")+facet_wrap(~Stream, scale='free')+
-  labs(color = "Wells")
-
-c<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = WT_elevations, fill=as.factor(DistanceID))) +
-  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
-  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(aes(y = CO2_sat), shape = 21,size = 2, color = "black", stroke = 0.02) +
-  ylab("CO2 Saturation") +
-  xlab("WT Elevation") +labs(fill = "Wells")+facet_wrap(~Stream, scale='free')+
-  labs(color = "Wells")
-(CO2<-plot_grid(a,b,c, ncol=1))
-
-
-#CH4
-a<-ggplot(
+ggplot(
   RC_all %>% filter(!is.na(Stream)),
   aes(x = Distance_m, y = CH4_sat, fill = as.factor(DistanceID))) +
-  geom_boxplot() +    ylab("CH4 Saturation") + xlab("Distance (m)")+
+  geom_violin() +    ylab("CH4 Saturation") + xlab("Distance (m)")+
   scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
   facet_wrap(~Stream, scales = 'free') +
   labs(fill = "Wells")
 
-b<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = surface2WT, color=as.factor(DistanceID))) +
-  scale_color_brewer(palette = "Set0") +  # Use a discrete color palette
+#Overview######
+ggplot(data = RC_all %>% filter(!is.na(ID)), aes(x = WT_elevations, y = DOC, fill=Distance_m)) +
   geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(aes(y = CH4_sat), size = 2) +
-  ylab("CH4 Saturation") +
-  xlab("WTdepth") +labs(fill = "Wells")+facet_wrap(~Stream, scale='free')+
-  labs(color = "Wells")
+  geom_point(size = 2) +
+  ylab("DOC mg/L") +
+  xlab("Steam Bed to Water Table Height")+
+  facet_wrap(~ID, scales='free')+stat_poly_line()+
+  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
+               formula = y ~ I(log10(x)),  # If you're plotting log10 on the x-axis only
+               parse = TRUE, color = 'blue',
+               label.x.npc = "left", label.y.npc = "top")
 
-c<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = WT_elevations, fill=as.factor(DistanceID))) +
-  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
+ggplot(data = RC_all,aes(x = surface2WT, y = DOC, color=as.factor(ID))) +
   geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(aes(y = CH4_sat), shape = 21,size = 2, color = "black", stroke = 0.02) +
-  ylab("CH4 Saturation") +
-  xlab("WT Elevation") +labs(fill = "Wells")+facet_wrap(~Stream, scale='free')+
-  labs(color = "Wells")
+  geom_point(size = 2) +
+  ylab("DOC mg/L") +
+  xlab("Steam Bed to Water Table Height")
 
-(CH4<-plot_grid(a,b,c, ncol=1))
+#scatter plots: elevation v DOC by site and by wells
 
-#WT Elevations figures#########
-
-DIC<-ggplot(data = RC_all%>% filter(Stream=='5', !Well=='0'),aes(x = WT_elevations,y = DIC, fill=as.factor(Well))) +
-  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
+ggplot(data = RC_all %>% filter(ID=='5'), aes(x = WT_elevations, y = DOC)) +
   geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(shape = 21,size = 2, color = "black", stroke = 0.02) +
+  geom_point(size = 2) +
+  ylab("DOC mg/L") +
+  xlab("Steam Bed to Water Table Height")+
+  facet_wrap(~Well, scales='free')+stat_poly_line()+
+  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
+               formula = y ~ x,  # If you're plotting log10 on the x-axis only
+               parse = TRUE, color = 'blue',
+               label.x.npc = "left", label.y.npc = "top")
+
+ggplot(data = RC_all %>% filter(ID=='6'), aes(x = WT_elevations, y = DOC)) +
+  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
+  geom_point(size = 2) +
+  ylab("DOC mg/L") +
+  xlab("Steam Bed to Water Table Height")+
+  facet_wrap(~Well, scales='free')+stat_poly_line()+
+  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
+               formula = y ~ x,  # If you're plotting log10 on the x-axis only
+               parse = TRUE, color = 'blue',
+               label.x.npc = "left", label.y.npc = "top")
+
+ggplot(data = RC_all %>% filter(ID=='9'), aes(x = WT_elevations, y = DOC)) +
+  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
+  geom_point(size = 2) +
+  ylab("DOC mg/L") +
+  xlab("Steam Bed to Water Table Height")+
+  facet_wrap(~Well, scales='free')+stat_poly_line()+
+  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
+               formula = y ~ x,  # If you're plotting log10 on the x-axis only
+               parse = TRUE, color = 'blue',
+               label.x.npc = "left", label.y.npc = "top")
+
+#scatter plots: elevation v DIC by site and by wells
+
+ggplot(data = RC_all %>% filter(ID=='5'), aes(x = WT_elevations, y = DIC)) +
+  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
+  geom_point(size = 2) +
   ylab("DIC mg/L") +
-  xlab("WT elevation") +labs(fill = "Wells")+facet_wrap(~Well, scale='free')+
-  labs(color = "Wells")
+  xlab("Steam Bed to Water Table Height")+
+  facet_wrap(~Well, scales='free')+stat_poly_line()+
+  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
+               formula = y ~ x,  # If you're plotting log10 on the x-axis only
+               parse = TRUE, color = 'blue',
+               label.x.npc = "left", label.y.npc = "top")
 
-DOC<-ggplot(data = RC_all%>% filter(Stream=='5', !Well=='0'),aes(x = WT_elevations,y = DOC, fill=as.factor(Well))) +
-  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
+ggplot(data = RC_all %>% filter(ID=='6'), aes(x = WT_elevations, y = DIC)) +
   geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(shape = 21,size = 2, color = "black", stroke = 0.02) +
-  ylab("DOC mg/L") +
-  xlab("WT elevation") +labs(fill = "Wells")+facet_wrap(~Well, scale='free')+
-  labs(color = "Wells")
+  geom_point(size = 2) +
+  ylab("DIC mg/L") +
+  xlab("Steam Bed to Water Table Height")+
+  facet_wrap(~Well, scales='free')+stat_poly_line()+
+  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
+               formula = y ~ x,  # If you're plotting log10 on the x-axis only
+               parse = TRUE, color = 'blue',
+               label.x.npc = "left", label.y.npc = "top")
 
-CO2<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = WT_elevations,y = CO2_sat, fill=as.factor(DistanceID))) +
-  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
+ggplot(data = RC_all %>% filter(ID=='9'), aes(x = WT_elevations, y = DIC)) +
   geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(shape = 21,size = 2, color = "black", stroke = 0.02) +
-  ylab("CO2 Saturation") +
-  xlab("WT Elevation") +labs(fill = "Wells")+facet_wrap(~Stream, scale='free')+
-  labs(color = "Wells")
+  geom_point(size = 2) +
+  ylab("DIC mg/L") +
+  xlab("Steam Bed to Water Table Height")+
+  facet_wrap(~Well, scales='free')+stat_poly_line()+
+  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
+               formula = y ~ x,  # If you're plotting log10 on the x-axis only
+               parse = TRUE, color = 'blue',
+               label.x.npc = "left", label.y.npc = "top")
 
-CH4<-ggplot(data = RC_all%>% filter(!is.na(Stream)),aes(x = WT_elevations,y = CH4_sat, fill=as.factor(DistanceID))) +
-  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
+#scatter plots: elevation v CO2 by site and by wells
+
+ggplot(data = RC_all %>% filter(ID=='5'), aes(x = WT_elevations, y = CO2)) +
   geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
-  geom_point(shape = 21,size = 2, color = "black", stroke = 0.02) +
-  ylab("CH4 Saturation") +
-  xlab("WT Elevation") +labs(fill = "Wells")+facet_wrap(~Stream, scale='free')+
-  labs(color = "Wells")
+  geom_point(size = 2) +
+  ylab("CO2") +
+  xlab("Steam Bed to Water Table Height")+
+  facet_wrap(~Well, scales='free')+stat_poly_line()+
+  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
+               formula = y ~ x,  # If you're plotting log10 on the x-axis only
+               parse = TRUE, color = 'blue',
+               label.x.npc = "left", label.y.npc = "top")
 
-plot_grid(DOC, DIC, nrow=2)
-plot_grid(CO2, CH4, nrow=2)
+ggplot(data = RC_all %>% filter(ID=='6'), aes(x = WT_elevations, y = CO2)) +
+  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
+  geom_point(size = 2) +
+  ylab("CO2") +
+  xlab("Steam Bed to Water Table Height")+
+  facet_wrap(~Well, scales='free')+stat_poly_line()+
+  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
+               formula = y ~ x,  # If you're plotting log10 on the x-axis only
+               parse = TRUE, color = 'blue',
+               label.x.npc = "left", label.y.npc = "top")
 
-#####By well############
+ggplot(data = RC_all %>% filter(ID=='9'), aes(x = WT_elevations, y = CO2)) +
+  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
+  geom_point(size = 2) +
+  ylab("CO2") +
+  xlab("Steam Bed to Water Table Height")+
+  facet_wrap(~Well, scales='free')+stat_poly_line()+
+  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
+               formula = y ~ x,  # If you're plotting log10 on the x-axis only
+               parse = TRUE, color = 'blue',
+               label.x.npc = "left", label.y.npc = "top")
 
-ggplot(data = RC_all%>% filter(Stream=='9', !Well=='0'),aes(x = WT_elevations,y = DOC)) +
-  geom_point(size = 2, color = "black", stroke = 0.02) +
-  #geom_smooth(method='lm')+
-  ylab("DOC mg/L") +
-  xlab("WT elevation") +labs(fill = "Wells")+facet_wrap(~Well, scale='free')+
-  labs(color = "Wells")
+
+
+#scatter plots: elevation v CH4 by site and by wells
+
+ggplot(data = RC_all %>% filter(ID=='5'), aes(x = WT_elevations, y = CH4_sat)) +
+  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
+  geom_point(size = 2) +
+  ylab("CH4_sat") +
+  xlab("Steam Bed to Water Table Height")+
+  facet_wrap(~Well, scales='free')+stat_poly_line()+
+  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
+               formula = y ~ x,  # If you're plotting log10 on the x-axis only
+               parse = TRUE, color = 'blue',
+               label.x.npc = "left", label.y.npc = "top")
+
+ggplot(data = RC_all %>% filter(ID=='6'), aes(x = WT_elevations, y = CH4_sat)) +
+  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
+  geom_point(size = 2) +
+  ylab("CH4_sat") +
+  xlab("Steam Bed to Water Table Height")+
+  facet_wrap(~Well, scales='free')+stat_poly_line()+
+  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
+               formula = y ~ x,  # If you're plotting log10 on the x-axis only
+               parse = TRUE, color = 'blue',
+               label.x.npc = "left", label.y.npc = "top")
+
+ggplot(data = RC_all %>% filter(ID=='9'), aes(x = WT_elevations, y = CH4_sat)) +
+  geom_vline(xintercept = 0, colour = "gray", size = 1.5) +
+  geom_point(size = 2) +
+  ylab("CH4_sat") +
+  xlab("Steam Bed to Water Table Height")+
+  facet_wrap(~Well, scales='free')+stat_poly_line()+
+  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
+               formula = y ~ x,  # If you're plotting log10 on the x-axis only
+               parse = TRUE, color = 'blue',
+               label.x.npc = "left", label.y.npc = "top")
+
+#Find Slopes of change by wells#####################
+
+cols <- c('Well', 'DIC', 'DOC', 'surface2WT', 'CO2_umol_L', "CH4_umol_L", "N2O_umol_L",
+          'Distance_m', 'WT_elevations', 'ID', 'ID_Well')
+unique_sites <- unique(RC_all$ID[!is.na(RC_all$ID)])
+
+streams <- setNames(
+  lapply(unique_sites, function(site_id) {
+    df_subset <- RC_all %>%
+      filter(ID_Well == site_id) %>%
+      select(all_of(cols))
+    return(df_subset)
+  }),
+  unique_sites
+)
+
+streams_edited <- lapply(streams, function(df) {
+  (DOC.WT<-lm(DOC ~ WT_elevations, data = df))
+  cf <- coef(DOC.WT)
+  (Slope.DOC.WT<- cf[2])
+  (Inter.DOC.WT <- cf[1])
+
+  (DIC.WT<-lm(DIC ~ WT_elevations, data = df))
+  cf <- coef(DIC.WT)
+  (Slope.DIC.WT <- cf[2])
+  (Inter.DIC.WT <- cf[1])
+
+  (CH4.WT<-lm(CH4_umol_L ~ WT_elevations, data = df))
+  cf <- coef(CH4.WT)
+  (Slope.CH4.WT <- cf[2])
+  (Inter.CH4.WT <- cf[1])
+
+  (CO2.WT<-lm(CO2_umol_L ~ WT_elevations, data = df))
+  cf <- coef(CO2.WT)
+  (Slope.CO2.WT <- cf[2])
+  (Inter.CO2.WT <- cf[1])
+
+  df<-df%>%
+    mutate(
+      Slope_CO2.WT=as.numeric(c(Slope.CO2.WT)),
+      Slope_DOC.WT=as.numeric(c(Slope.DOC.WT)),
+      Slope_DIC.WT=as.numeric(c(Slope.DIC.WT)),
+      Slope_CH4.WT=as.numeric(c(Slope.CH4.WT)),
+
+      DOC.WTInter=as.numeric(c(Inter.DOC.WT)),
+      DIC.WTInter=as.numeric(c(Inter.DIC.WT)),
+      CO2.WTInter=as.numeric(c(Inter.CO2.WT)),
+      CH4.WTInter=as.numeric(c(Inter.CH4.WT))
+
+    )%>%
+    summarize(
+      Slope_CO2.WT=mean(Slope_CO2.WT, na.rm=T),
+      Slope_CH4.WT=mean(Slope_CH4.WT, na.rm=T),
+      Slope_DIC.WT=mean(Slope_DIC.WT, na.rm=T),
+      Slope_DOC.WT=mean(Slope_DOC.WT, na.rm=T),
+
+      Inter.DOC.WT=mean(Inter.DOC.WT, na.rm=T),
+      Inter.DIC.WT=mean(Inter.DIC.WT, na.rm=T),
+      Inter.CO2.WT=mean(Inter.CO2.WT, na.rm=T),
+      Inter.CH4.WT=mean(Inter.CH4.WT, na.rm=T),
+    )
+})
+
+
+slopes <- bind_rows(streams_edited, .id = "ID")
+
+

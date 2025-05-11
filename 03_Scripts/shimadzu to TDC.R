@@ -7,6 +7,7 @@ library(readxl)
 library(lubridate)
 library(cowplot)
 library(lme4)
+library(ggpmisc)
 theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
                 axis.text.y = element_text(size = 17, angle=0),
                 axis.title =element_text(size = 17, angle=0),

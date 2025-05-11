@@ -130,7 +130,6 @@ discharge <- discharge %>% group_by(ID) %>%
   mutate(Qbase = gr_baseflow(Q, method = 'jakeman',a = 0.925, passes = 3))
 
 discharge<-discharge %>% group_by(ID) %>%
-  mutate(Q=if_else(Q<0.1, NA, Q))%>%
   mutate(Qsurficial=Q-Qbase)%>%
   mutate(Qbase = if_else(Qbase>10000, NA, Qbase),
          Qsurficial= if_else(Qsurficial>10000, NA, Qsurficial),
@@ -164,7 +163,7 @@ write_csv(V, "02_Clean_data/velocity.csv")
 
 
 ggplot(discharge, aes(Date)) +
-  geom_line(aes(y=depth, color='runoff'))+
+  geom_line(aes(y=Q, color='runoff'))+
   facet_wrap(~ ID, ncol=5, scales = 'free')
 
 ggplot(V%>% filter(!ID=='14'), aes(Date)) +
