@@ -186,13 +186,13 @@ for_figs<-rbind(POC, DOC, DIC)
 
 DOC$Site <- factor(DOC$Site , levels=c('5','5a','6','3','7','13','6a','9','15'))
 
-ggplot(DOC, aes(x=Q, y=C, color=type)) +
+ggplot(DOC, aes(x=Q, y=C)) +
   geom_point(size=2)+
-  ylab('mg/L')+
+  ylab('DOC mg/L')+
   xlab(expression('Discharge'~m^3))+
+  ggtitle("Variation in DOC with Discharge")+
   facet_wrap(~ Site, ncol=3, scales = "free")+
   scale_x_log10()+scale_y_log10()+
-  stat_poly_line(method = "lm", formula = y ~ x, se = FALSE) +
   stat_poly_eq(
     aes(label = paste(..eq.label.., ..rr.label..,..p.value.label.., sep = "~~~~~")),
     formula = y ~ x,
