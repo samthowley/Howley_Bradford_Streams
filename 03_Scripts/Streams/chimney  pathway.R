@@ -195,7 +195,7 @@ ggplot(active, aes(x = as.factor(ID), y = active.passive)) +
   scale_y_log10()+
   ggtitle("Active:Passive Sources Among Sites")+
   geom_hline(yintercept = 1, color='red', size=1)+
-  ylab(expression(O[2]~'g' / m^2 / 'day'))+
+  ylab("Active/Passive")+
   theme(axis.title.x = element_blank(),
         axis.title.y= element_text(size=21),
         plot.title = element_text(size = 21))
@@ -204,9 +204,9 @@ ggplot(active, aes(x = as.factor(ID), y = active.passive)) +
 ggplot(active, aes(x=Q, y=active.passive))+
   geom_point() +
   ylab(expression('Active/ Passive'))+
-  facet_wrap(~ ID, ncol=3, scale='free')+
+  facet_wrap(~ ID, ncol=3)+
   theme(legend.position = "bottom")+
-  xlab(expression(Discharge~m^3/sec))+
+  xlab(expression(Discharge~L/sec))+
   geom_hline(yintercept = 1, color='red', size=1)+
   ggtitle("Variation Among Active:Passive Dominance")+
 scale_y_log10()+ scale_x_log10()
@@ -230,7 +230,7 @@ active$ID <- factor(active$ID , levels=c('9','15','3','5a','13','7','5','6','6a'
 ggplot(active, aes(x=Q, y=active.passive))+
   geom_point() +
   ylab(expression('Active/ Passive'))+
-  facet_wrap(~ ID, ncol=3, scale='free')+
+  facet_wrap(~ ID, ncol=3)+
   theme(legend.position = "bottom")+
   xlab(expression(Discharge~L/sec))+
   geom_hline(yintercept = 1, color='red', size=1)+
