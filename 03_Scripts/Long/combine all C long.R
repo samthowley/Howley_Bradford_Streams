@@ -19,8 +19,8 @@ depth<-depth %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>% mutate(dep
 depth <- depth[!duplicated(depth[c( 'Date','ID')]),]
 
 Q<-Q %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>%
-  mutate(Q=mean(Q, na.rm = T),Qbase=mean(Qbase, na.rm = T),Qsurficial=mean(Qsurficial, na.rm = T)) %>%
-  select(Date, ID, Q,Qbase,Qsurficial) %>% filter(Q>1)
+  mutate(Q=mean(Q, na.rm = T)) %>%
+  select(Date, ID, Q) %>% filter(Q>1)
 Q <- Q[!duplicated(Q[c('Date','ID')]),]
 
 dim<-left_join(depth, Q, by=c('ID', 'Date'))
