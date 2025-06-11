@@ -53,7 +53,10 @@ water_samples <- longC_dim_log %>%
 Picarro_gas <- read_csv("04_Output/Picarro_gas.csv")%>% filter(chapter=='long')%>%
   separate(ID, into = c("ID", "Long"), sep = "\\.")%>%select(-chapter)
 
-all_samples<-full_join(water_samples, Picarro_gas)
+all_samples<-full_join(water_samples, Picarro_gas)%>%distinct(ID, Date,DO, Q, .keep_all=T)
+
+
+write_csv(all_samples, "04_Output/master_long.csv")
 
 #Further manipulation######
 final<-all_samples %>%mutate(Wetland_density=case_when(ID==5~ "low",

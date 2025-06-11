@@ -247,3 +247,6 @@ c<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=CO2)) +
 
 
 plot_grid(a,b,d,c, ncol=1, align = 'v')
+
+#testing testing 123###
+DO <- read_csv("02_Clean_data/DO_cleaned.csv")%>% filter(ID=='5', Date=='2025-04-02')#%>%sum(DO=mean(DO, na.rm=T))
