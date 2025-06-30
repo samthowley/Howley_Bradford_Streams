@@ -11,6 +11,7 @@ library(plotly)
 library(broom)
 library(weathermetrics)
 library(ggpmisc)
+library(streamMetabolizer)
 
 theme_set(theme(axis.text.x = element_text(size = 17),
                 axis.text.y = element_text(size = 17),
@@ -50,7 +51,7 @@ Q<-Q %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>%
   select(Date, ID, Q,Qbase,Qsurficial)%>%
   distinct(Date, ID, .keep_all = T)
 
-dim<-left_join(Q, depth, by=c('ID', 'Date'))%>%
+flow_regime<-left_join(Q, depth, by=c('ID', 'Date'))%>%
   mutate(Date=as.Date(Date))%>%
   group_by(ID, Date)%>%
   mutate(Q=mean(Q, na.rm=T), depth=mean(depth, na.rm=T))%>%
@@ -60,10 +61,56 @@ dim<-left_join(Q, depth, by=c('ID', 'Date'))%>%
 ggplot(dim, aes(x = Q))+
   geom_histogram()+facet_wrap(~ID, scales='free')
 
+#GW Correction#####
+stream_dims <- read_excel("01_Raw_data/stream dims.xlsx")%>%
+  mutate(UCA=if_else(is.na(UCA), mean(UCA, na.rm=T), UCA))%>%
+  select(-width_ft)
+
+baseflow <- read_csv("04_Output/baseflow.csv")%>%
+  mutate(bf_m3.s=baseflow/1000)%>%
+  select(-Q, -quickflow)
+
+qL<-left_join(baseflow, stream_dims)%>%mutate(qL=baseflow*UCA)
+
+DO <- read_csv("02_Clean_data/DO_cleaned.csv")%>%arrange(ID, Date)%>%
+  mutate(light=calc_light(Date,  29.8, -82.6))%>%
+  mutate(time=case_when(
+    light>1000~'day',
+    light<=1000~'night'),
+    Date=as.Date(Date)) %>%
+  group_by(ID,Date, time)%>%
+  mutate(DO_night=mean(DO, na.rm = T))%>%ungroup()%>%
+  group_by(Date, ID)%>%
+  mutate(DO=mean(DO, na.rm=T))%>%
+  distinct(Date, ID, .keep_all=T)%>%
+  select(-light, -time)
+
+metabolism<-read_csv('04_Output/master_metabolism.csv')%>%
+  mutate(NEP=(GPP+ER))
+
+met_DO<-left_join(metabolism, DO, by=c('Date','ID'))
+met_DO<-left_join(met_DO, qL)%>%
+  filter(ID %in% c('5','6','9'))
+
+DO_GW<-0.5
+
+corrected<-met_DO%>%
+  mutate(NEP_GW_correction=
+           (DO_GW-DO)*(qL/width_m)*86400,
+         ER_GW_correction=(DO_GW-DO_night)*(qL/width_m)**86400)%>%
+  mutate(NEP_corrected= NEP-NEP_GW_correction,
+         ER_corrected= ER-ER_GW_correction,)
+
+
+ggplot(corrected, aes(Date))+
+  geom_line(aes(y=ER))+
+  geom_line(aes(y=ER_corrected),color='red')+
+  facet_wrap(~ ID, scales='free')
+
+write_csv(corrected, "test.csv")
 #Chimney Pathway#####
 
-resp<-read_csv('04_Output/master_metabolism.csv')%>%
-  mutate(NEP=(GPP+ER)*-1)
+resp<-read_csv('04_Output/master_metabolism.csv')
 
 resp<-left_join(resp,dim, by=c('Date','ID'))
 
@@ -97,7 +144,7 @@ ggplot(flux %>% filter(ID=='5'), aes(x=Date, y=CO2_flux))+
 
 
 active<-flux%>%
-  mutate(active=NEP*0.8)%>%
+  mutate(active=NEP*44/32)%>% #mols of O2 to mols of CO2
   mutate(active.tot= active/CO2_flux,
         passive=CO2_flux-active)%>%
   mutate(active.passive=active/passive,
