@@ -63,7 +63,8 @@ qL <- dim %>%
 WTdepth<-read_xlsx('01_Raw_data/RC log.xlsx', sheet='RC log')%>%
   rename("surface2WT"="Wtdepth (m)") %>% select(Date, ID, Site, surface2WT)
 
-RC_distance <- read_excel("01_Raw_data/RC log.xlsx",sheet = "Sheet1")%>%select(Site,Distance_m, DistanceID)
+RC_distance <- read_excel("01_Raw_data/RC log.xlsx",sheet = "Sheet1")%>%
+  select(Site,Distance_m, DistanceID)
 
 RC_elevations <- read_excel("01_Raw_data/RC log.xlsx",sheet = "elevations")%>%
   arrange(ID, surface_elevation_m) %>%
