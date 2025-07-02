@@ -6,12 +6,10 @@ library(cowplot)
 library(ggplot2)
 library(EcoHydRology)
 
-discharge <- read.csv('02_Clean_data/discharge.csv')%>%
+discharge <- read.csv('02_Clean_data/discharge.csv')
 
 discharge$Date<-ymd_hms(discharge$Date)
 discharge<-filter(discharge, Q != is.na(Q))
-
-streams<-split(discharge$ID)
 
 streams <- split(discharge, discharge$ID)
 streams <- Filter(function(x) nrow(x) > 0, streams)
@@ -30,6 +28,8 @@ bf <- map2_dfr(
     )
   })
 
+
+range(bf$Date, na.rm=T)
 ggplot(bf, aes(Date)) +
   geom_line(aes(y=Q), color = 'black')+
   geom_line(aes(y=baseflow), color = 'red')+

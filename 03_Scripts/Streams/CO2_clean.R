@@ -7,7 +7,7 @@ library(weathermetrics)
 library(tools)
 library(cowplot)
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2024-05-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2025-04-28 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2025-07-02 00:00", tz="UTC"),by="hour")))
 theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
                              axis.text.y = element_text(size = 17, angle=0),
                              axis.title =element_text(size = 17, angle=0),
@@ -92,9 +92,9 @@ s9<-sites[['9']]
 s5<-s5 %>%filter(CO2>2000 & CO2<15000)%>%
   mutate(CO2 = if_else(Date >= "2024-03-01" & Date <= "2024-07-01" & CO2 > 8000, NA, CO2))
 
-# (a<-ggplot(s5, aes(Date, CO2))+geom_point()+ggtitle('Stream 5'))
-# b<-ggplot(s5, aes(Date, depth))+geom_line()+ggtitle('Stream 5')
-# plot_grid(a,b,ncol=1)
+(a<-ggplot(s5, aes(Date, CO2))+geom_point()+ggtitle('Stream 5'))
+b<-ggplot(s5, aes(Date, depth))+geom_line()+ggtitle('Stream 5')
+plot_grid(a,b,ncol=1)
 
 s5a<-s5a %>% filter(CO2>3500)%>%
   mutate(CO2 = if_else(Date >= "2024-01-01" & Date <= "2024-03-01" & CO2 > 8000, NA, CO2))
