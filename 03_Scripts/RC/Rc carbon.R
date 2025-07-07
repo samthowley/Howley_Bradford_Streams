@@ -58,7 +58,7 @@ qL <- dim %>%
   left_join(uca_values, by = "ID") %>%
   mutate(qL = baseflow/1000 * UCA) %>%
   select(-UCA) %>% filter(!is.na(ID))
-#Optional: Create RC carbon dataset#######
+#Create RC carbon dataset#######
 ### set has RC_dims for slope figure
 WTdepth<-read_xlsx('01_Raw_data/RC log.xlsx', sheet='RC log')%>%
   rename("surface2WT"="Wtdepth (m)") %>% select(Date, ID, Site, surface2WT)
@@ -148,7 +148,7 @@ lateral_flux<-left_join(RC, w_values, by='ID')%>%
          CH4_molL=CH4_umol_L/10^6)%>%
   mutate(lateral_CO2=CO2_molL*(10^3)*12*86400*(qL/width),
          lateral_CH4=CH4_molL*(10^3)*12*86400*(qL/width))%>%
-  mutate(DOC_flux=qL/width*DOC*86400,
+  mutate(DOC_flux=(qL/width)*DOC*86400,
          DIC_flux=qL/width*DIC*86400)%>%
   filter(!is.na(Well), !is.na(ID))%>%
   select(-width)%>%

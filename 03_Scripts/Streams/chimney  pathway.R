@@ -58,8 +58,7 @@ flow_regime<-left_join(Q, depth, by=c('ID', 'Date'))%>%
   distinct(ID, Date, .keep_all = T)%>%
   filter(Q>0.5)
 
-ggplot(dim, aes(x = Q))+
-  geom_histogram()+facet_wrap(~ID, scales='free')
+
 
 #GW Correction#####
 stream_dims <- read_excel("01_Raw_data/stream dims.xlsx")%>%

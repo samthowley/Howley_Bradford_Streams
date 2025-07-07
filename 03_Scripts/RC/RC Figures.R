@@ -8,11 +8,11 @@ library(cowplot)
 library(lme4)
 library(ggpmisc)
 
-theme_set(theme(axis.text.x = element_text(size = 18),
-                axis.text.y = element_text(size = 20),
-                axis.title.y = element_text(size = 20, angle = 90),
-                axis.title.x = element_text(size = 20),
-                plot.title = element_text(size = 20),
+theme_set(theme(axis.text.x = element_text(size = 32),
+                axis.text.y = element_text(size = 32),
+                axis.title.y = element_text(size = 35, angle = 90),
+                axis.title.x = element_text(size = 35),
+                plot.title = element_text(size = 35),
                 legend.key.size = unit(0.5, 'cm'),
                 legend.text=element_text(size = 8),
                 legend.title =element_text(size = 8),
@@ -21,7 +21,8 @@ theme_set(theme(axis.text.x = element_text(size = 18),
                 panel.grid.minor.y = element_blank(),
                 panel.background = element_rect(fill = 'white'),
                 axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "gray"),
-                axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "gray")))
+                axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "gray"),
+                strip.text = element_text(size = 32)))
 
 
 ###regressions#####
@@ -37,7 +38,7 @@ cleaned<-left_join(cleaned, w_values)%>%
   mutate(DOC_flux=(qL/1000)/width*DOC*86400,
          DIC_flux=(qL/1000)/width*DIC*86400)
 
-cols <- c('DOC','DIC','lateral_CO2','lateral_CH4','qL','WT_elevations','ID.Well')
+cols <- c('DOC_flux','DIC_flux','DOC','DIC','lateral_CO2','lateral_CH4','qL','WT_elevations','ID.Well')
 unique_sites <- unique(cleaned$ID.Well[!is.na(cleaned$ID.Well)])
 
 RC <- setNames(
@@ -52,168 +53,57 @@ RC <- setNames(
 
 DOC_relationships <- lapply(RC, function(df) {
   # Check for sufficient data for both regressions
-  valid_elev <- sum(complete.cases(df[, c("DOC", "WT_elevations")])) > 1
-  valid_qL <- sum(complete.cases(df[, c("DOC", "qL")])) > 1
-
-  # Initialize with NA
+  valid_elev <- sum(complete.cases(df[, c("DOC_flux", "WT_elevations")])) > 1
   DOC.elevation.p <- DOC.elevation.slope <- DOC.elevation.r2 <- NA
-  DOC.qL.p <- DOC.qL.slope <- DOC.qL.r2 <- NA
 
   if (valid_elev) {
-    DOC.elevation <- lm(DOC ~ WT_elevations, data = df)
+    DOC.elevation <- lm(DOC_flux ~ WT_elevations, data = df)
     DOC.elevation.cf <- summary(DOC.elevation)
     DOC.elevation.p <- DOC.elevation.cf$coefficients["WT_elevations", "Pr(>|t|)"]
     DOC.elevation.slope <- DOC.elevation.cf$coefficients["WT_elevations", "Estimate"]
     DOC.elevation.r2 <- DOC.elevation.cf$r.squared
   }
 
-  if (valid_qL) {
-    DOC.qL <- lm(DOC ~ qL, data = df)
-    DOC.qL.cf <- summary(DOC.qL)
-    DOC.qL.p <- DOC.qL.cf$coefficients["qL", "Pr(>|t|)"]
-    DOC.qL.slope <- DOC.qL.cf$coefficients["qL", "Estimate"]
-    DOC.qL.r2 <- DOC.qL.cf$r.squared
-  }
-
   # Return a one-row data frame
   data.frame(
     DOC.elevation.p = as.numeric(DOC.elevation.p),
     DOC.elevation.slope = as.numeric(DOC.elevation.slope),
-    DOC.elevation.r2 = as.numeric(DOC.elevation.r2),
-    DOC.qL.p = as.numeric(DOC.qL.p),
-    DOC.qL.slope = as.numeric(DOC.qL.slope),
-    DOC.qL.r2 = as.numeric(DOC.qL.r2)
+    DOC.elevation.r2 = as.numeric(DOC.elevation.r2)
   )
 })
 DOC_table <- bind_rows(DOC_relationships, .id = "ID")
 
 DIC_relationships <- lapply(RC, function(df) {
   # Check for sufficient data for both regressions
-  valid_elev <- sum(complete.cases(df[, c("DIC", "WT_elevations")])) > 1
-  valid_qL <- sum(complete.cases(df[, c("DIC", "qL")])) > 1
+  valid_elev <- sum(complete.cases(df[, c("DIC_flux", "WT_elevations")])) > 1
 
   # Initialize with NA
   DIC.elevation.p <- DIC.elevation.slope <- DIC.elevation.r2 <- NA
   DIC.qL.p <- DIC.qL.slope <- DIC.qL.r2 <- NA
 
   if (valid_elev) {
-    DIC.elevation <- lm(DIC ~ WT_elevations, data = df)
+    DIC.elevation <- lm(DIC_flux ~ WT_elevations, data = df)
     DIC.elevation.cf <- summary(DIC.elevation)
     DIC.elevation.p <- DIC.elevation.cf$coefficients["WT_elevations", "Pr(>|t|)"]
     DIC.elevation.slope <- DIC.elevation.cf$coefficients["WT_elevations", "Estimate"]
     DIC.elevation.r2 <- DIC.elevation.cf$r.squared
   }
 
-  if (valid_qL) {
-    DIC.qL <- lm(DIC ~ qL, data = df)
-    DIC.qL.cf <- summary(DIC.qL)
-    DIC.qL.p <- DIC.qL.cf$coefficients["qL", "Pr(>|t|)"]
-    DIC.qL.slope <- DIC.qL.cf$coefficients["qL", "Estimate"]
-    DIC.qL.r2 <- DIC.qL.cf$r.squared
-  }
-
   # Return a one-row data frame
   data.frame(
     DIC.elevation.p = as.numeric(DIC.elevation.p),
     DIC.elevation.slope = as.numeric(DIC.elevation.slope),
-    DIC.elevation.r2 = as.numeric(DIC.elevation.r2),
-    DIC.qL.p = as.numeric(DIC.qL.p),
-    DIC.qL.slope = as.numeric(DIC.qL.slope),
-    DIC.qL.r2 = as.numeric(DIC.qL.r2)
+    DIC.elevation.r2 = as.numeric(DIC.elevation.r2)
   )
 })
 DIC_table <- bind_rows(DIC_relationships, .id = "ID")
 
-lateral_CO2_relationships <- lapply(RC, function(df) {
-  # Check for sufficient data for both regressions
-  valid_elev <- sum(complete.cases(df[, c("lateral_CO2", "WT_elevations")])) > 1
-  valid_qL <- sum(complete.cases(df[, c("lateral_CO2", "qL")])) > 1
-
-  # Initialize with NA
-  lateral_CO2.elevation.p <- lateral_CO2.elevation.slope <- lateral_CO2.elevation.r2 <- NA
-  lateral_CO2.qL.p <- lateral_CO2.qL.slope <- lateral_CO2.qL.r2 <- NA
-
-  if (valid_elev) {
-    lateral_CO2.elevation <- lm(lateral_CO2 ~ WT_elevations, data = df)
-    lateral_CO2.elevation.cf <- summary(lateral_CO2.elevation)
-    lateral_CO2.elevation.p <- lateral_CO2.elevation.cf$coefficients["WT_elevations", "Pr(>|t|)"]
-    lateral_CO2.elevation.slope <- lateral_CO2.elevation.cf$coefficients["WT_elevations", "Estimate"]
-    lateral_CO2.elevation.r2 <- lateral_CO2.elevation.cf$r.squared
-  }
-
-  if (valid_qL) {
-    lateral_CO2.qL <- lm(lateral_CO2 ~ qL, data = df)
-    lateral_CO2.qL.cf <- summary(lateral_CO2.qL)
-    lateral_CO2.qL.p <- lateral_CO2.qL.cf$coefficients["qL", "Pr(>|t|)"]
-    lateral_CO2.qL.slope <- lateral_CO2.qL.cf$coefficients["qL", "Estimate"]
-    lateral_CO2.qL.r2 <- lateral_CO2.qL.cf$r.squared
-  }
-
-  # Return a one-row data frame
-  data.frame(
-    lateral_CO2.elevation.p = as.numeric(lateral_CO2.elevation.p),
-    lateral_CO2.elevation.slope = as.numeric(lateral_CO2.elevation.slope),
-    lateral_CO2.elevation.r2 = as.numeric(lateral_CO2.elevation.r2),
-    lateral_CO2.qL.p = as.numeric(lateral_CO2.qL.p),
-    lateral_CO2.qL.slope = as.numeric(lateral_CO2.qL.slope),
-    lateral_CO2.qL.r2 = as.numeric(lateral_CO2.qL.r2)
-  )
-})
-CO2_table <- bind_rows(lateral_CO2_relationships, .id = "ID")
-
-lateral_CH4_relationships <- lapply(RC, function(df) {
-  # Check for sufficient data for both regressions
-  valid_elev <- sum(complete.cases(df[, c("lateral_CH4", "WT_elevations")])) > 1
-  valid_qL <- sum(complete.cases(df[, c("lateral_CH4", "qL")])) > 1
-
-  # Initialize with NA
-  lateral_CH4.elevation.p <- lateral_CH4.elevation.slope <- lateral_CH4.elevation.r2 <- NA
-  lateral_CH4.qL.p <- lateral_CH4.qL.slope <- lateral_CH4.qL.r2 <- NA
-
-  if (valid_elev) {
-    lateral_CH4.elevation <- lm(lateral_CH4 ~ WT_elevations, data = df)
-    lateral_CH4.elevation.cf <- summary(lateral_CH4.elevation)
-    lateral_CH4.elevation.p <- lateral_CH4.elevation.cf$coefficients["WT_elevations", "Pr(>|t|)"]
-    lateral_CH4.elevation.slope <- lateral_CH4.elevation.cf$coefficients["WT_elevations", "Estimate"]
-    lateral_CH4.elevation.r2 <- lateral_CH4.elevation.cf$r.squared
-  }
-
-  if (valid_qL) {
-    lateral_CH4.qL <- lm(lateral_CH4 ~ qL, data = df)
-    lateral_CH4.qL.cf <- summary(lateral_CH4.qL)
-    lateral_CH4.qL.p <- lateral_CH4.qL.cf$coefficients["qL", "Pr(>|t|)"]
-    lateral_CH4.qL.slope <- lateral_CH4.qL.cf$coefficients["qL", "Estimate"]
-    lateral_CH4.qL.r2 <- lateral_CH4.qL.cf$r.squared
-  }
-
-  # Return a one-row data frame
-  data.frame(
-    lateral_CH4.elevation.p = as.numeric(lateral_CH4.elevation.p),
-    lateral_CH4.elevation.slope = as.numeric(lateral_CH4.elevation.slope),
-    lateral_CH4.elevation.r2 = as.numeric(lateral_CH4.elevation.r2),
-    lateral_CH4.qL.p = as.numeric(lateral_CH4.qL.p),
-    lateral_CH4.qL.slope = as.numeric(lateral_CH4.qL.slope),
-    lateral_CH4.qL.r2 = as.numeric(lateral_CH4.qL.r2)
-  )
-})
-CH4_table <- bind_rows(lateral_CH4_relationships, .id = "ID")
 
 relationships<-left_join(DOC_table, DIC_table)
-relationships<-left_join(relationships, CO2_table)
-relationships<-left_join(relationships, CH4_table)
 
 sig<-relationships%>%
   mutate(
-    lateral_CH4.qL.slope=if_else(lateral_CH4.qL.r2 < 0.4, NA, lateral_CH4.qL.slope),
-    lateral_CH4.elevation.slope=if_else(lateral_CH4.elevation.r2 < 0.4, NA, lateral_CH4.elevation.slope),
-
-    lateral_CO2.qL.slope=if_else(lateral_CO2.qL.r2 < 0.4, NA, lateral_CO2.qL.slope),
-    lateral_CO2.elevation.slope=if_else(lateral_CO2.elevation.r2 < 0.4, NA, lateral_CO2.elevation.slope),
-
-    DOC.qL.slope=if_else(DOC.qL.r2 > 0.4, NA, DOC.qL.slope),
     DOC.elevation.slope=if_else(DOC.elevation.r2 < 0.4, NA, DOC.elevation.slope),
-
-    DIC.qL.slope=if_else(DIC.qL.r2 > 0.4, NA, DIC.qL.slope),
     DIC.elevation.slope=if_else(DIC.elevation.r2 < 0.4, NA, DIC.elevation.slope)
   )
 
@@ -223,7 +113,7 @@ sig<-relationships%>%
 a<-ggplot(
   lateral_flux %>% filter(!is.na(Stream)),
   aes(x = Distance_m, y = DIC, fill = as.factor(DistanceID))) +
-  geom_boxplot(width=1) + geom_jitter(shape=1)+
+  geom_boxplot(width=1) + geom_jitter(shape=1, size=3)+
   ylab("DIC mg/L") + xlab("Distance (m)")+
   scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
   facet_wrap(~Stream, scales = 'free') +
@@ -233,7 +123,7 @@ a<-ggplot(
 b<-ggplot(
   lateral_flux %>% filter(!is.na(Stream)),
   aes(x = Distance_m, y = DOC, fill = as.factor(DistanceID))) +
-  geom_boxplot(width=1)+ geom_jitter(shape=1)+
+  geom_boxplot(width=1)+ geom_jitter(shape=1, size=3)+
   ylab("DOC mg/L") + xlab("Distance (m)")+
   scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
   facet_wrap(~Stream, scales = 'free') +
@@ -243,7 +133,7 @@ b<-ggplot(
 c<-ggplot(
   lateral_flux %>% filter(!is.na(Stream)),
   aes(x = Distance_m, y = CH4_sat, fill = as.factor(DistanceID))) +
-  geom_boxplot(width=1)+ geom_jitter(shape=1)+
+  geom_boxplot(width=1)+ geom_jitter(shape=1, size=3)+
   ylab("CH4 Saturation") + xlab("Distance (m)")+
   scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
   facet_wrap(~Stream, scales = 'free') +
@@ -253,7 +143,7 @@ c<-ggplot(
 d<-ggplot(
   lateral_flux %>% filter(!is.na(Stream)),
   aes(x = Distance_m, y = CO2_sat, fill = as.factor(DistanceID))) +
-  geom_boxplot(width=1)+ geom_jitter(shape=1)+
+  geom_boxplot(width=1)+ geom_jitter(shape=1, size=3)+
   ylab("CO2 Saturation") + xlab("Distance (m)")+
   scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
   facet_wrap(~Stream, scales = 'free') +
@@ -262,250 +152,160 @@ d<-ggplot(
 
 RC_elevation_conc<-plot_grid(a,b,c,d, ncol=1)
 
-ggsave(filename="04_Output/Figures/RC_elevation_conc.jpeg",
+ggsave(filename="RC_elevation_conc.jpeg",
        plot = RC_elevation_conc,
        width =35,
        height = 25,
        units = "in")
 
-ggplot(
+
+a<-ggplot(
   cleaned %>% filter(!is.na(Stream)),
-  aes(x = qL, y = DOC, color = as.factor(DistanceID))) +
-  geom_point()+
+  aes(x = WT_elevations, y = DOC_flux, color = as.factor(DistanceID))) +
+  geom_point(size=3)+
   geom_smooth(se=F, method=lm)+
-  ylab("DOC") + xlab("Distance (m)")+
+  ylab(expression('DOC'~('mg'~m^-2~s^-1))) + xlab("Water Table elevation (m)")+
   facet_wrap(~Stream, scales = 'free') +
   labs(fill = "Wells")+ #CO2
   theme(legend.position = 'none')
 
-##DOC/DIC (mg/L) ~ WT#####
-a<-ggplot(
-  cleaned %>% filter(Q>10, ID=='5'),
-  aes(x = WT_elevations, y = DOC, color = as.factor(DistanceID))) +
-  geom_point()+geom_smooth(se=F, method=lm)+
-  ylab("DOC (mg/L)") + xlab("Water Table Elevation (m)")+
-  facet_wrap(
-    ~ fct_reorder(ID.Well, DistanceID),  # Key fix: reorder wells by DistanceID
-    scales = 'free') +
-  labs(fill = "Wells")+ #CO2
-  theme(legend.position = 'none')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,..rr.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
-
-
 b<-ggplot(
-  cleaned %>% filter(Q>10, ID=='5'),
-  aes(x = WT_elevations, y = DIC, color = as.factor(DistanceID))) +
-  geom_point()+geom_smooth(se=F, method=lm)+
-  ylab("DIC (mg/L)") + xlab("Water Table Elevation (m)")+
-  facet_wrap(
-    ~ fct_reorder(ID.Well, DistanceID),  # Key fix: reorder wells by DistanceID
-    scales = 'free') +
+  cleaned %>% filter(!is.na(Stream)),
+  aes(x = WT_elevations, y = DIC_flux, color = as.factor(DistanceID))) +
+  geom_point(size=3)+
+  geom_smooth(se=F, method=lm)+
+  ylab(expression('DIC'~('mg'~m^-2~s^-1))) + xlab("Water Table elevation (m)")+
+  facet_wrap(~Stream, scales = 'free') +
   labs(fill = "Wells")+ #CO2
-  theme(legend.position = 'none')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,..rr.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
+  theme(legend.position = 'none')
+DIC.DOC_all_wells_by_site_WT<-plot_grid(a,b,ncol=1)
 
-(RC_5_DIC.DOC_mg.WT<-plot_grid(a,b, ncol=2))
+ggsave(filename="05_Figures/RC_WT~DIC&DOC_all_wells_by_site.jpeg",
+       plot = DIC.DOC_all_wells_by_site_WT,
+       width =35,
+       height = 20,
+       units = "in")
 
-ggsave(filename="04_Output/Figures/RC_5_DIC.DOC_mg.WT.jpeg",
-       plot = RC_5_DIC.DOC_mg.WT,
-       width =35,height = 15,units = "in")
+##DOC/DIC flux  ~ WT#####
+
+common_layers <- list(
+  scale_color_gradient(high='orange', low='blue'),
+    geom_point(size=3),
+    geom_smooth(se=F, method=lm),
+    ylab(expression('DOC'~('mg'~m^-2~s^-1))), xlab("Water Table elevation (m)"),
+    facet_wrap(~Stream, scales = 'free') ,
+    labs(color = "Distance (m)"))
 
 a<-ggplot(
-  cleaned %>% filter(Q>10, ID=='9'),
-  aes(x = WT_elevations, y = DOC, color = as.factor(DistanceID))) +
-  geom_point()+
-  geom_smooth(se=F, method=lm)+
-  ylab("DOC (mg/L)") + xlab("Water Table Elevation (m)")+
-  facet_wrap(
-    ~ fct_reorder(ID.Well, DistanceID),  # Key fix: reorder wells by DistanceID
-    scales = 'free') +
-  labs(fill = "Wells")+ #CO2
-  theme(legend.position = 'none')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,..rr.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
+  cleaned %>% filter(!is.na(Stream)),
+  aes(x = WT_elevations, y = DOC_flux, color = Distance_m, group=Well)) +
+  common_layers+theme(legend.position = 'none')
 
 b<-ggplot(
-  cleaned %>% filter(Q>10, ID=='9'),
-  aes(x = WT_elevations, y = DIC, color = as.factor(DistanceID))) +
-  geom_point()+
-  geom_smooth(se=F, method=lm)+
-  ylab("DIC (mg/L)") + xlab("Water Table Elevation (m)")+
-  facet_wrap(
-    ~ fct_reorder(ID.Well, DistanceID),  # Key fix: reorder wells by DistanceID
-    scales = 'free') +
-  labs(fill = "Wells")+ #CO2
-  theme(legend.position = 'none')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,..rr.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
-
-(RC_9_DIC.DOC_mg.WT<-plot_grid(a,b, ncol=2))
-
-ggsave(filename="04_Output/Figures/RC_9_DIC.DOC_mg.WT.jpeg",
-       plot = RC_9_DIC.DOC_mg.WT,
-       width =35,height = 12,units = "in")
+  cleaned %>% filter(!is.na(Stream)),
+  aes(x = WT_elevations, y = DIC_flux, color = Distance_m, group=Well)) +common_layers+
+  theme(legend.text = element_text(size = 20),
+        legend.title = element_text(size = 30),
+        legend.key.size = unit(1.5, "cm"))
 
 
-a<-ggplot(
-  cleaned %>% filter(Q>10, ID=='6'),
-  aes(x = qL, y = DOC, color = as.factor(DistanceID))) +
-  geom_point()+
-  geom_smooth(se=F, method=lm)+
-  ylab("DOC") + xlab("Distance (m)")+
-  facet_wrap(
-    ~ fct_reorder(ID.Well, DistanceID),  # Key fix: reorder wells by DistanceID
-    scales = 'free') +
-  labs(fill = "Wells")+ #CO2
-  theme(legend.position = 'none')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,..rr.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
+DIC.DOC_all_wells_by_site_WT<-plot_grid(a,b,ncol=1)
 
-b<-ggplot(
-  cleaned %>% filter(Q>10, ID=='6'),
-  aes(x = qL, y = DOC, color = as.factor(DistanceID))) +
-  geom_point()+
-  geom_smooth(se=F, method=lm)+
-  ylab("DOC") + xlab("Distance (m)")+
-  facet_wrap(
-    ~ fct_reorder(ID.Well, DistanceID),  # Key fix: reorder wells by DistanceID
-    scales = 'free') +
-  labs(fill = "Wells")+ #CO2
-  theme(legend.position = 'none')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,..rr.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
+ggsave(filename="05_Figures/RC_WT~DIC&DOC_all_wells_by_site.jpeg",
+       plot = DIC.DOC_all_wells_by_site_WT,
+       width =35,
+       height = 17,
+       units = "in")
 
-(RC_6_DIC.DOC_mg.WT<-plot_grid(a,b, ncol=2))
 
-ggsave(filename="04_Output/Figures/RC_6_DIC.DOC_mg.WT.jpeg",
-       plot = RC_6_DIC.DOC_mg.WT,
-       width =35,height = 12,units = "in")
+
+ytitle_DOC<-expression('DOC'~('mg'~m^-2~s^-1))
+ytitle_DIC<-expression('DIC'~('mg'~m^-2~s^-1))
+
+WT_xtitle<-expression('Water Table Elevation'~m)
+
+
+common_layers <- list(
+  geom_point(size = 5),
+  xlab(WT_xtitle),
+  facet_wrap( ~ fct_reorder(ID.Well, DistanceID),scales = 'free'),
+  labs(color = "Wells"),
+  stat_poly_line(se = FALSE, color = 'black'),
+  stat_poly_eq(
+    aes(label = paste(..p.value.label.., sep = "~~~~~")),
+    formula = y ~ x,
+    parse = TRUE, color = 'black',
+    label.x.npc = "left", label.y.npc = "top", size = 10))
+
+
+make_plot <- function(data, show_legend = FALSE) {
+  p <- ggplot(data, aes(x = WT_elevations, y = DOC, color = as.factor(Well))) +
+    common_layers +ylab(ytitle_DOC)
+
+  p2 <- ggplot(data, aes(x = WT_elevations, y = DIC, color = as.factor(Well))) +
+    common_layers +ylab(ytitle_DIC)
+
+  if (!show_legend) {
+    p <- p + theme(legend.position = "none")
+    p2 <- p2 + theme(legend.position = "none")
+  }
+
+  return(list(DOC_plot = p, DIC_plot = p2))
+}
+
+
+ids <- c('5', '6', '9')
+
+for (id in ids) {
+  plots <- make_plot(cleaned %>% filter(ID == id), show_legend = FALSE)
+  combined <- plot_grid(plots$DOC_plot, plots$DIC_plot, ncol = 2)
+
+  ggsave(filename = paste0("05_Figures/RC_", id, "_WT.byWell.jpeg"),
+         plot = combined, width = 40, height = 15, units = "in")
+}
 
 ##DOC/DIC (mg/L) ~ qL#####
-a<-ggplot(
-  cleaned %>% filter(Q>10, ID=='5'),
-  aes(x = qL, y = DOC, color = as.factor(DistanceID))) +
-  geom_point()+geom_smooth(se=F, method=lm)+
-  ylab("DOC (mg/L)") + xlab("qL")+
-  facet_wrap(
-    ~ fct_reorder(ID.Well, DistanceID),scales = 'free') +
-  labs(fill = "Wells")+ #CO2
-  theme(legend.position = 'none')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,..rr.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
+qL_xtitle<-expression('qL'~m^2~s^-1)
 
-b<-ggplot(
-  cleaned %>% filter(Q>10, ID=='5'),
-  aes(x = qL, y = DIC, color = as.factor(DistanceID))) +
-  geom_point()+
-  geom_smooth(se=F, method=lm)+
-  ylab("DIC (mg/L)") + xlab("qL")+
-  facet_wrap(
-    ~ fct_reorder(ID.Well, DistanceID),  # Key fix: reorder wells by DistanceID
-    scales = 'free') +
-  labs(fill = "Wells")+ #CO2
-  theme(legend.position = 'none')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,..rr.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
-
-(RC_5_DIC.DOC_mg.qL<-plot_grid(a,b, ncol=2))
-
-ggsave(filename="04_Output/Figures/RC_5_DIC.DOC_mg.qL.jpeg",
-       plot = RC_5_DIC.DOC_mg.qL,
-       width =35,height = 15,units = "in")
-
-a<-ggplot(
-  cleaned %>% filter(Q>10, ID=='9'),
-  aes(x = qL, y = DOC, color = as.factor(DistanceID))) +
-  geom_point()+
-  geom_smooth(se=F, method=lm)+
-  ylab("DOC (mg/L)") + xlab("qL")+
-  facet_wrap(
-    ~ fct_reorder(ID.Well, DistanceID),  # Key fix: reorder wells by DistanceID
-    scales = 'free') +
-  labs(fill = "Wells")+ #CO2
-  theme(legend.position = 'none')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,..rr.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
-
-b<-ggplot(
-  cleaned %>% filter(Q>10, ID=='9'),
-  aes(x = qL, y = DIC, color = as.factor(DistanceID))) +
-  geom_point()+
-  geom_smooth(se=F, method=lm)+
-  ylab("DIC (mg/L)") + xlab("qL")+
-  facet_wrap(
-    ~ fct_reorder(ID.Well, DistanceID),  # Key fix: reorder wells by DistanceID
-    scales = 'free') +
-  labs(fill = "Wells")+ #CO2
-  theme(legend.position = 'none')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,..rr.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
-
-(RC_9_DIC.DOC_mg.qL<-plot_grid(a,b, ncol=2))
-
-ggsave(filename="04_Output/Figures/RC_9_DIC.DOC_mg.qL.jpeg",
-       plot = RC_9_DIC.DOC_mg.qL,
-       width =35,height = 12,units = "in")
+common_layers <- list(
+  geom_point(size = 5),
+  xlab(qL_xtitle),
+  facet_wrap( ~ fct_reorder(ID.Well, DistanceID),scales = 'free'),
+  labs(color = "Wells"),
+  stat_poly_line(se = FALSE, color = 'black'),
+  stat_poly_eq(
+    aes(label = paste(..p.value.label.., sep = "~~~~~")),
+    formula = y ~ x,
+    parse = TRUE, color = 'black',
+    label.x.npc = "left", label.y.npc = "top", size = 10))
 
 
-a<-ggplot(
-  cleaned %>% filter(Q>10, ID=='6'),
-  aes(x = qL, y = DOC, color = as.factor(DistanceID))) +
-  geom_point()+
-  geom_smooth(se=F, method=lm)+
-  ylab("DOC") + xlab("qL")+
-  facet_wrap(
-    ~ fct_reorder(ID.Well, DistanceID),  # Key fix: reorder wells by DistanceID
-    scales = 'free') +
-  labs(fill = "Wells")+ #CO2
-  theme(legend.position = 'none')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,..rr.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
+make_plot <- function(data, show_legend = FALSE) {
+  p <- ggplot(data, aes(x = qL, y = DOC, color = as.factor(Well))) +
+    common_layers +ylab(ytitle_DOC)
 
-b<-ggplot(
-  cleaned %>% filter(Q>10, ID=='6'),
-  aes(x = qL, y = DOC, color = as.factor(DistanceID))) +
-  geom_point()+
-  geom_smooth(se=F, method=lm)+
-  ylab("DOC") + xlab("qL")+
-  facet_wrap(
-    ~ fct_reorder(ID.Well, DistanceID),  # Key fix: reorder wells by DistanceID
-    scales = 'free') +
-  labs(fill = "Wells")+ #CO2
-  theme(legend.position = 'none')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,..rr.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
+  p2 <- ggplot(data, aes(x = qL, y = DIC, color = as.factor(Well))) +
+    common_layers +ylab(ytitle_DIC)
 
-(RC_6_DIC.DOC_mg.qL<-plot_grid(a,b, ncol=2))
+  if (!show_legend) {
+    p <- p + theme(legend.position = "none")
+    p2 <- p2 + theme(legend.position = "none")
+  }
 
-ggsave(filename="04_Output/Figures/RC_6_DIC.DOC_mg.qL.jpeg",
-       plot = RC_6_DIC.DOC_mg.qL,
-       width =35,height = 12,units = "in")
+  return(list(DOC_plot = p, DIC_plot = p2))
+}
+
+
+ids <- c('5', '6', '9')
+
+for (id in ids) {
+  plots <- make_plot(cleaned %>% filter(ID == id), show_legend = FALSE)
+  combined <- plot_grid(plots$DOC_plot, plots$DIC_plot, ncol = 2)
+
+  ggsave(filename = paste0("05_Figures/RC_", id, "_qL.byWell.jpeg"),
+         plot = combined, width = 35, height = 15, units = "in")
+}
+
 ##CO2_sat/CH4Saturation ~ WT_elevations#####
 a<-ggplot(
   cleaned %>% filter(Q>10, ID=='5'),
@@ -539,7 +339,7 @@ b<-ggplot(
 
 (RC_5_CH4_sat.CO2_sat.WT_elevations<-plot_grid(a,b, ncol=2))
 
-ggsave(filename="04_Output/Figures/RC_5_CH4_sat.CO2_sat.WT_elevations.jpeg",
+ggsave(filename="05_Figures/RC_5_CH4_sat.CO2_sat.WT_elevations.jpeg",
        plot = RC_5_CH4_sat.CO2_sat.WT_elevations,
        width =35,height = 15,units = "in")
 
@@ -577,7 +377,7 @@ b<-ggplot(
 
 (RC_9_CH4_sat.CO2_sat.WT_elevations<-plot_grid(a,b, ncol=2))
 
-ggsave(filename="04_Output/Figures/RC_9_CH4_sat.CO2_sat.WT_elevations.jpeg",
+ggsave(filename="05_Figures/RC_9_CH4_sat.CO2_sat.WT_elevations.jpeg",
        plot = RC_9_CH4_sat.CO2_sat.WT_elevations,
        width =35,height = 12,units = "in")
 
@@ -616,7 +416,7 @@ b<-ggplot(
 
 (RC_6_CH4_sat.CO2_sat.WT_elevations<-plot_grid(a,b, ncol=2))
 
-ggsave(filename="04_Output/Figures/RC_6_CH4_sat.CO2_sat.WT_elevations.jpeg",
+ggsave(filename="05_Figures/RC_6_CH4_sat.CO2_sat.WT_elevations.jpeg",
        plot = RC_6_CH4_sat.CO2_sat.WT_elevations,
        width =35,height = 12,units = "in")
 
@@ -655,7 +455,7 @@ b<-ggplot(
 
 (RC_5_CH4_sat.CO2_sat.qL<-plot_grid(a,b, ncol=2))
 
-ggsave(filename="04_Output/Figures/RC_5_CH4_sat.CO2_sat.qL.jpeg",
+ggsave(filename="05_Figures/RC_5_CH4_sat.CO2_sat.qL.jpeg",
        plot = RC_5_CH4_sat.CO2_sat.qL,
        width =35,height = 15,units = "in")
 
@@ -693,7 +493,7 @@ b<-ggplot(
 
 (RC_9_CH4_sat.CO2_sat.qL<-plot_grid(a,b, ncol=2))
 
-ggsave(filename="04_Output/Figures/RC_9_CH4_sat.CO2_sat.qL.jpeg",
+ggsave(filename="05_Figures/RC_9_CH4_sat.CO2_sat.qL.jpeg",
        plot = RC_9_CH4_sat.CO2_sat.qL,
        width =35,height = 12,units = "in")
 
@@ -732,7 +532,7 @@ b<-ggplot(
 
 (RC_6_CH4_sat.CO2_sat.qL<-plot_grid(a,b, ncol=2))
 
-ggsave(filename="04_Output/Figures/RC_6_CH4_sat.CO2_sat.qL.jpeg",
+ggsave(filename="05_Figures/RC_6_CH4_sat.CO2_sat.qL.jpeg",
        plot = RC_6_CH4_sat.CO2_sat.qL,
        width =35,height = 12,units = "in")
 
@@ -759,484 +559,110 @@ relationship_dim<-left_join(regression_edited, rgression_dims, by=c("ID", "Well"
 
 
 #Regressions: qL##########
-a<-ggplot(
-  sig_dim %>%filter(ID=='5'), aes(x = Distance_m, y = DOC.qL.slope, color=Well)) +
-  geom_point(size=3)+
-  ggtitle(expression(r^2 > 0.4))+
-  ylab(expression('DOC'~('mg'~L^-1)/'qL'~(m^2~s)))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")+
-  theme(legend.position = "none")
 
-b<-ggplot(
-  relationship_dim%>%filter(ID=='5'), aes(x = Distance_m, y = DOC.qL.slope, color=Well)) +
-  geom_point(size=3)+
-  ggtitle("all")+
-  ylab(expression('DOC'~('mg'~L^-1)/'qL'~(m^2~s)))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
-RC_5_DOC.qL.regress<-plot_grid(a,b, ncol = 1)
+ytitle_DOC<-expression('DOC'~('mg'~m^-2~s^-1))
+ytitle_DIC<-expression('DIC'~('mg'~m^-2~s^-1))
 
-a<-ggplot(
-  sig_dim%>%filter(ID=='5'), aes(x = Distance_m, y = DIC.qL.slope, color=Well)) +
-  ggtitle(expression(r^2 > 0.4))+
-  geom_point(size=3)+
-  ylab(expression('DIC'~'mg'~L^-1/'qL'~m^2~s))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")+
-  theme(legend.position = "none")
-
-b<-ggplot(
-  relationship_dim%>%filter(ID=='5'), aes(x = Distance_m, y = DIC.qL.slope, color=Well)) +
-  ggtitle('all')+
-  geom_point(size=3)+
-  ylab(expression('DIC'~'mg'~L^-1/'qL'~m^2~s))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
-
-RC_5_DIC.qL.regress<-plot_grid(a,b, ncol = 1)
-
-RC_5_qL.regress<-plot_grid(RC_5_DOC.qL.regress,RC_5_DIC.qL.regress, ncol = 2)
+common_layers <- list(
+  geom_point(size = 5),
+  geom_hline(yintercept = 0, linetype = 'dashed'),
+  xlab(xtitle),
+  facet_wrap(~ID, scales = 'free'),
+  labs(color = "Wells"),
+  stat_poly_line(se = FALSE, color = 'black'),
+  stat_poly_eq(
+    aes(label = paste(..p.value.label.., sep = "~~~~~")),
+    formula = y ~ x,
+    parse = TRUE, color = 'black',
+    label.x.npc = "left", label.y.npc = "top", size = 10))
 
 
-ggsave(filename="04_Output/Figures/RC_5_qL.regress.jpeg",
-       plot = RC_5_qL.regress,
-       width =20,height = 15,units = "in")
+make_plot <- function(data, title, show_legend = FALSE) {
+  p <- ggplot(data, aes(x = Distance_m, y = DOC.qL.slope, color = Well)) +
+    common_layers +
+    ggtitle(title)+ylab(ytitle_DOC)
+
+  p2 <- ggplot(data, aes(x = Distance_m, y = DIC.qL.slope, color = Well)) +
+    common_layers +
+    ggtitle(title)+ylab(ytitle_DIC)
+
+  if (!show_legend) {
+    p <- p + theme(legend.position = "none")
+    p2 <- p2 + theme(legend.position = "none")
+  }
+
+  return(list(DOC_plot = p, DIC_plot = p2))
+}
 
 
-a<-ggplot(
-  sig_dim%>%filter(ID=='6'), aes(x = Distance_m, y = DOC.qL.slope, color=Well)) +
-  geom_point(size=3)+
-  ggtitle(expression(r^2 > 0.4))+
-  ylab(expression('DOC'~('mg'~L^-1)/'qL'~(m^2~s)))+xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")+
-  theme(legend.position = "none")
+ids <- c('5', '6', '9')
 
-b<-ggplot(
-  relationship_dim%>%filter(ID=='6'), aes(x = Distance_m, y = DOC.qL.slope, color=Well)) +
-  geom_point(size=3)+
-  ggtitle("all")+
-  ylab(expression('DOC'~('mg'~L^-1)/'qL'~(m^2~s)))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
-RC_6_DOC.qL.regress<-plot_grid(a,b, ncol = 1)
+for (id in ids) {
+  plots_sig <- make_plot(sig_dim %>% filter(ID == id), r2title, show_legend = FALSE)
+  plots_rel <- make_plot(relationship_dim %>% filter(ID == id), "all", show_legend = TRUE)
 
-a<-ggplot(
-  sig_dim%>%filter(ID=='6'), aes(x = Distance_m, y = DIC.qL.slope, color=Well)) +
-  ggtitle(expression(r^2 > 0.4))+
-  geom_point(size=3)+
-  ylab(expression('DIC'~'mg'~L^-1/'qL'~m^2~s))+xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")+
-  theme(legend.position = "none")
+  combined_DOC <- plot_grid(plots_sig$DOC_plot, plots_rel$DOC_plot, ncol = 1)
+  combined_DIC <- plot_grid(plots_sig$DIC_plot, plots_rel$DIC_plot, ncol = 1)
 
-b<-ggplot(
-  relationship_dim%>%filter(ID=='6'), aes(x = Distance_m, y = DIC.qL.slope, color=Well)) +
-  ggtitle('all')+
-  geom_point(size=3)+
-  ylab(expression('DIC'~'mg'~L^-1/'qL'~m^2~s))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
+  combined<-plot_grid(combined_DOC, combined_DIC, ncol=2)
 
-RC_6_DIC.qL.regress<-plot_grid(a,b, ncol = 1)
-
-RC_6_qL.regress<-plot_grid(RC_6_DOC.qL.regress,RC_6_DIC.qL.regress, ncol = 2)
-
-
-ggsave(filename="04_Output/Figures/RC_6_qL.regress.jpeg",
-       plot = RC_6_qL.regress,
-       width =20,height = 15,units = "in")
-
-
-a<-ggplot(
-  sig_dim%>%filter(ID=='9'), aes(x = Distance_m, y = DOC.qL.slope, color=Well)) +
-  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
-  geom_point(size=3)+
-  ggtitle(expression(r^2 > 0.4))+
-  ylab(expression('DOC'~('mg'~L^-1)/'qL'~(m^2~s)))+xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")+
-  theme(legend.position = "none")
-
-b<-ggplot(
-  relationship_dim%>%filter(ID=='9'), aes(x = Distance_m, y = DOC.qL.slope, color=Well)) +
-  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
-  geom_point(size=3)+
-  ggtitle("all")+
-  ylab(expression('DOC'~('mg'~L^-1)/'qL'~(m^2~s)))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
-RC_9_DOC.qL.regress<-plot_grid(a,b, ncol = 1)
-
-a<-ggplot(
-  sig_dim%>%filter(ID=='9'), aes(x = Distance_m, y = DIC.qL.slope, color=Well)) +
-  ggtitle(expression(r^2 > 0.4))+
-  geom_point(size=3)+
-  ylab(expression('DIC'~'mg'~L^-1/'qL'~m^2~s))+xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")+
-  theme(legend.position = "none")
-
-
-b<-ggplot(
-  relationship_dim%>%filter(ID=='9'), aes(x = Distance_m, y = DIC.qL.slope, color=Well)) +
-  ggtitle('all')+
-  geom_point(size=3)+
-  ylab(expression('DIC'~'mg'~L^-1/'qL'~m^2~s))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
-
-RC_9_DIC.qL.regress<-plot_grid(a,b, ncol = 1)
-
-RC_9_qL.regress<-plot_grid(RC_9_DOC.qL.regress,RC_9_DIC.qL.regress, ncol = 2)
-
-
-ggsave(filename="04_Output/Figures/RC_9_qL.regress.jpeg",
-       plot = RC_9_qL.regress,
-       width =20,height = 15,units = "in")
-
-
-
-ggplot(
-  sig_dim%>% filter(lateral_CO2.qL.slope >0), aes(x = Distance_m, y = lateral_CO2.qL.slope, color=Well)) +
-  ylab(expression(CO[2]~g/m^2/day /'qL'~(m^2~s)))+xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")+
-  geom_point(size=3)
-
-ggplot(
-  sig_dim%>% filter(lateral_CO2.qL.slope >0), aes(x = Distance_m, y = lateral_CH4.qL.slope, color=Well)) +
-  ylab(expression(CO[2]~g/m^2/day /'qL'~(m^2~s)))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")+
-  geom_point(size=3)
-
-
-
+  ggsave(filename = paste0("05_Figures/RC_", id, "_qL.regress.jpeg"),
+         plot = combined, width = 20, height = 15, units = "in")
+}
 
 
 #Regressions: elevation##########
-a<-ggplot(
-  sig_dim%>%filter(ID=='5'), aes(x = Distance_m, y = DOC.elevation.slope, color=Well)) +
-  geom_point(size=3)+
-  ggtitle(expression(r^2 > 0.4))+
-  ylab(expression('DOC'~('mg'~L^-1)/'Water Table (m)'))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")+
-  theme(legend.position = "none")
+ytitle_DOC<-expression('DOC flux/ Water Table Elevation'~mg~m^-3~s^-1)
+xtitle<-'Distance (m)'
+r2title<-expression(r^2 > 0.4)
+ytitle_DIC<-expression('DIC flux/ Water Table Elevation'~mg~m^-3~s^-1)
 
-b<-ggplot(
-  relationship_dim%>%filter(ID=='5'), aes(x = Distance_m, y = DOC.elevation.slope, color=Well)) +
-  geom_point(size=3)+
-  ggtitle("all")+
-  ylab(expression('DOC'~('mg'~L^-1)/'Water Table (m)'))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
-RC_5_DOC.elevation.regress<-plot_grid(a,b, ncol = 1)
+common_layers <- list(
+  geom_point(size = 5),
+  geom_hline(yintercept = 0, linetype = 'dashed'),
+  xlab(xtitle),
+  facet_wrap(~ID, scales = 'free'),
+  labs(color = "Wells"),
+  theme(axis.title.y = element_text(size = 20, angle = 90)),
+  stat_poly_line(se = FALSE, color = 'black'),
+  stat_poly_eq(
+    aes(label = paste(..p.value.label.., sep = "~~~~~")),
+    formula = y ~ x,
+    parse = TRUE, color = 'black',
+    label.x.npc = "left", label.y.npc = "top", size = 10))
 
 
-a<-ggplot(
-  sig_dim%>%filter(ID=='5'), aes(x = Distance_m, y = DIC.elevation.slope, color=Well)) +
-  ggtitle(expression(r^2 > 0.4))+
-  geom_point(size=3)+
-  ylab(expression('DIC'~'mg'~L^-1/'Water Table (m)'))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")+
-  theme(legend.position = 'none')
+make_plot <- function(data, title, show_legend = FALSE) {
+  p <- ggplot(data, aes(x = Distance_m, y = DOC.elevation.slope)) +
+    common_layers +
+    ggtitle(title)+ylab(ytitle_DOC)
+
+  p2 <- ggplot(data, aes(x = Distance_m, y = DIC.elevation.slope)) +
+    common_layers +
+    ggtitle(title)+ylab(ytitle_DIC)
+
+  if (!show_legend) {
+    p <- p + theme(legend.position = "none")
+    p2 <- p2 + theme(legend.position = "none")
+  }
+
+  return(list(DOC_plot = p, DIC_plot = p2))
+}
 
 
-b<-ggplot(
-  relationship_dim%>%filter(ID=='5'), aes(x = Distance_m, y = DIC.elevation.slope, color=Well)) +
-  ggtitle('all')+
-  geom_point(size=3)+
-  ylab(expression('DIC'~'mg'~L^-1/'Water Table (m)'))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
+ids <- c('5', '6', '9')
 
-RC_5_DIC.elevation.regress<-plot_grid(a,b, ncol = 1)
+for (id in ids) {
+  plots_sig <- make_plot(sig_dim %>% filter(ID == id, Well != 'Stream'), r2title, show_legend = FALSE)
+  plots_rel <- make_plot(relationship_dim %>% filter(ID == id, Well != 'Stream'), "all", show_legend = TRUE)
 
-RC_5_elevation.regress<-plot_grid(RC_5_DOC.elevation.regress,
-                                  RC_5_DIC.elevation.regress, ncol = 2)
+  combined_DOC <- plot_grid(plots_sig$DOC_plot, plots_rel$DOC_plot, ncol = 1)
+  combined_DIC <- plot_grid(plots_sig$DIC_plot, plots_rel$DIC_plot, ncol = 1)
 
-ggsave(filename="04_Output/Figures/RC_5.elevation.regress.jpeg",
-       plot = RC_5_elevation.regress,
-       width =20,height = 15,units = "in")
+  combined<-plot_grid(combined_DOC, combined_DIC, ncol=2)
+  assign(paste0('RC_', id), combined)
+}
 
-
-a<-ggplot(
-  sig_dim%>%filter(ID=='6'), aes(x = Distance_m, y = DOC.elevation.slope, color=Well)) +
-  geom_point(size=3)+
-  ggtitle(expression(r^2 > 0.4))+
-  ylab(expression('DOC'~('mg'~L^-1)/'Water Table (m)'))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")+
-  theme(legend.position = "none")
-
-b<-ggplot(
-  relationship_dim%>%filter(ID=='6'), aes(x = Distance_m, y = DOC.elevation.slope, color=Well)) +
-  geom_point(size=3)+
-  ggtitle("all")+
-  ylab(expression('DOC'~('mg'~L^-1)/'Water Table (m)'))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
-RC_6_DOC.elevation.regress<-plot_grid(a,b, ncol = 1)
-
-
-a<-ggplot(
-  sig_dim%>%filter(ID=='6'), aes(x = Distance_m, y = DIC.elevation.slope, color=Well)) +
-  ggtitle(expression(r^2 > 0.4))+
-  geom_point(size=3)+
-  ylab(expression('DIC'~'mg'~L^-1/'Water Table (m)'))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")+
-  theme(legend.position = 'none')
-
-b<-ggplot(
-  relationship_dim%>%filter(ID=='6'), aes(x = Distance_m, y = DIC.elevation.slope, color=Well)) +
-  ggtitle('all')+
-  geom_point(size=3)+
-  ylab(expression('DIC'~'mg'~L^-1/'Water Table (m)'))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
-
-RC_6_DIC.elevation.regress<-plot_grid(a,b, ncol = 1)
-
-RC_6_elevation.regress<-plot_grid(RC_6_DOC.elevation.regress,
-                                  RC_6_DIC.elevation.regress, ncol = 2)
-
-ggsave(filename="04_Output/Figures/RC_6.elevation.regress.jpeg",
-       plot = RC_6_elevation.regress,
-       width =20,height = 15,units = "in")
-
-
-a<-ggplot(
-  sig_dim%>%filter(ID=='9'), aes(x = Distance_m, y = DOC.elevation.slope, color=Well)) +
-  geom_point(size=3)+
-  ggtitle(expression(r^2 > 0.4))+
-  ylab(expression('DOC'~('mg'~L^-1)/'Water Table (m)'))+xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")+
-  theme(legend.position = "none")
-
-b<-ggplot(
-  relationship_dim%>%filter(ID=='9'), aes(x = Distance_m, y = DOC.elevation.slope, color=Well)) +
-  geom_point(size=3)+
-  ggtitle("all")+
-  ylab(expression('DOC'~('mg'~L^-1)/'Water Table (m)'))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
-RC_9_DOC.elevation.regress<-plot_grid(a,b, ncol = 1)
-
-
-a<-ggplot(
-  sig_dim%>%filter(ID=='9'), aes(x = Distance_m, y = DIC.elevation.slope, color=Well)) +
-  ggtitle(expression(r^2 > 0.4))+
-  geom_point(size=3)+
-  ylab(expression('DIC'~'mg'~L^-1/'Water Table (m)'))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")+
-  theme(legend.position = 'none')
-
-b<-ggplot(
-  relationship_dim%>%filter(ID=='9'), aes(x = Distance_m, y = DIC.elevation.slope, color=Well)) +
-  ggtitle('all')+
-  geom_point(size=3)+
-  ylab(expression('DIC'~'mg'~L^-1/'Water Table (m)'))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")
-
-RC_9_DIC.elevation.regress<-plot_grid(a,b, ncol = 1)
-
-RC_9_elevation.regress<-plot_grid(RC_9_DOC.elevation.regress,
-                                  RC_9_DIC.elevation.regress, ncol = 2)
-
-ggsave(filename="04_Output/Figures/RC_9.elevation.regress.jpeg",
-       plot = RC_9_elevation.regress,
-       width =20,height = 15,units = "in")
-
-
-
-
-
-
-ggplot(
-  sig_dim%>% filter(lateral_CO2.elevation.slope >0), aes(x = Distance_m, y = lateral_CO2.elevation.slope, color=Well)) +
-  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
-  ylab(expression(CO[2]~g/m^2/day /'Water Table (m)'))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")+
-  geom_point(size=3)
-
-ggplot(
-  sig_dim%>% filter(lateral_CO2.elevation.slope >0), aes(x = Distance_m, y = lateral_CH4.elevation.slope, color=Well)) +
-  scale_fill_brewer(palette = "Set0") +  # Use a discrete color palette
-  ylab(expression(CO[2]~g/m^2/day /'Water Table (m)'))+
-  xlab('Distance (m)')+
-  facet_wrap(~ID, scales = 'free') +
-  labs(color = "Wells")+
-  stat_poly_line(se = FALSE, color='black')+
-  stat_poly_eq(aes(label = paste(..eq.label.., ..p.value.label..,sep = "~~~~~")),
-               formula = y ~ x,  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'black',
-               label.x.npc = "left", label.y.npc = "top")+
-  geom_point(size=3)
-
-
-
-
+combined<-plot_grid(print(RC_5), print(RC_6), print(RC_9), ncol=3)
+ggsave(filename = paste0("05_Figures/RC__WT.regress.jpeg"),
+       plot = combined, width = 37, height = 12, units = "in")
