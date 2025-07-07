@@ -36,8 +36,8 @@ depth<-depth %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>% mutate(dep
 depth <- depth[!duplicated(depth[c( 'Date','ID')]),]
 
 Q<-Q %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>%
-  mutate(Q=mean(Q, na.rm = T),Qbase=mean(Qbase, na.rm = T),Qsurficial=mean(Qsurficial, na.rm = T)) %>%
-  select(Date, ID, Q,Qbase,Qsurficial)
+  mutate(Q=mean(Q, na.rm = T)) %>%
+  select(Date, ID, Q)
 Q <- Q[!duplicated(Q[c('Date','ID')]),]
 
 dim<-full_join(Q, depth, by=c('ID', 'Date'))%>% filter(!ID=='14', Date> '2023-10-01')%>%
@@ -63,16 +63,6 @@ totC<-combined %>%distinct(Date, ID, .keep_all = T)%>%
 totC<-totC %>% mutate(TotalC=DIC+DOC+POC)%>%
   mutate(DIC_perc=DIC/TotalC, DOC_perc=DOC/TotalC, POC_perc=POC/TotalC)
 
-ggplot(totC%>%filter(ID != is.na(ID)), aes(x=Q))+
-  geom_point(aes(y=DOC, color="DOC"),size=3, shape=1)+
-  geom_point(aes(y=DIC, color= "DIC"), size=3)+
-  geom_point(aes(y=POC, color="POC"), size=3)+
-  scale_colour_manual(values = c("black", "#0000FF", "darkorange"))+
-  scale_x_log10()+scale_y_log10()+
-  xlab(expression('Discharge'~ft^3/s))+ylab('mg/L')+
-  facet_wrap(~ ID, ncol=3, scales='free')+theme(legend.position = 'bottom')+ggtitle("Stream Carbon Species")
-
-
 #include gas samples#######
 
 Picarro_gas <- read_csv("04_Output/Picarro_gas.csv")
@@ -88,66 +78,3 @@ all_sampled_C<-full_join(totC_gas,eem_stream)%>%select(-depth, -Q)
 all_sampled_C<-left_join(all_sampled_C, dim)
 
 write_csv(all_sampled_C, "04_Output/stream_sampledC.csv")
-
-#box plots#####
-all_sampled_C <- read_csv("04_Output/stream_sampledC.csv")
-POC<-all_sampled_C %>% select(Date,ID,Q,depth, POC)%>% rename(Conc=POC)%>%mutate(Species= 'POC')
-DIC<-all_sampled_C %>% select(Date,ID,Q,depth, DIC)%>% rename(Conc=DIC)%>%mutate(Species= 'DIC')
-DOC<-all_sampled_C %>% select(Date,ID,Q,depth, DOC)%>% rename(Conc=DOC)%>%mutate(Species= 'DOC')
-
-long_C<- rbind(POC, DIC, DOC)
-
-order <- c("5", "5a", "15", "9", '13', '6', '6a', '3', '7')
-
-library(ggtern)
-ggtern(data=all_sampled_C,aes(DOC,DIC*10,POC*10, colour = ID))+
-  #scale_color_gradient(low = "blue", high = "red") +
-  geom_point(size=2) +labs(x="DOC mg/L",y="DIC deci-mg/L",z="POC deci-mg/L")+
-  theme_minimal_grid()+
-  theme(legend.position = "bottom",
-        axis.title = element_text(size =9))
-
-ggtern(data=all_sampled_C,aes(DOC,DIC*10,POC*10, colour = Q_norm))+
-  scale_color_gradient(low = "blue", high = "red") +
-  geom_point(size=2) +labs(x="DOC mg/L",y="DIC deci-mg/L",z="POC deci-mg/L")+
-  theme_minimal_grid()+
-  theme(legend.position = "bottom",
-        axis.title = element_text(size =9))
-ggplotly(ggtern(data=all_sampled_C,aes(DOC,DIC*10,POC*10, colour = Q_norm))+
-           #scale_color_gradient(low = "blue", high = "red") +
-           geom_point(size=2) +labs(x="DOC mg/L",y="DIC deci-mg/L",z="POC deci-mg/L")+
-           theme_minimal_grid()+
-           theme(legend.position = "bottom",
-                 axis.title = element_text(size =9)))
-
-
-ggtern(data=totC,aes(DOC,DIC*10,POC*10, colour = Q_norm))+
-  scale_color_gradient(low = "blue", high = "red") +
-  geom_point(size=2) +labs(x="DOC",y="DIC",z="POC")+
-  theme_minimal_grid()+theme(legend.position = "bottom")+
-  facet_wrap(~ID, scale="free")
-
-test<-totC%>%filter(ID=='9')
-
-
-all_sampled_C$ID <- factor(all_sampled_C$ID , levels=c('15','5','5a','9','6','13','7','6a'))
-
-ggplot(all_sampled_C%>%filter(ID != is.na(ID), ID != '6a'), aes(x=Q))+
-  geom_point(aes(y=DOC, color="DOC"),size=3)+
-  #geom_point(aes(y=DIC, color= "DIC"), size=3)+
-  geom_point(aes(y=POC, color="POC"), size=3)+
-  scale_colour_manual(values = c("black", "#0000FF", "darkorange"))+
-  scale_x_log10()+scale_y_log10()+
-  xlab(expression('Discharge'~ft^3/s))+ylab('mg/L')+
-  stat_poly_eq(
-    aes(x = log10(Q), y = log10(DOC), label = paste(..p.value.label.., sep = "~~~"), color = "DOC"),
-    formula = y ~ x, parse = TRUE, size = 4, label.x.npc = "left", label.y.npc = 0.017
-  ) +
-  stat_poly_eq(
-    aes(x = log10(Q), y = log10(POC), label = paste(..p.value.label.., sep = "~~~"), color = "POC"),
-    formula = y ~ x, parse = TRUE, size = 4, label.x.npc = "left", label.y.npc = 0.1
-  ) +
-
-  facet_wrap(~ ID, ncol=5, scales='free')+
-  theme(legend.position = 'bottom')+ggtitle("Stream Carbon Species")
-

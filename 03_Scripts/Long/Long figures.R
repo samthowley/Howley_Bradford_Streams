@@ -63,13 +63,56 @@ for (i in seq_along(vars_flux)) {
 ggsave(filename = paste0("05_Figures/Long.H1.jpeg"),
        plot = plot_grid(Long_DOC), width = 31, height = 20, units = "in")
 
-ggsave(filename = paste0("test.jpeg"),
+ggsave(filename = paste0("05_Figures/Long.H2.jpeg"),
        plot = plot_grid(Long_DIC, Long_CH4_umol_L, Long_CO2_umol_L, ncol=3), width = 45, height = 15, units = "in")
 
 #boxplots#####
-names(relationships)
-ggplot(
-  relationships,
-  aes(x = Distance_m, y = DIC, fill = ID)) +
-  geom_boxplot(width=1) + geom_jitter(shape=1, size=3)+
-  theme(legend.position = 'bottom')
+
+common_layers <- list(
+  geom_boxplot(),
+    geom_jitter(shape=1, stroke=1,size=3),
+  scale_y_continuous(limits = c(-1.5, 1.5)),
+    theme(
+      legend.title = element_text(size = 24),
+      legend.text = element_text(size = 20),
+      legend.key.size = unit(1.5, 'cm'),
+      legend.position = 'bottom'))
+
+vars_flux <- c('DOC.C.Q.slope','DIC.C.Q.slope','CO2.C.Q.slope', 'CH4.C.Q.slope')
+var_flux_labels <- c('DOC Slope (C/Q)', 'DIC Slope (C/Q)', 'CO2 Slope (C/Q)', 'CH4 Slope (C/Q)')
+
+vars_flux <- c('DOC.C.Q.slope','DIC.C.Q.slope','CO2.C.Q.slope', 'CH4.C.Q.slope')
+var_flux_labels <- c('DOC Slope (C/Q)', 'DIC Slope (C/Q)', 'CO2 Slope (C/Q)', 'CH4 Slope (C/Q)')
+
+relationships_wetlands<-left_join(relationships, wetland)
+
+make_plot <- function(data1, yvar1, ylab1, show_legend = FALSE) {
+
+  p1 <- ggplot(data1, aes_string(x = "wetland_perc", y = yvar1, fill = "ID")) +
+    common_layers+
+    xlab("Wetland Cover (%)")+ ylab(ylab1)+theme(legend.position = "none")
+
+  p2 <- ggplot(data1, aes_string(x = "nearest_wetland", y = yvar1, fill = "ID")) +
+    common_layers+
+    xlab("Nearest Wetland (m)")+ ylab(ylab1)+
+
+
+  if (!show_legend) p1 <- p1 + theme(legend.position = "none")
+  if (!show_legend) p2 <- p2 + theme(legend.position = "none")
+
+  return(list(plot1 = p1, plot2 = p2))
+}
+
+for (i in seq_along(vars_flux)) {
+  plots <- make_plot(
+    relationships_wetlands,
+    vars_flux[i],
+    var_flux_labels[i],
+    show_legend = TRUE)
+  combined <- plot_grid(plots$plot1, plots$plot2, ncol = 1)
+  assign(paste0("Long_wetland_influence_", vars_conc[i]), combined)}
+
+ggsave(filename = "05_Figures/Long.H3.jpeg",
+       plot = plot_grid(Long_wetland_influence_DOC, Long_wetland_influence_DIC,
+                        Long_wetland_influence_CH4_umol_L, Long_wetland_influence_CO2_umol_L, ncol=4),
+       width = 35, height = 15, units = "in")
