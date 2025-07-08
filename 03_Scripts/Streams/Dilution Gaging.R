@@ -150,18 +150,23 @@ ggplot(DG_rC, aes(x=depth, y=u_mean)) +
 
 write_csv(V, "02_Clean_data/velocity.csv")
 
-ggplot(discharge, aes(Date)) +
-  geom_line(aes(y=Q, color='runoff'))+
-  facet_wrap(~ ID, ncol=5, scales = 'free')
-
-ggplot(V%>% filter(!ID=='14'), aes(Date)) +
-  geom_line(aes(y=u))+
-  ylab('Velocity m/s')+
-  facet_wrap(~ ID, ncol=5, scales = 'free')
-
-
-
 write_csv(discharge, "02_Clean_data/discharge.csv")
+
+#parameters for baseflow calculation##########
+discharge<-read.csv('02_Clean_data/discharge.csv')
+
+Q<-discharge %>% group_by(ID)%>%mutate(bf_parameter=lag(Q))
+
+ggplot(Q, aes(x=Q, y=bf_parameter)) +
+  geom_point()+geom_smooth(method='lm')+
+  facet_wrap(~ID)
+
+rC <- lmList(bf_parameter ~ Q | ID, data=Q)
+(cf <- coef(rC))
+
+mean(cf$Q, na.rm=T)
+
+write_csv(cf, "01_Raw_data/bf_parameter.csv")
 
 #Figures##########
 discharge<-read.csv('02_Clean_data/discharge.csv')

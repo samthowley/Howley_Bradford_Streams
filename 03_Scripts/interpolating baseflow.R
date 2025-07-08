@@ -17,7 +17,7 @@ streams <- Filter(function(x) nrow(x) > 0, streams)
 bf <- map2_dfr(
   names(streams), streams,
   function(id, df) {
-    baseflow_result <- BaseflowSeparation(df$Q, filter_parameter = 0.965, passes = 3)
+    baseflow_result <- BaseflowSeparation(df$Q, filter_parameter = 0.9988431, passes = 3)
 
     tibble(
       ID = id,
@@ -29,11 +29,6 @@ bf <- map2_dfr(
   })
 
 
-range(bf$Date, na.rm=T)
-ggplot(bf, aes(Date)) +
-  geom_line(aes(y=Q), color = 'black')+
-  geom_line(aes(y=baseflow), color = 'red')+
-  facet_wrap(~ID, scales='free')
 
 write_csv(bf, "04_Output/baseflow.csv")
 

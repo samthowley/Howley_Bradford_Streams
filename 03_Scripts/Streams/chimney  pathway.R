@@ -12,6 +12,7 @@ library(broom)
 library(weathermetrics)
 library(ggpmisc)
 library(streamMetabolizer)
+library(openxlsx)
 
 theme_set(theme(axis.text.x = element_text(size = 17),
                 axis.text.y = element_text(size = 17),
@@ -38,38 +39,42 @@ CO2mol <- function(CO2) {
 
 #Edit dims######
 
-depth<-read_csv('02_Clean_data/depth.csv')
-Q<-read_csv('02_Clean_data/discharge.csv')
-length<-read_csv('02_Clean_data/stream area.csv')
+depth<-read_csv('02_Clean_data/depth.csv')%>%
+  mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>%
+  mutate(depth=mean(depth, na.rm = T)) %>%
+  select(Date, ID, depth)%>%distinct(Date, ID, .keep_all = T)
 
-depth<-depth %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>% mutate(depth=mean(depth, na.rm = T)) %>%
-  select(Date, ID, depth, Temp_PT)
-depth <- depth[!duplicated(depth[c( 'Date','ID')]),]
-
-Q<-Q %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>%
-  mutate(Q=mean(Q, na.rm = T),Qbase=mean(Qbase, na.rm = T),Qsurficial=mean(Qsurficial, na.rm = T)) %>%
-  select(Date, ID, Q,Qbase,Qsurficial)%>%
+Q<-read_csv('02_Clean_data/discharge.csv')%>%
+  mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>%
+  mutate(Q=mean(Q, na.rm = T)) %>%
+  select(Date, ID, Q)%>%
   distinct(Date, ID, .keep_all = T)
 
-flow_regime<-left_join(Q, depth, by=c('ID', 'Date'))%>%
+velocity <- read_csv("02_Clean_data/velocity.csv")%>%select(Date, ID, u)%>%
   mutate(Date=as.Date(Date))%>%
   group_by(ID, Date)%>%
-  mutate(Q=mean(Q, na.rm=T), depth=mean(depth, na.rm=T))%>%
-  distinct(ID, Date, .keep_all = T)%>%
-  filter(Q>0.5)
+  mutate(u=mean(u, na.rm=T))%>%
+  distinct(Date, ID, .keep_all = T)
 
+baseflow <- read_csv("04_Output/baseflow.csv") %>%
+  mutate(Date = as.Date(Date)) %>%
+  group_by(Date, ID) %>%
+  mutate(baseflow = mean(baseflow, na.rm = TRUE)) %>%
+  distinct(Date, ID, .keep_all = TRUE) %>% ungroup()
 
+bf<-baseflow%>%
+  group_by(ID) %>%
+  arrange(Date, .by_group = TRUE) %>%
+  mutate(
+    bf = rollmean(baseflow, k = 35, fill = NA, align = "center", na.rm=T)) %>%
+  ungroup()%>%
+  select(Date, ID, bf)
+
+discharge<-left_join(Q, bf)
+u_Q<-left_join(discharge, velocity)
+flow_regime<-full_join(depth, u_Q, by=c('Date', 'ID'))
 
 #GW Correction#####
-stream_dims <- read_excel("01_Raw_data/stream dims.xlsx")%>%
-  mutate(UCA=if_else(is.na(UCA), mean(UCA, na.rm=T), UCA))%>%
-  select(-width_ft)
-
-baseflow <- read_csv("04_Output/baseflow.csv")%>%
-  mutate(bf_m3.s=baseflow/1000)%>%
-  select(-Q, -quickflow)
-
-qL<-left_join(baseflow, stream_dims)%>%mutate(qL=baseflow*UCA)
 
 DO <- read_csv("02_Clean_data/DO_cleaned.csv")%>%arrange(ID, Date)%>%
   mutate(light=calc_light(Date,  29.8, -82.6))%>%
@@ -88,10 +93,31 @@ metabolism<-read_csv('04_Output/master_metabolism.csv')%>%
   mutate(NEP=(GPP+ER))
 
 met_DO<-left_join(metabolism, DO, by=c('Date','ID'))
-met_DO<-left_join(met_DO, qL)%>%
+met_DO<-left_join(met_DO, flow_regime)%>%
   filter(ID %in% c('5','6','9'))
 
+units<-met_DO %>%
+  mutate(
+    Q_m3.day=Q*86.4,
+    baseflow_m3.day=bf*86.4,
+    u_m.day=u*86400,
+    reach_m=0.7*u_m.day/K600_daily_mean,
+    width_m=Q_m3.day/(u_m.day*depth),
+    area_m2=reach_m*width_m)
+
+ggplot(units %>% filter(ID=='5'), aes(Date))+
+  geom_line(aes(y=Q_m3.day))+
+  geom_line(aes(y=baseflow_m3.day),color='red')+
+  facet_wrap(~ ID, scales='free')
+
+
+split<-units %>% split(units$ID)
+write.xlsx(split, file = 'test.xlsx')
+
+
 DO_GW<-0.5
+
+
 
 corrected<-met_DO%>%
   mutate(NEP_GW_correction=
