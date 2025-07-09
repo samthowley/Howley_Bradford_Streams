@@ -23,7 +23,7 @@ file.names<-file.names[c(5,4,6,11)]
 data <- lapply(file.names,function(x) {read_csv(x, col_types = cols(ID = col_character()))})
 merged_data <- reduce(data, left_join, by = c("ID", 'Date'))
 
-ggplot(merged_data, aes(Date, CO2)) + geom_point() + facet_wrap(~ ID, ncol=4)
+ggplot(merged_data%>%filter(ID=='5', Date>'2025-06-01'), aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=4)
 
 stream<-merged_data%>%rename(Temp=`Temp_PT.x`, CO2_enviro=CO2)%>%
   select(Date, ID,depth, Q, CO2_enviro,Temp)%>% fill(CO2_enviro, .direction="up")
@@ -97,20 +97,9 @@ gasdome_cleaned<-gasdome %>%
   mutate(
     k600_dh=abs(k600_dh),
     KCO2_1d=abs(KCO2_dh),
-    logQ=log(Q)) %>%
-  mutate(log_K600=log(k600_dh))%>%
-  mutate(
-    sd=sd(k600_dh, na.rm = T),
-    mean=mean(k600_dh, na.rm = T))
-
-
-ggplot(gasdome_cleaned, aes(x = Q, y = k600_dh)) +
-  geom_point(size = 2, color = "black") +
-  geom_smooth(method = "lm", se = FALSE, color = "blue") +
-  facet_wrap(~ ID, ncol = 5, scales = 'free') +
-  scale_x_log10()+scale_y_log10()+
-  theme_minimal() +
-  theme(legend.position = "bottom")
+    logQ=log(Q),
+    log_K600=log10(k600_dh),
+    K600_1.d=k600_dh/depth)
 
 write_csv(gasdome_cleaned, "01_Raw_data/GD/GasDome_compiled.csv")
 
