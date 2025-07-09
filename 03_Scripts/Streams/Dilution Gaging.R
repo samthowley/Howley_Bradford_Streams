@@ -126,17 +126,6 @@ discharge <- depth %>% filter(!ID %in% c('6.3','9.2'))%>%
     ID== '7'~ (10^cf[8,1])*depth^(cf[8,2]),
     ID== '9'~ (10^cf[9,1])*depth^(cf[9,2])))%>% select(Date, ID, Q)
 
-discharge <- discharge %>% group_by(ID) %>%
-  mutate(Qbase = gr_baseflow(Q, method = 'jakeman',a = 0.925, passes = 3))
-
-discharge<-discharge %>% group_by(ID) %>%
-  mutate(Q=if_else(Q<0.1, NA, Q))%>%
-  mutate(Qsurficial=Q-Qbase)%>%
-  mutate(Qbase = if_else(Qbase>10000, NA, Qbase),
-         Qsurficial= if_else(Qsurficial>10000, NA, Qsurficial),
-         Qbase = if_else(Qbase<0, NA, Qbase),
-         Qsurficial= if_else(Qsurficial<0, NA, Qsurficial))
-
 
 u_rC <- lmList(log10(depth) ~ log10(u_mean) | ID, data=DG_rC)
 (u_cf <- coef(u_rC))
@@ -161,30 +150,35 @@ ggplot(DG_rC, aes(x=depth, y=u_mean)) +
 
 write_csv(V, "02_Clean_data/velocity.csv")
 
-
-
-ggplot(discharge, aes(Date)) +
-  geom_line(aes(y=depth, color='runoff'))+
-  facet_wrap(~ ID, ncol=5, scales = 'free')
-
-ggplot(V%>% filter(!ID=='14'), aes(Date)) +
-  geom_line(aes(y=u))+
-  ylab('Velocity m/s')+
-  facet_wrap(~ ID, ncol=5, scales = 'free')
-
 write_csv(discharge, "02_Clean_data/discharge.csv")
+
+#parameters for baseflow calculation##########
+discharge<-read.csv('02_Clean_data/discharge.csv')
+
+Q<-discharge %>% group_by(ID)%>%mutate(bf_parameter=lag(Q))
+
+ggplot(Q, aes(x=Q, y=bf_parameter)) +
+  geom_point()+geom_smooth(method='lm')+
+  facet_wrap(~ID)
+
+rC <- lmList(bf_parameter ~ Q | ID, data=Q)
+(cf <- coef(rC))
+
+mean(cf$Q, na.rm=T)
+
+write_csv(cf, "01_Raw_data/bf_parameter.csv")
 
 #Figures##########
 discharge<-read.csv('02_Clean_data/discharge.csv')
 
-S<-ggplot(discharge %>% filter(ID %in% c('5','15','5a', '9', '13')), aes(x = as.Date(Date), y = Q, color = ID, group = ID)) +
+ggplot(discharge %>% filter(ID %in% c('5','15','5a', '9', '13')), aes(x = as.Date(Date), y = Q, color = ID, group = ID)) +
   geom_line(size = 1) +  # Adjust line size for better visibility
   scale_y_log10() +scale_x_date(date_labels = "%Y") +
   ylab(expression('Discharge'~ft^3/sec)) + xlab("Date") +
   scale_color_brewer(palette = "Set1") +  # Use a color palette for better distinction
   ggtitle("South Basin")
 
-N<-ggplot(discharge %>% filter(ID %in% c('7','3','6a', '6')), aes(x = as.Date(Date), y = Q, color = ID, group = ID)) +
+ggplot(discharge %>% filter(ID %in% c('7','3','6a', '6')), aes(x = as.Date(Date), y = Q, color = ID, group = ID)) +
   geom_line(size = 1) +  # Adjust line size for better visibility
   scale_y_log10() +scale_x_date(date_labels = "%Y") +
   ylab(expression('Discharge'~ft^3/sec)) + xlab("Date") +

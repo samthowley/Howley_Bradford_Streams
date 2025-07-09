@@ -9,7 +9,7 @@ library(cowplot)
 
 #helping matthew
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
-                                 to=as.POSIXct("2025-03-28 00:00", tz="UTC"),by="hour")))
+                                 to=as.POSIXct("2025-07-02 00:00", tz="UTC"),by="hour")))
 
 clean_DO <- function(fil) {
   DO <- read_csv(fil,skip= 1) # read csv
@@ -219,7 +219,7 @@ master$Temp_PT <- ifelse(is.na(master$Temp_PT), master$Temp_pH, master$Temp_PT)
 temperature<-master %>% select(Date, ID, Temp_PT)
 write_csv(temperature, "02_Clean_data/temperature.csv")
 
-master<-master[,c("Date","depth","ID","Q","Qbase","CO2","DO","pH","SpC","Temp_PT","Water_press")]
+master<-master[,c("Date","depth","ID","Q","CO2","DO","pH","SpC","Temp_PT","Water_press")]
 master<-rename(master, 'Temp'="Temp_PT")
 
 ggplot(master, aes(Date, pH)) + geom_point() + facet_wrap(~ ID, ncol=4)
@@ -247,3 +247,6 @@ c<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=CO2)) +
 
 
 plot_grid(a,b,d,c, ncol=1, align = 'v')
+
+#testing testing 123###
+DO <- read_csv("02_Clean_data/DO_cleaned.csv")%>% filter(ID=='5', Date=='2025-04-02')#%>%sum(DO=mean(DO, na.rm=T))

@@ -41,8 +41,8 @@ GasDome <- function(gas,stream) {
 
   gas<-gas%>%mutate(Temp_F=mean(Temp, na.rm=T))%>% mutate(Temp_C=fahrenheit.to.celsius(Temp_F))%>%
     mutate(Temp_K=Temp_C+273.15,
-           SchmidtO2hi=1568-86.04*Temp_C+2.142*Temp_C^2-0.0216*Temp_C^3,
-           SchmidtCO2hi=1742-91.24*Temp_C+2.208*Temp_C^2-0.0219*Temp_C^3)%>%
+           SchmidtCO2hi=1742-91.24*Temp_C+2.208*Temp_C^2-0.0219*Temp_C^3,
+           SchmidtO2hi=1568-86.04*Temp_C+2.142*Temp_C^2-0.0216*Temp_C^3)%>%
     group_by(minute, ID, day)%>%mutate(CO2=mean(CO2, na.rm=T))%>%
     distinct(minute, ID, day, .keep_all = T)
 
@@ -64,14 +64,12 @@ GasDome <- function(gas,stream) {
   gas$KH_1000<-gas$KH*1000 #mol/m^3/atm
 
   gas$KCO2_dh<-gas$FCO2/gas$KH_1000/(gas$pCO2_air-gas$pCO2_water)#m/h
-  gas$kO2_dh<-gas$KCO2_dh*(gas$SchmidtCO2hi/gas$SchmidtO2hi)^(-2/3)#m/h
+  gas$kO2_dh<-gas$KCO2_dh*(gas$SchmidtCO2hi/gas$SchmidtO2hi)
   gas$k600_dh<- gas$KCO2_dh*(600/gas$SchmidtCO2hi)^(-2/3) #m/h
 
   gas$KO2_1d<-(gas$kO2_dh/gas$depth)*24
   gas$KCO2_1d<-(gas$KCO2_dh/gas$depth)*24
   gas$k600_1d<- (gas$k600_dh/gas$depth)*24
-
-  gas<-gas%>% select(Date,day,ID,CO2,CO2_enviro,depth,Q,Temp,KCO2_dh,k600_dh,k600_1d)
 
   return(gas)
 }
