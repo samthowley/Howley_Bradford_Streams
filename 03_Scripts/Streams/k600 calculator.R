@@ -71,7 +71,7 @@ GasDome <- function(gas,stream) {
   gas$KCO2_1d<-(gas$KCO2_dh/gas$depth)*24
   gas$k600_1d<- (gas$k600_dh/gas$depth)*24
 
-  gas<-gas%>% select(Date,day,ID,CO2,CO2_enviro,depth,Q,Temp,KCO2_dh,k600_dh)
+  gas<-gas%>% select(Date,day,ID,CO2,CO2_enviro,depth,Q,Temp,KCO2_dh,k600_dh,k600_1d)
 
   return(gas)
 }
@@ -97,14 +97,12 @@ gasdome_cleaned<-gasdome %>%
   mutate(
     k600_dh=abs(k600_dh),
     KCO2_1d=abs(KCO2_dh),
-    logQ=log(Q)) %>%
-  mutate(log_K600=log(k600_dh))%>%
-  mutate(
-    sd=sd(k600_dh, na.rm = T),
-    mean=mean(k600_dh, na.rm = T))
+    logQ=log10(Q))%>%
+  mutate(k600_1d= k600_dh/depth*24,
+         k600_md=k600_dh*24)%>%
+  mutate(ln_K600=log(k600_md))
 
-
-ggplot(gasdome_cleaned, aes(x = Q, y = k600_dh)) +
+ggplot(gasdome_cleaned, aes(x = Q, y = k600_1d)) +
   geom_point(size = 2, color = "black") +
   geom_smooth(method = "lm", se = FALSE, color = "blue") +
   facet_wrap(~ ID, ncol = 5, scales = 'free') +
