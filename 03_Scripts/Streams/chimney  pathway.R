@@ -66,9 +66,14 @@ bf<-baseflow%>%
   group_by(ID) %>%
   arrange(Date, .by_group = TRUE) %>%
   mutate(
-    bf = rollmean(baseflow, k = 35, fill = NA, align = "center", na.rm=T)) %>%
+    bf = rollmean(baseflow, k = 25, fill = NA, align = "center", na.rm=T)) %>%
   ungroup()%>%
   select(Date, ID, bf)
+
+
+uca <- data.frame(
+  ID = c('5', '6', '9'),
+  UCA = c(2e-4, 1e-4, 1e-4))
 
 discharge<-left_join(Q, bf)
 u_Q<-left_join(discharge, velocity)
@@ -90,62 +95,55 @@ DO <- read_csv("02_Clean_data/DO_cleaned.csv")%>%arrange(ID, Date)%>%
   select(-light, -time)
 
 metabolism<-read_csv('04_Output/master_metabolism.csv')%>%
-  mutate(NEP=(GPP+ER))
+  mutate(NEP=(GPP+ER))%>%
+  rename(Date=date)
 
 met_DO<-left_join(metabolism, DO, by=c('Date','ID'))
-met_DO<-left_join(met_DO, flow_regime)%>%
-  filter(ID %in% c('5','6','9'))
+met_DO<-left_join(met_DO, flow_regime)
 
 units<-met_DO %>%
   mutate(
     Q_m3.day=Q*86.4,
     baseflow_m3.day=bf*86.4,
     u_m.day=u*86400,
-    reach_m=0.7*u_m.day/K600_daily_mean,
+    reach_m=0.7*u_m.day/K600,
     width_m=Q_m3.day/(u_m.day*depth),
     area_m2=reach_m*width_m)
 
-ggplot(units %>% filter(ID=='5'), aes(Date))+
-  geom_line(aes(y=Q_m3.day))+
-  geom_line(aes(y=baseflow_m3.day),color='red')+
+# split<-units %>% split(units$ID)
+# write.xlsx(split, file = 'test.xlsx')
+
+DO_GW<-0.67
+
+gw_corrected<-left_join(units,uca)%>%
+  mutate(UCA=if_else(is.na(UCA), mean(UCA, na.rm=T), UCA))%>%
+  mutate(
+    qL=UCA*bf,
+    GW_correction=(DO_GW-DO)*(qL/width_m),
+    ER_GW_correction=(DO_GW-DO_night)*(qL/width_m)
+    )%>%
+  mutate(NEP_corrected= NEP-GW_correction,
+         ER_corrected= ER-ER_GW_correction)
+
+ggplot(gw_corrected, aes(Date))+
+  geom_line(aes(y=ER_GW_correction))+
+  geom_line(aes(y=GW_correction),color='red')+
   facet_wrap(~ ID, scales='free')
 
-
-split<-units %>% split(units$ID)
-write.xlsx(split, file = 'test.xlsx')
-
-
-DO_GW<-0.5
-
-
-
-corrected<-met_DO%>%
-  mutate(NEP_GW_correction=
-           (DO_GW-DO)*(qL/width_m)*86400,
-         ER_GW_correction=(DO_GW-DO_night)*(qL/width_m)**86400)%>%
-  mutate(NEP_corrected= NEP-NEP_GW_correction,
-         ER_corrected= ER-ER_GW_correction,)
-
-
-ggplot(corrected, aes(Date))+
-  geom_line(aes(y=ER))+
-  geom_line(aes(y=ER_corrected),color='red')+
+ggplot(gw_corrected, aes(Date))+
+  geom_line(aes(y=ER_corrected/ER))+
   facet_wrap(~ ID, scales='free')
 
-write_csv(corrected, "test.csv")
+write_csv(gw_corrected, "04_Output/gw_corrected_metabolism.csv")
 #Chimney Pathway#####
 
-resp<-read_csv('04_Output/master_metabolism.csv')
-
-resp<-left_join(resp,dim, by=c('Date','ID'))
-
-KH<-resp %>%filter(depth>0)%>%
-  mutate(Temp_C=fahrenheit.to.celsius(Temp_PT)) %>%
+KH<-gw_corrected %>%filter(depth>0)%>%
+  mutate(Temp_C=fahrenheit.to.celsius(Temp_DO)) %>%
   mutate(Temp_K=Temp_C+273.15)%>%mutate(
   KH=0.034*exp(2400*((1/Temp_K)-(1/298.15))))
 
 KCO2<-KH %>%
-  mutate(K600_m.d=K600_daily_mean*depth,
+  mutate(K600_m.d=K600*depth,
          SchmidtCO2hi=1742-91.24*Temp_C+2.208*Temp_C^2-0.0219*Temp_C^3)%>%
   mutate(KCO2_m.d=K600_m.d/((600/SchmidtCO2hi)^(-2/3))) %>%
   mutate(KCO2_d=KCO2_m.d/depth)%>%
@@ -155,33 +153,42 @@ CO2<-read_csv("02_Clean_data/CO2_cleaned.csv")%>% mutate(day=as.Date(Date))
 
 flux<-left_join(CO2,KCO2, by=c('day','ID'))%>%
   group_by(day,ID)%>%
-  mutate(CO2_day=mean(CO2, na.rm = T))%>%
-  ungroup()%>%group_by(ID)%>%
+  mutate(
+    CO2_day=mean(CO2, na.rm = T))%>%
+  ungroup()%>%
+  group_by(ID)%>%
   distinct(day,ID, .keep_all = T)%>%
-  mutate(across(c(CO2_day), ~rollmean(.x, k = 5, fill = NA, align = "center"), .names = "{.col}"))%>%
-  ungroup()%>%select(-CO2)%>%
-  mutate(CO2_flux=KCO2_m.d*(CO2_day-400)*KH*(1/10^6)*44*1000)%>%
-  mutate(across(c(NEP, CO2_flux, ER, GPP), ~rollmean(.x, k = 3, fill = NA, align = "center"), .names = "{.col}"))
-
-
-ggplot(flux %>% filter(ID=='5'), aes(x=Date, y=CO2_flux))+
-  geom_line()
-
+  mutate(
+    across(c(CO2_day), ~rollmean(.x, k = 5, fill = NA, align = "center"), .names = "{.col}"))%>%
+  ungroup()%>%
+  select(-CO2)%>%
+  mutate(
+    CO2_flux=KCO2_m.d*(CO2_day-400)*KH*(1/10^6)*44*1000)%>%
+  mutate(
+    across(c(NEP_corrected, CO2_flux, ER_corrected, GPP), ~rollmean(.x, k = 3, fill = NA, align = "center"), .names = "{.col}"))
 
 active<-flux%>%
-  mutate(active=NEP*44/32)%>% #mols of O2 to mols of CO2
-  mutate(active.tot= active/CO2_flux,
-        passive=CO2_flux-active)%>%
-  mutate(active.passive=active/passive,
+  mutate(
+    active=NEP_corrected*-44/32)%>% #mols of O2 to mols of CO2
+  mutate(
+    active.tot= active/CO2_flux,
+    passive=CO2_flux-active)%>%
+  mutate(
+    active.passive=active/passive,
     Basin=case_when(ID=='5'~'5',ID=='5a'~'5',ID=='15'~'15',
                          ID=='3'~'6',ID=='7'~'7',ID=='6'~'6',ID=='6a'~'6',
                          ID=='9'~'9', ID=='13'~'13'))%>%
-  select(-Qbase, -Qsurficial, -Temp_PT, -Temp_K, -KH, -K600_m.d, -SchmidtCO2hi, -KCO2_m.d,
-         -KCO2_d)%>%
-  filter(active.tot<1, active.passive<20)%>%
+  select(Date, ID, GPP, K600, DO, depth, Q, NEP_corrected, ER_corrected,
+         CO2_flux, active, active.tot, passive, active.passive, Basin)%>%
   filter(!ID=='6a')
 
 active <- active[complete.cases(active[ , c('CO2_flux')]), ]
+
+ggplot(active, aes(x=Q))+
+  geom_point(aes(y=active, color='active'))+
+  geom_point(aes(y=passive, color='passive'))+
+  facet_wrap(~ID)
+
 #################
 #Pull slopes#####
 ################
@@ -199,7 +206,12 @@ streams <- setNames(
   unique_sites
 )
 
+range(active$passive)
 streams_edited <- lapply(streams, function(df) {
+
+  df_filtered <- df %>% filter(active > 0, passive > 0, Q > 0)
+
+
   (active.Q<-lm(log10(active) ~ log10(Q), data = df))
   cf <- coef(active.Q)
   (Slope.active <- cf[2])
@@ -228,124 +240,3 @@ streams_edited <- lapply(streams, function(df) {
 
 
 slopes <- bind_rows(streams_edited, .id = "ID")
-
-
-#########################
-###Figures#############
-######################
-
-active$ID <- factor(active$ID , levels=c('15','5','5a','3','6','13','7','9','6a'))
-
-
-met_hist.GPP<-active%>%select(Date, ID, GPP)%>% rename(met=GPP)%>%mutate(type='GPP')
-met_hist.ER<-active%>%select(Date, ID, ER)%>% rename(met=ER)%>%mutate(type='ER', met=met*-1)
-met_hist<-rbind(met_hist.GPP, met_hist.ER)
-
-ggplot(met_hist, aes(x = as.factor(ID), y = met, fill = type)) +
-  geom_boxplot(position = position_dodge(width = 0.75)) +
-  scale_fill_manual(values = c('brown','darkgreen')) +
-  ggtitle("Metabolic Regime")+
-  ylab(expression(O[2]~'g' / m^2 / 'day'))+
-  theme(axis.title.x = element_blank(),
-        axis.title.y= element_text(size=21),
-        plot.title = element_text(size = 21))
-
-mean(resp$GPP, na.rm=T)
-
-
-active.only<-active%>% select(active, Q, Temp_C,ID, Date) %>% rename(C=active)%>%
-  mutate(type="Active Pathway")
-passive.only<-active%>% select(passive, Q, Temp_C,ID, Date) %>% rename(C=passive)%>%
-  mutate(type="Passive Pathway")
-
-active.hist<-rbind(active.only, passive.only)
-
-active$ID <- factor(active$ID , levels=c('9','15','3','7','5','5a','6','13','6a'))
-
-ggplot(active, aes(x = as.factor(ID), y = active.passive)) +
-  geom_violin(size=1) +
-  scale_y_log10()+
-  ggtitle("Active:Passive Sources Among Sites")+
-  geom_hline(yintercept = 1, color='red', size=1)+
-  ylab("Active/Passive")+
-  theme(axis.title.x = element_blank(),
-        axis.title.y= element_text(size=21),
-        plot.title = element_text(size = 21))
-
-
-ggplot(active, aes(x=Q, y=active.passive))+
-  geom_point() +
-  ylab(expression('Active/ Passive'))+
-  facet_wrap(~ ID, ncol=3)+
-  theme(legend.position = "bottom")+
-  xlab(expression(Discharge~L/sec))+
-  geom_hline(yintercept = 1, color='red', size=1)+
-  ggtitle("Variation Among Active:Passive Dominance")+
-scale_y_log10()+ scale_x_log10()
-
-mean(active$active.passive, na.rm = T)
-
-
-active%>%
-  group_by(ID)%>%
-  summarize(act_dom=sum(active.passive >1 , na.rm = TRUE),
-            pass_dom=sum(active.passive <1 , na.rm = TRUE),
-            tot=sum(active.passive >0 , na.rm = TRUE),
-            act_perc_days=act_dom/tot*100,
-            pass_perc_days=pass_dom/tot*100,
-            mean=mean(active.passive, na.rm=T),
-            act_perc=mean(active/CO2_flux, na.rm=T))
-
-
-active$ID <- factor(active$ID , levels=c('9','15','3','5a','13','7','5','6','6a'))
-
-ggplot(active, aes(x=Q, y=active.passive))+
-  geom_point() +
-  ylab(expression('Active/ Passive'))+
-  facet_wrap(~ ID, ncol=3)+
-  theme(legend.position = "bottom")+
-  xlab(expression(Discharge~L/sec))+
-  geom_hline(yintercept = 1, color='red', size=1)+
-  ggtitle("Variation Among Active:Passive Dominance")+
-  scale_y_log10()+ scale_x_log10()+
-  stat_poly_line()+
-  stat_poly_eq(aes(label = paste(..p.value.label..,sep = "~~~~~")),
-               formula = y ~ I(log10(x)),  # If you're plotting log10 on the x-axis only
-               parse = TRUE, color = 'blue',
-               label.x.npc = "left", label.y.npc = "bottom")+
-  theme(axis.text.x = element_text(size=15))
-
-
-
-
-ggplot(active, aes(x = Q)) +
-  geom_point(aes(y = active, color ="Active Pathway")) +
-  geom_point(aes(y = passive, color ="Passive Pathway"), shape = 21) +
-  geom_smooth(aes(y = active, color ="Active Pathway"), method = "lm", se = FALSE) +
-  geom_smooth(aes(y = passive, color ="Passive Pathway"), method = "lm", se = FALSE) +
-  stat_poly_eq(
-    aes(x = log10(Q), y = log10(active), label = paste(..p.value.label.., sep = "~~~"), color = "Active Pathway"),
-    formula = y ~ x, parse = TRUE, size = 4, label.x.npc = "right", label.y.npc = 0.017
-  ) +
-  stat_poly_eq(
-    aes(x = log10(Q), y = log10(passive), label = paste(..p.value.label.., sep = "~~~"), color = "Passive Pathway"),
-    formula = y ~ x, parse = TRUE, size = 4, label.x.npc = "right", label.y.npc = 0.1
-  ) +
-  scale_color_manual(values = c('red', 'black')) +
-  ylab(expression('g'/m^2/'day')) +
-  facet_wrap(~ID, ncol = 3, scales = 'free') +
-  theme(legend.position = "bottom") +
-  xlab(expression(Discharge~L/sec)) +
-  ggtitle(expression(CO[2]~Flux-Q~Relationship))+
-  scale_x_log10()+scale_y_log10()
-
-
-ggplot(slopes, aes(x = ID)) +
-  geom_point(aes(y = active_slope, color = "Active Slope"), size=4) +
-  geom_point(aes(y = passive_slope, color = "Passive Slope"), size=4) +
-  scale_color_manual(values = c('red', 'black')) +
-  ylab("Rate of Change (Flux/Q)") +
-  geom_hline(yintercept = 0)+
-  theme(legend.position = "bottom") +
-  ggtitle("Log-Log Relationships of Active vs Passive")
-

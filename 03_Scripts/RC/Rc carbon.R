@@ -50,9 +50,9 @@ baseflow <- read_csv("04_Output/baseflow.csv")%>%
 dim<-full_join(depth, Q_total, baseflow, by=c('ID', 'Date'))
 dim<-full_join(dim, baseflow, by=c('ID', 'Date'))
 
-uca_values <- data.frame(
+uca <- data.frame(
   ID = c('5', '6', '9'),
-  UCA = c(0.0002, 0.0001, 0.0003))
+  UCA = c(2e-4, 1e-4, 1e-4)) #wrong
 
 qL <- dim %>%
   left_join(uca_values, by = "ID") %>%
@@ -140,7 +140,7 @@ RC<-left_join(RC, qL)
 
 w_values <- data.frame(
   ID = c('5', '6', '9'),
-  width = c(2.7912, 2.6, 1.35))
+  width = c(2.7912, 2.6, 1.35)) #wrong
 
 lateral_flux<-left_join(RC, w_values, by='ID')%>%
     mutate(width=as.numeric(width),
