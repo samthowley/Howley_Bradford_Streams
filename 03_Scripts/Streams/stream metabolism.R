@@ -27,7 +27,7 @@ merged_data <- reduce(data, left_join, by = c("ID", 'Date'))%>%
   mutate(ln.Q=log(Q))%>%
   group_by(ID)%>%
   mutate(split_q=case_when(depth>mean(depth, na.rm=T)~'hi',
-                           depth<=mean(depth, na.rm=T)~'low'))%>%
+                           depth<=mean(depth, na.rm=T)~'lo'))%>%
   mutate(ID_q = paste(ID, split_q, sep = "_"))
 
 
@@ -43,23 +43,20 @@ input <- merged_data %>%
   mutate(
     light=calc_light(solar.time,  29.8, -82.6))
 
-cols <- c('solar.time', 'light', 'depth', 'DO.sat', 'DO.obs', 'temp.water', 'ID', 'ID_q')
-unique_sites <- unique(input$ID_q[!is.na(input$ID_q)])
+split_list <- input %>%
+  group_by(ID_q) %>%
+  group_split()
 
-streams <- setNames(
-  lapply(unique_sites, function(ID_q) {
-    df_subset <- input %>%
-      filter(ID_q==ID_q) %>%
-      select(all_of(cols))
-    return(df_subset)}),
-  unique_sites
-)
+names(split_list) <- input %>%
+  group_by(ID_q) %>%
+  group_keys() %>%
+  pull(ID_q)
 
-rdy_for_sm<- lapply(streams, function(df) {
+rdy_for_sm<- lapply(split_list, function(df) {
   df<-df %>%
     arrange(solar.time) %>%
     filter(c(TRUE, diff(solar.time) > 0))%>%
-    select(-ID, -ID_q)
+    select(solar.time, light, depth, DO.sat, DO.obs, temp.water)
 
   df<-left_join(samplingperiod, df)
 })
@@ -78,16 +75,16 @@ for (sheet in ks) {
 #specs######
 k600_mean_list <- lapply(list_of_ks, function(k600_df) {
   k600 <- k600_df %>%
-    group_by(ID) %>%
+    group_by(ID_q) %>%
     summarise(
-      K600=mean(k600_dh,na.rm=T),
-      sd_vals=sd(k600_dh,na.rm=T))
+      K600=mean(k600_m.day,na.rm=T),
+      sd_vals=sd(k600_m.day,na.rm=T))
 
   return(k600)
 })
 
 specs <- lapply(k600_mean_list, function(K_means) {
-  site_id <- K_means$ID_q[1]
+  site_id <- K_means$ID[1]
   K_vals <- K_means$K600[[1]]
   sd_vals <- K_means$sd_vals[[1]]
 
@@ -105,7 +102,7 @@ specs <- lapply(k600_mean_list, function(K_means) {
 
   bayes_specs <- specs(bayes_name,
                        K600_daily_meanlog_meanlog= log(K_vals),
-                       K600_daily_meanlog_sdlog=log(sd_vals),
+                       K600_daily_meanlog_sdlog=log(2),
                        GPP_daily_lower=0,
                        burnin_steps=1000,
                        saved_steps=1000)
@@ -113,7 +110,7 @@ specs <- lapply(k600_mean_list, function(K_means) {
 
 
 valid_ids <- names(specs)[!sapply(specs, is.null)]
-valid_streams <- streams_baseflow[valid_ids]
+valid_streams <- rdy_for_sm[valid_ids]
 valid_specs <- specs[valid_ids]
 
 # Run streamMetabolizer on each valid site##############
@@ -122,45 +119,31 @@ metab_results_base <- mapply(function(site_data, site_spec) {
 }, site_data = valid_streams, site_spec = valid_specs, SIMPLIFY = FALSE)
 
 met_list_base <- lapply(metab_results_base, function(metab_results) {
-  prediction2 <- metab_results@fit$daily %>%
-    select(date, GPP_daily_mean, ER_daily_mean, K600_daily_mean,
-          GPP_Rhat, ER_Rhat, K600_daily_Rhat) #%>%
-     filter(ER_Rhat > 0.9 & ER_Rhat < 1.2,
-            K600_daily_Rhat > 0.9 & K600_daily_Rhat < 1.2) #%>%
-    #select(date, GPP_daily_mean, ER_daily_mean, K600_daily_mean, warnings)
-
+   prediction2 <- metab_results@fit$daily #%>%
   return(prediction2)
 })
 
-met_base <- bind_rows(met_list_base, .id = "ID")%>% filter(GPP_daily_mean>0, ER_daily_mean<0)
+met_results <- bind_rows(met_list_base, .id = "ID")%>%
+  filter(
+    GPP_daily_mean>0, ER_daily_mean<0, ER_Rhat > 0.9 & ER_Rhat < 1.2,K600_daily_Rhat > 0.9 & K600_daily_Rhat < 1.2)%>%
+  separate(
+    ID, into = c("ID", "q_sep"), sep = "_")%>%
+  select(
+    date, GPP_daily_mean, ER_daily_mean, K600_daily_mean, ID, -q_sep)%>%
+  arrange(ID, date)%>%
+  rename(
+    GPP=GPP_daily_mean, ER=ER_daily_mean, K600=K600_daily_mean)
 
 
-ggplot(met_base, aes(date)) +
-  #geom_point(aes(y = ER_daily_mean, color = 'ER')) +
-  geom_point(aes(y = K600_daily_Rhat, color = 'ER')) +
-  #geom_point(aes(y = GPP_daily_mean, color = 'GPP')) +
+
+ggplot(met_results%>%filter(ID=='7'), aes(date)) +
+  geom_point(aes(y = ER, color = 'ER')) +
+  geom_point(aes(y = GPP, color = 'GPP')) +
   facet_wrap(~ ID, ncol = 3, scale = 'free') +
   #ylab(expression(O[2]~'g'/m^2/'day')) +
   xlab("Date")
 
-met_base%>% group_by(ID)%>%
-  summarise(
-    K=mean(K600_daily_mean, na.rm=T)
-  )
-
-
-write_csv(met_df, "04_Output/metabolism_04302025.csv")
-
-
-
-
-ggplot(master_metabolism , aes(Date)) +
-  #geom_point(aes(y = ER_daily_mean, color = 'ER')) +
-  geom_point(aes(y = K600_daily_mean, color = 'ER')) +
-  #geom_point(aes(y = GPP_daily_mean, color = 'GPP')) +
-  facet_wrap(~ ID, ncol = 3, scale = 'free') +
-  #ylab(expression(O[2]~'g'/m^2/'day')) +
-  xlab("Date")
+write_csv(met_results, "04_Output/master_metabolism.csv")
 
 
 ####Testing specs with 5#####################################
@@ -179,17 +162,20 @@ bayes_specs <- specs(bayes_name,
 
 s5<- input%>% filter(ID=='5')%>%
   select(solar.time, light, depth, DO.sat, DO.obs, temp.water)
-s5<-left_join(samplingperiod, s5)%>% filter(solar.time<'2025-06-02', depth>mean(s5$depth, na.rm=T))
+s5_lo<-left_join(samplingperiod, s5)%>% filter(depth<mean(s5$depth, na.rm=T))%>%select(-ID)
 
 ggplot(s5,aes(x=solar.time, y=depth)) + geom_point()
 
 
 
 
-mm <- metab(bayes_specs, data=s5)
-prediction2 <- mm@fit$daily %>% select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean,
+mm <- metab(bayes_specs, data=s5_lo)
+s5_lo_results <- mm@fit$daily %>% select(date,GPP_daily_mean,ER_daily_mean,K600_daily_mean,
                                        GPP_Rhat,ER_Rhat,K600_daily_Rhat)
 
-ggplot(prediction2,aes(x=date, y=GPP_daily_mean)) + geom_point()
-ggplot(prediction2%>%filter(ER_Rhat>1.2),aes(x=date, y=ER_daily_mean)) + geom_point()
+s5<-rbind(s5_hi_results, s5_lo_results)%>%arrange(date)
 
+ggplot(s5,aes(x=date, y=GPP_daily_mean)) + geom_point()
+ggplot(s5%>%filter(ER_Rhat>1.2),aes(x=date, y=ER_daily_mean)) + geom_point()
+
+write_csv(s5, "04_Output/metabolism/s5.csv")

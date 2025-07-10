@@ -75,45 +75,65 @@ GasDome <- function(gas,stream) {
 }
 
 #k600 compiled########
-gasdome<-data.frame()
 
-file.names <- list.files(path="01_Raw_data/GD/seperated", full.names=TRUE)
-#i<-file.names[39]
-for(i in file.names){
-  gas<-read_csv(i)
-  gas$ID<-strsplit(file_path_sans_ext(i), '_')[[1]][5]
-  gas<-GasDome(gas,stream)
-  gasdome<-rbind(gasdome, gas)}
+file.names <- list.files(path = "01_Raw_data/GD/seperated", full.names = TRUE)
+
+data_list <- lapply(file.names, read_csv)
+
+common_cols <- Reduce(intersect, lapply(data_list, colnames))
+data_fixed <- lapply(data_list, function(df) df[, common_cols, drop = FALSE])
+
+gasdome <- data.frame()
+
+for (j in seq_along(data_fixed)) {
+  gas <- data_fixed[[j]]
+
+  file_name <- file.names[j]
+  gas$ID <- strsplit(file_path_sans_ext(file_name), '_')[[1]][5]
+  gas <- GasDome(gas, stream)
+  gasdome <- rbind(gasdome, gas)
+}
 
 write_csv(gasdome, "01_Raw_data/GD/GasDome_compiled_raw.csv")
 
 gasdome<-read_csv("01_Raw_data/GD/GasDome_compiled_raw.csv")
 
 gasdome_cleaned<-gasdome %>%
-  filter(ID!='14')%>%distinct(day, ID, .keep_all = T)%>%select(-day)%>%
+  filter(ID!='14')%>%
+  distinct(day, ID, .keep_all = T)%>%select(-day)%>%
   arrange(ID, Date)%>%
   mutate(
-    k600_dh=abs(k600_dh),
-    KCO2_1d=abs(KCO2_dh),
-    logQ=log10(Q))%>%
-  mutate(k600_1d= k600_dh/depth*24,
-         k600_md=k600_dh*24)%>%
-  mutate(ln_K600=log(k600_md))
+    k600_m.day=abs(k600_dh),
+    KCO2_m.d=abs(KCO2_dh),
+    KO2_m.d=abs(kO2_dh),
+    logQ=log10(Q)) %>%
+  mutate(
+    k600_1.d= k600_m.day/depth,
+    log_K600=log10(k600_m.day))%>%
+  select(Date, ID, CO2,  KCO2_m.d, KO2_m.d, k600_m.day,k600_1.d, logQ, log_K600)
 
-ggplot(gasdome_cleaned, aes(x = Q, y = k600_1d)) +
-  geom_point(size = 2, color = "black") +
-  geom_smooth(method = "lm", se = FALSE, color = "blue") +
-  facet_wrap(~ ID, ncol = 5, scales = 'free') +
-  scale_x_log10()+scale_y_log10()+
-  theme_minimal() +
-  theme(legend.position = "bottom")%>% mutate(
-    logQ=log(Q),
-    log_K600=log10(k600_dh),
-    K600_1.d=k600_dh/depth)
 
 write_csv(gasdome_cleaned, "01_Raw_data/GD/GasDome_compiled.csv")
 
 split<-gasdome_cleaned %>% split(gasdome_cleaned$ID)
+write.xlsx(split, file = '04_Output/rC_k600.xlsx')
+#manually edit outliers
+
+excel_file <- "04_Output/rC_k600.xlsx"
+sheet_names <- excel_sheets(excel_file)
+
+all_sheets <- lapply(sheet_names, function(sheet) {
+  read_excel(excel_file, sheet = sheet)
+})
+
+combined_df <- bind_rows(all_sheets)
+
+gasdome_lo<-combined_df%>% mutate(ID_q = paste(ID, "lo", sep = "_"))
+gasdome_hi<-combined_df%>% mutate(ID_q = paste(ID, "hi", sep = "_"))
+
+gd<-rbind(gasdome_hi, gasdome_lo)
+
+split<-gd %>% split(gd$ID_q)
 write.xlsx(split, file = '04_Output/rC_k600.xlsx')
 
 #organize data file##########
