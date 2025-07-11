@@ -230,7 +230,7 @@ write_csv(master, "master.csv")
 master$ID <- factor(master$ID , levels=c('15','5','5a','3','6','13','7','9','6a')) #order of increasing wetland cover
 
 d<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=SpC)) +
-  scale_y_log10()+xlab('Stream ID')+
+  xlab('Stream ID')+
   geom_boxplot()+theme(axis.title.x =element_blank(),axis.text.x =element_blank())
 
 a<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=DO)) +
@@ -239,6 +239,7 @@ a<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=DO)) +
 
 b<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=pH)) +
   xlab('Stream ID')+ylab('pH')+
+  geom_hline(yintercept = 7, color='red')+
   geom_boxplot()+theme(axis.title.x=element_blank(),axis.text.x =element_blank())
 
 c<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=CO2)) +
@@ -247,6 +248,45 @@ c<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=CO2)) +
 
 
 plot_grid(a,b,d,c, ncol=1, align = 'v')
+
+master %>%
+  group_by(ID)%>%
+  summarize(pH=mean(pH, na.rm=T),
+            SpC=mean(SpC, na.rm=T),
+            DO=mean(DO, na.rm=T),
+            CO2=mean(CO2, na.rm=T))
+
+
+
+
+e<-ggplot(master %>% filter(!ID %in% c('14', NA)),
+          aes(x=as.factor(ID), y=depth)) +
+  xlab('Stream ID')+ylab('depth')+
+  geom_boxplot()+theme(axis.title.x=element_blank(),axis.text.x =element_blank())
+
+f<-ggplot(master %>% filter(!ID %in% c('14', NA), Q>0.1),
+          aes(x=as.factor(ID), y=Q)) +
+  xlab('Stream ID')+ylab("Q")+scale_y_log10()+
+  geom_boxplot()+theme(axis.title.x=element_blank())
+
+
+plot_grid(e,f, ncol=1, align = 'v')
+
+master %>%
+  group_by(ID)%>%
+  summarize(pH=mean(pH, na.rm=T),
+            SpC=mean(SpC, na.rm=T),
+            DO=mean(DO, na.rm=T),
+            CO2=mean(CO2, na.rm=T))
+
+
+#except_13
+master %>%
+  #filter(!ID=='13')%>%
+  summarize(pH=mean(pH, na.rm=T),
+            SpC=mean(SpC, na.rm=T),
+            DO=mean(DO, na.rm=T),
+            CO2=mean(CO2, na.rm=T))
 
 #testing testing 123###
 DO <- read_csv("02_Clean_data/DO_cleaned.csv")%>% filter(ID=='5', Date=='2025-04-02')#%>%sum(DO=mean(DO, na.rm=T))

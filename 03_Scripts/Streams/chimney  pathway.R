@@ -14,19 +14,6 @@ library(ggpmisc)
 library(streamMetabolizer)
 library(openxlsx)
 
-theme_set(theme(axis.text.x = element_text(size = 17),
-                axis.text.y = element_text(size = 17),
-                axis.title.y = element_text(size = 21, angle = 90),
-                axis.title.x = element_text(size = 21),
-                plot.title = element_text(size = 21),
-                legend.key.size = unit(0.5, 'cm'),
-                legend.text=element_text(size = 12),
-                legend.title =element_blank(),
-                legend.position ="bottom",
-                panel.background = element_rect(fill = 'white'),
-                axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "gray"),
-                axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "gray")))
-
 CO2mol <- function(CO2) {
   CO2$Temp_C<-fahrenheit.to.celsius(CO2$Temp_PT)
   CO2$Temp_K<-CO2$Temp_C+273.15
@@ -38,47 +25,11 @@ CO2mol <- function(CO2) {
   return(CO2)}
 
 #Edit dims######
-
-depth<-read_csv('02_Clean_data/depth.csv')%>%
-  mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>%
-  mutate(depth=mean(depth, na.rm = T)) %>%
-  select(Date, ID, depth)%>%distinct(Date, ID, .keep_all = T)
-
-Q<-read_csv('02_Clean_data/discharge.csv')%>%
-  mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>%
-  mutate(Q=mean(Q, na.rm = T)) %>%
-  select(Date, ID, Q)%>%
-  distinct(Date, ID, .keep_all = T)
-
-velocity <- read_csv("02_Clean_data/velocity.csv")%>%select(Date, ID, u)%>%
-  mutate(Date=as.Date(Date))%>%
-  group_by(ID, Date)%>%
-  mutate(u=mean(u, na.rm=T))%>%
-  distinct(Date, ID, .keep_all = T)
-
-baseflow <- read_csv("04_Output/baseflow.csv") %>%
-  mutate(Date = as.Date(Date)) %>%
-  group_by(Date, ID) %>%
-  mutate(baseflow = mean(baseflow, na.rm = TRUE)) %>%
-  distinct(Date, ID, .keep_all = TRUE) %>% ungroup()
-
-bf<-baseflow%>%
-  group_by(ID) %>%
-  arrange(Date, .by_group = TRUE) %>%
-  mutate(
-    bf = rollmean(baseflow, k = 25, fill = NA, align = "center", na.rm=T)) %>%
-  ungroup()%>%
-  select(Date, ID, bf)
-
-
 uca <- data.frame(
   ID = c('5', '6', '9'),
   UCA = c(2e-4, 1e-4, 1e-4))
 
-discharge<-left_join(Q, bf)
-u_Q<-left_join(discharge, velocity)
-flow_regime<-full_join(depth, u_Q, by=c('Date', 'ID'))
-
+flow_regime<- read_csv("04_Output/flow_regime_daily.csv")
 #GW Correction#####
 
 DO <- read_csv("02_Clean_data/DO_cleaned.csv")%>%arrange(ID, Date)%>%
@@ -109,9 +60,6 @@ units<-met_DO %>%
     reach_m=0.7*u_m.day/K600,
     width_m=Q_m3.day/(u_m.day*depth),
     area_m2=reach_m*width_m)
-
-# split<-units %>% split(units$ID)
-# write.xlsx(split, file = 'test.xlsx')
 
 DO_GW<-0.67
 
@@ -169,9 +117,8 @@ flux<-left_join(CO2,KCO2, by=c('day','ID'))%>%
 
 active<-flux%>%
   mutate(
-    active=NEP_corrected*-44/32)%>% #mols of O2 to mols of CO2
+    active=NEP_corrected*-44/32)%>% filter(active<CO2_flux)%>%
   mutate(
-    active.tot= active/CO2_flux,
     passive=CO2_flux-active)%>%
   mutate(
     active.passive=active/passive,
@@ -179,14 +126,14 @@ active<-flux%>%
                          ID=='3'~'6',ID=='7'~'7',ID=='6'~'6',ID=='6a'~'6',
                          ID=='9'~'9', ID=='13'~'13'))%>%
   select(Date, ID, GPP, K600, DO, depth, Q, NEP_corrected, ER_corrected,
-         CO2_flux, active, active.tot, passive, active.passive, Basin)%>%
-  filter(!ID=='6a')
+         CO2_flux, active, passive, active.passive, Basin)%>%
+  filter(!ID=='6a')#%>%
 
 active <- active[complete.cases(active[ , c('CO2_flux')]), ]
 
-ggplot(active, aes(x=Q))+
+ggplot(active %>%filter(ID=='3'), aes(x=Q))+
+  geom_point(aes(y=CO2_flux, color='total'))+
   geom_point(aes(y=active, color='active'))+
-  geom_point(aes(y=passive, color='passive'))+
   facet_wrap(~ID)
 
 #################

@@ -28,35 +28,16 @@ theme_set(theme(axis.text.x = element_text(size = 18),
 
 
 #qL######
-depth<-read_csv('02_Clean_data/depth.csv')%>%
-  mutate(Date=as.Date(Date))%>%
-  group_by(Date, ID) %>%
-  mutate(depth=mean(depth, na.rm = T)) %>%
-  select(Date, ID, depth)%>%
-  filter(depth>0, ID %in% c('5','6','9'))%>%distinct(ID, Date, .keep_all = T)
-
-Q_total<-read_csv('02_Clean_data/discharge.csv')%>%
-  mutate(Date=as.Date(Date))%>%
-  group_by(Date, ID) %>%
-  mutate(Q=mean(Q, na.rm = T))%>%
-  filter(Q>1, ID %in% c('5','6','9'))%>%distinct(ID, Date, .keep_all = T)
-
-baseflow <- read_csv("04_Output/baseflow.csv")%>%
-  mutate(Date=as.Date(Date))%>%
-  group_by(Date, ID) %>%
-  mutate(baseflow=mean(baseflow, na.rm = T))%>%
-  select(Date, ID, baseflow)%>%distinct(ID, Date, .keep_all = T)%>%filter(ID %in% c('5','6','9'))
-
-dim<-full_join(depth, Q_total, baseflow, by=c('ID', 'Date'))
-dim<-full_join(dim, baseflow, by=c('ID', 'Date'))
+flow_regime<- read_csv("04_Output/flow_regime_daily.csv")%>%
+  filter(ID %in% c('5', '6', '9'))
 
 uca <- data.frame(
   ID = c('5', '6', '9'),
   UCA = c(2e-4, 1e-4, 1e-4)) #wrong
 
-qL <- dim %>%
-  left_join(uca_values, by = "ID") %>%
-  mutate(qL = baseflow/1000 * UCA) %>%
+qL <- flow_regime %>%
+  left_join(uca, by = "ID") %>%
+  mutate(qL = bf/1000 * UCA) %>%
   select(-UCA) %>% filter(!is.na(ID))
 #Create RC carbon dataset#######
 ### set has RC_dims for slope figure
@@ -138,19 +119,19 @@ write_csv(stream_RC, "02_Clean_data/allC_RC.csv")
 RC<-read_csv("02_Clean_data/allC_RC.csv")%>%mutate(ID=as.character(ID))
 RC<-left_join(RC, qL)
 
-w_values <- data.frame(
-  ID = c('5', '6', '9'),
-  width = c(2.7912, 2.6, 1.35)) #wrong
 
-lateral_flux<-left_join(RC, w_values, by='ID')%>%
-    mutate(width=as.numeric(width),
+lateral_flux<-RC%>%
+    mutate(
       CO2_molL=CO2_umol_L/10^6,
-         CH4_molL=CH4_umol_L/10^6)%>%
-  mutate(lateral_CO2=CO2_molL*(10^3)*12*86400*(qL/width),
-         lateral_CH4=CH4_molL*(10^3)*12*86400*(qL/width))%>%
-  mutate(DOC_flux=(qL/width)*DOC*86400,
-         DIC_flux=qL/width*DIC*86400)%>%
-  filter(!is.na(Well), !is.na(ID))%>%
-  select(-width)%>%
+      CH4_molL=CH4_umol_L/10^6)%>%
+  mutate(
+    lateral_CO2=CO2_molL*(10^3)*12*86400*(qL/width),
+    lateral_CH4=CH4_molL*(10^3)*12*86400*(qL/width))%>%
+  mutate(
+    DOC_flux=(qL/width)*DOC*86400,
+    DIC_flux=qL/width*DIC*86400)%>%
+  filter(
+    !is.na(Well), !is.na(ID))%>%
+  select(-width, -bf, -u, -depth)%>%
   mutate(ID.Well = paste(ID, Well, sep = "."))
 

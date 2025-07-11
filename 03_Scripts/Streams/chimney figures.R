@@ -1,3 +1,17 @@
+theme_set(theme(axis.text.x = element_text(size = 17),
+                axis.text.y = element_text(size = 17),
+                axis.title.y = element_text(size = 21, angle = 90),
+                axis.title.x = element_text(size = 21),
+                plot.title = element_text(size = 21),
+                legend.key.size = unit(0.5, 'cm'),
+                legend.text=element_text(size = 12),
+                legend.title =element_blank(),
+                legend.position ="bottom",
+                panel.background = element_rect(fill = 'white'),
+                axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "gray"),
+                axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "gray")))
+
+
 #Include wetlands####
 wetland_proxim <- read_csv("01_Raw_data/wetland_proxim.csv")%>%
   select(Site, NEAR_DIST)%>%rename(ID=Site, nearest_wetland=NEAR_DIST)%>%
@@ -20,10 +34,9 @@ met_hist<-rbind(met_hist.GPP, met_hist.ER)%>%
 met_hist$wetland_perc <- factor(met_hist$wetland_perc,
                                 levels = sort(unique(met_hist$wetland_perc), decreasing = TRUE))
 
-
 common_theme<-list( theme(
   axis.title.x = element_blank(),
-  axis.title.y = element_text(size=21),
+  axis.title.y = element_text(size=21, angle=90),
   plot.title = element_text(size = 21),
   legend.title = element_text(size = 16),
   legend.text = element_text(size = 14),
@@ -35,7 +48,8 @@ labels_vec <- setNames(
   paste0(met_hist$ID, "\n", met_hist$wetland_perc),
   met_hist$ID_q)
 
-a<-ggplot(met_hist%>% filter(!is.na(ID)),
+a<-
+  ggplot(met_hist%>% filter(!is.na(ID)),
        aes(x = reorder(ID_q, -as.numeric(wetland_perc)),  y = met, fill = type)) +
   geom_boxplot(position = position_dodge(width = 0.75)) +
   scale_fill_manual(values = c('brown','darkgreen'), name= "") +
@@ -44,13 +58,30 @@ a<-ggplot(met_hist%>% filter(!is.na(ID)),
   common_theme+
   scale_x_discrete(labels = labels_vec)
 
+active%>%
+  group_by(ID)%>%
+  summarise(
+    GPP=mean(GPP, na.rm=T),
+    ER_corrected=mean(ER_corrected, na.rm=T)
+  )%>%filter(!is.na(GPP))
+
+summary(lm(ER_corrected ~ wetland_perc, data = active))
+
+b<-ggplot(active%>% filter(!is.na(ID)),
+       aes(x = reorder(ID_wetperc, -as.numeric(wetland_perc)),  y = CO2_flux)) +
+  geom_boxplot(position = position_dodge(width = 0.75)) +
+  scale_x_discrete(labels = labels_vec_wetperc_hist)+
+  ylab(expression(CO[2]~g/m^2/day))+
+  common_theme
+
+plot_grid(a,b, ncol=1)
 
 ggsave(filename = "05_Figures/MetRegime.jpeg",
-       plot = a,
-       width = 8, height = 6, units = "in")
+       plot = plot_grid(a,b, ncol=1),
+       width = 8, height = 8, units = "in")
 
 
-#Violin plots###########
+#External v Internal Violin Plots Violin plots###########
 active<-active%>%
   mutate(ID_wetperc = paste(ID, wetland_perc, sep = "_"))%>%
   mutate(ID_wetprox = paste(ID, wetland_perc, sep = "_"))%>%
@@ -70,30 +101,54 @@ common_layers <- list(geom_violin(size=1),
                           geom_hline(yintercept = 1, color='red', size=1),
                           ylab("Internal/External"),
                           theme(axis.title.x = element_blank(),
-                                axis.title.y= element_text(size=21),
+                                axis.title.y= element_text(size=21, angle=90),
                                 plot.title = element_text(size = 21))
                           )
 
 
-a<-ggplot(active,
+a<-
+  ggplot(active,
        aes(x = reorder(ID_wetperc, -as.numeric(wetland_perc)),
            y = active.passive)) +common_layers+
   scale_x_discrete(labels = labels_vec_wetperc)
 
-active$nearest_wetland <- factor(active$nearest_wetland,
-                              levels = sort(unique(active$nearest_wetland), decreasing = TRUE))
-
-labels_vec_wetprox <- setNames(
-  paste0(active$ID, "\n", active$nearest_wetland),
-  active$ID_wetprox)
-
-b<-ggplot(active,
-       aes(x = reorder(ID_wetprox, -as.numeric(nearest_wetland)),
-           y = active.passive)) +common_layers+
-  scale_x_discrete(labels = labels_vec_wetprox)
+summary(lm(active.passive ~ wetland_perc, data = active))
 
 
-ggsave(filename = "test.jpeg",
+active%>% group_by(ID,wetland_perc)%>%
+  summarize(avg=mean(active.passive, na.rm=T),
+            avg_active=mean(active, na.rm=T),
+            avg_passive=mean(passive, na.rm=T))%>%
+  arrange(wetland_perc)
+
+
+int<-active%>%
+  select(ID, active, ID_wetperc, wetland_perc)%>%
+  rename(rate=active)%>%mutate(type='internal')
+ext<-active%>%
+  select(ID, passive, ID_wetperc, wetland_perc)%>%
+  rename(rate=passive)%>%mutate(type='external')
+active.hist<-rbind(int, ext)
+
+labels_vec_wetperc_hist <- setNames(
+  paste0(active.hist$ID, "\n", active.hist$wetland_perc),
+  active.hist$ID_wetperc)
+
+summary(lm(active ~ wetland_perc, data = active))
+
+#b<-
+   ggplot(active.hist%>% filter(!is.na(ID))%>%filter(type=='external'),
+         aes(x = reorder(ID_wetperc, -as.numeric(wetland_perc)),  y = rate, fill = type)) +
+    geom_boxplot(position = position_dodge(width = 0.75)) +
+    scale_fill_manual(values = c('black', 'red'), name= "") +
+    ylab(expression(CO[2]~g/m^2/day))+
+    scale_x_discrete(labels = labels_vec_wetperc_hist)+
+    common_theme+
+    theme(legend.position = 'bottom')
+
+plot_grid(a,b, ncol=1)
+
+ggsave(filename = "05_Figures/External.Interval.violin.plots.jpeg",
        plot = plot_grid(a,b, ncol=1),
        width = 8, height = 8, units = "in")
 
@@ -117,22 +172,23 @@ a<-ggplot(active, aes(x = Q)) +
   geom_point(aes(y = passive, color ="Passive Pathway"), shape = 21) +
   geom_smooth(aes(y = active, color ="Active Pathway"), method = "lm", se = FALSE) +
   geom_smooth(aes(y = passive, color ="Passive Pathway"), method = "lm", se = FALSE) +
+
   stat_poly_eq(
     aes(x = log10(Q), y = log10(active), label = paste(..p.value.label.., sep = "~~~"), color = "Active Pathway"),
-    formula = y ~ x, parse = TRUE, size = 4, label.x.npc = "right", label.y.npc = 0.017
-  ) +
+    formula = y ~ x, parse = TRUE, size = 4, label.x.npc = "right", label.y.npc = 0.017) +
+
   stat_poly_eq(
     aes(x = log10(Q), y = log10(passive), label = paste(..p.value.label.., sep = "~~~"), color = "Passive Pathway"),
-    formula = y ~ x, parse = TRUE, size = 4, label.x.npc = "right", label.y.npc = 0.1
-  ) +
+    formula = y ~ x, parse = TRUE, size = 4, label.x.npc = "right", label.y.npc = 0.1 ) +
+
   scale_color_manual(values = c('red', 'black'), name= "") +
   ylab(expression('g'/m^2/'day')) +
   facet_wrap(~ID, ncol = 3, scales = 'free') +
   common_theme+
-  xlab(expression(Discharge~L/sec)) +
   ggtitle(expression(CO[2]~Flux-Q~Relationship))+
   scale_x_log10()+scale_y_log10()+
-  theme(strip.text = element_text(size = 15))
+  theme(strip.text = element_text(size = 15))+
+  xlab("Discharge L/s")+theme(axis.title.x = element_text(size = 21))
 
 slopes$ID <- factor(slopes$ID, levels = c('9','7','13','3','6','5','5a','15'))
 
@@ -150,3 +206,6 @@ ggsave(filename = "05_Figures/External.v.Passive_Q.jpeg",
        plot = combine,
        width = 13, height = 12, units = "in")
 
+ggsave(filename = "test.jpeg",
+       plot = combine,
+       width = 13, height = 12, units = "in")
