@@ -29,7 +29,7 @@ uca <- data.frame(
   ID = c('5', '6', '9'),
   UCA = c(2e-4, 1e-4, 1e-4))
 
-flow_regime<- read_csv("04_Output/flow_regime_daily.csv")
+flow_regime<- read_csv("04_Output/flow_regime_daily.csv")%>%filter(Q>2)
 #GW Correction#####
 
 DO <- read_csv("02_Clean_data/DO_cleaned.csv")%>%arrange(ID, Date)%>%
@@ -73,16 +73,16 @@ gw_corrected<-left_join(units,uca)%>%
   mutate(NEP_corrected= NEP-GW_correction,
          ER_corrected= ER-ER_GW_correction)
 
-ggplot(gw_corrected, aes(Date))+
-  geom_line(aes(y=ER_GW_correction))+
-  geom_line(aes(y=GW_correction),color='red')+
-  facet_wrap(~ ID, scales='free')
+# ggplot(gw_corrected, aes(Date))+
+#   geom_line(aes(y=ER_GW_correction))+
+#   geom_line(aes(y=GW_correction),color='red')+
+#   facet_wrap(~ ID, scales='free')
+#
+# ggplot(gw_corrected, aes(Date))+
+#   geom_line(aes(y=ER_corrected/ER))+
+#   facet_wrap(~ ID, scales='free')
 
-ggplot(gw_corrected, aes(Date))+
-  geom_line(aes(y=ER_corrected/ER))+
-  facet_wrap(~ ID, scales='free')
-
-write_csv(gw_corrected, "04_Output/gw_corrected_metabolism.csv")
+#write_csv(gw_corrected, "04_Output/gw_corrected_metabolism.csv")
 #Chimney Pathway#####
 
 KH<-gw_corrected %>%filter(depth>0)%>%
@@ -109,7 +109,6 @@ flux<-left_join(CO2,KCO2, by=c('day','ID'))%>%
   mutate(
     across(c(CO2_day), ~rollmean(.x, k = 5, fill = NA, align = "center"), .names = "{.col}"))%>%
   ungroup()%>%
-  select(-CO2)%>%
   mutate(
     CO2_flux=KCO2_m.d*(CO2_day-400)*KH*(1/10^6)*44*1000)%>%
   mutate(
@@ -126,20 +125,26 @@ active<-flux%>%
                          ID=='3'~'6',ID=='7'~'7',ID=='6'~'6',ID=='6a'~'6',
                          ID=='9'~'9', ID=='13'~'13'))%>%
   select(Date, ID, GPP, K600, DO, depth, Q, NEP_corrected, ER_corrected,
-         CO2_flux, active, passive, active.passive, Basin)%>%
+         CO2_flux, CO2, active, passive, active.passive, Basin)%>%
   filter(!ID=='6a')#%>%
 
 active <- active[complete.cases(active[ , c('CO2_flux')]), ]
 
-ggplot(active %>%filter(ID=='3'), aes(x=Q))+
-  geom_point(aes(y=CO2_flux, color='total'))+
-  geom_point(aes(y=active, color='active'))+
-  facet_wrap(~ID)
+# ggplot(active %>%filter(ID=='3'), aes(x=Q))+
+#   geom_point(aes(y=CO2_flux, color='total'))+
+#   geom_point(aes(y=active, color='active'))+
+#   facet_wrap(~ID)
 
-#################
+
+#Moatar et al. 2016 Splitting Q#############
+active<-active%>% group_by(ID) %>%
+  mutate(Q_med=  case_when(Q>= median(Q, na.rm = T)~ "sup",
+                           Q<=median(Q, na.rm = T)~"inf"))%>%
+  mutate(Q_ID= paste0(ID, sep="_", Q_med))
+
 #Pull slopes#####
-################
 
+#Not split
 cols <- c('active', 'passive', 'Q', 'ID')
 unique_sites <- unique(active$ID[!is.na(active$ID)])
 
@@ -150,40 +155,262 @@ streams <- setNames(
       select(all_of(cols))
     return(df_subset)
   }),
-  unique_sites
-)
+  unique_sites)
 
-range(active$passive)
 streams_edited <- lapply(streams, function(df) {
 
-  df_filtered <- df %>% filter(active > 0, passive > 0, Q > 0)
+  df <- df %>% filter(active > 0, passive > 0, Q > 0)
 
 
-  (active.Q<-lm(log10(active) ~ log10(Q), data = df))
-  cf <- coef(active.Q)
-  (Slope.active <- cf[2])
-  (Inter.active <- cf[1])
+  (active.Q<-summary(lm(log10(active) ~ log10(Q), data = df)))
+  Slope.active <- active.Q$coefficients[2,1]
+  pvalue_slope.active <- active.Q$coefficients[2, 4]
 
 
-  (passive.Q<-lm(log10(passive) ~ log10(Q), data = df))
-  cf <- coef(passive.Q)
-  (Slope.passive <- cf[2])
-  (Inter.passive <- cf[1])
+  (passive.Q<-summary(lm(log10(passive) ~ log10(Q), data = df)))
+  Slope.passive <- passive.Q$coefficients[2,1]
+  pvalue_slope.passive <- passive.Q$coefficients[2, 4]
 
   df<-df%>%
     mutate(
-      active_slope=as.numeric(c(Slope.active)),
-      passive_slope=as.numeric(c(Slope.passive)),
-      activeInter=as.numeric(c(Inter.active)),
-      passiveInter=as.numeric(c(Inter.passive))
+      Slope.active=as.numeric(c(Slope.active)),
+      Slope.passive=as.numeric(c(Slope.passive)),
+
+      pvalue_slope.active=as.numeric(c(pvalue_slope.active)),
+      pvalue_slope.passive=as.numeric(c(pvalue_slope.passive))
     )%>%
     summarize(
-      active_slope=mean(active_slope, na.rm=T),
-      passive_slope=mean(passive_slope, na.rm=T),
-      activeInter=mean(activeInter, na.rm=T),
-      passiveInter=mean(passiveInter, na.rm=T),
+      active_slope=mean(Slope.active, na.rm=T),
+      passive_slope=mean(Slope.passive, na.rm=T),
+      active_pvalue=mean(pvalue_slope.active, na.rm=T),
+      passive_pvalue=mean(pvalue_slope.passive, na.rm=T),
+
+    )
+})
+
+slopes_not.split<- bind_rows(streams_edited, .id = "ID")
+
+#Split Q
+cols <- c('active', 'passive', 'Q', 'ID', 'Q_ID')
+unique_sites <- unique(active$Q_ID[!is.na(active$Q_ID)])
+
+streams <- setNames(
+  lapply(unique_sites, function(site_id) {
+    df_subset <- active %>%
+      filter(Q_ID == site_id) %>%
+      select(all_of(cols))
+    return(df_subset)
+  }),
+  unique_sites
+)
+streams_edited <- lapply(streams, function(df) {
+
+  df <- df %>% filter(active > 0, passive > 0, Q > 0)
+
+
+  (active.Q<-summary(lm(log10(active) ~ log10(Q), data = df)))
+  Slope.active <- active.Q$coefficients[2,1]
+  pvalue_slope.active <- active.Q$coefficients[2, 4]
+
+
+  # (passive.Q<-summary(lm(log10(passive) ~ log10(Q), data = df)))
+  # Slope.passive <- passive.Q$coefficients[2,1]
+  # pvalue_slope.passive <- passive.Q$coefficients[2, 4]
+
+  df<-df%>%
+    mutate(
+      Slope.active=as.numeric(c(Slope.active)),
+      #Slope.passive=as.numeric(c(Slope.passive)),
+
+      pvalue_slope.active=as.numeric(c(pvalue_slope.active)),
+      #pvalue_slope.passive=as.numeric(c(pvalue_slope.passive))
+    )%>%
+    summarize(
+      active_slope=mean(Slope.active, na.rm=T),
+      #passive_slope=mean(Slope.passive, na.rm=T),
+      active_pvalue=mean(pvalue_slope.active, na.rm=T),
+      #passive_pvalue=mean(pvalue_slope.passive, na.rm=T),
+
+    )
+})
+
+slopes <- bind_rows(streams_edited, .id = "ID")%>%
+  separate(ID, into = c("ID", "Q_med"), sep = "_")
+
+
+#hydro regime######
+#There's a better way to do this. once I figure out the slopes (maybe), I can estimate,
+#yearly emissions
+Q <- read_csv("02_Clean_data/discharge.csv")%>%
+  mutate(hp=case_when(Q>= 2 ~  "wet",
+                               Q<2 ~"dry"))
+
+ggplot(Q %>% filter(ID=='6a'), aes(Date, color=hydroperiod))+
+  geom_line(aes(y=Q))+scale_y_log10()+
+  facet_wrap(~ ID, scales='free')
+
+hydroperiod <- Q %>%
+  group_by(ID, hp) %>%
+  summarize(count = n(), .groups = "drop") %>%
+  mutate(hydroperiod = case_when(
+    hp == "dry" | is.na(hp) ~ "dry",
+    hp == "wet" ~ "wet")) %>%
+  group_by(ID, hydroperiod) %>%
+  summarize(sum = sum(count), .groups = "drop")%>%group_by(ID)%>%
+  mutate(total=sum(sum))%>%
+    mutate(wet_period=sum/total)%>%
+  filter(hydroperiod=='wet', ID != '14')
+
+CO2_summary<-active%>%group_by(ID)%>%
+  summarise(CO2_emissions=mean(CO2_flux, na.rm=T))
+
+yrly_CO2_emissions<-left_join(CO2_summary, hydroperiod)%>%
+  mutate(yr_CO2_ems=(365*wet_period*CO2_emissions))%>%
+  mutate(
+    Basin_Name=case_when(ID=='5'~'5',ID=='5a'~'5',ID=='15'~'15',
+                  ID=='3'~'6',ID=='7'~'7',ID=='6'~'6',ID=='6a'~'6',
+                  ID=='9'~'9', ID=='13'~'13'))
+
+
+wetland_cover <- read_csv("01_Raw_data/wetland_cover.csv")
+
+yrly_CO2_emissions<-left_join(wetland_cover, yrly_CO2_emissions)
+
+ggplot(yrly_CO2_emissions, aes(PERCENTAGE))+
+  geom_point(aes(y=yr_CO2_ems))
+
+
+#Break points and extracting slopes#######
+
+library(segmented)
+
+extract_slopes <- function(site) {
+
+  internalfit<-lm(active~ Q, data=site)
+  seg_internalfit <- segmented(internalfit, seg.Z = ~Q, npsi = 1)
+  internal_bp<-seg_internalfit$psi[, 2] #extact break points
+
+  int.segmented_model <- segmented(internalfit, seg.Z = ~Q, psi = c(internal_bp[1][[1]]))
+
+
+  ext.fit<-lm(passive~ Q, data=site)
+  seg_ext.fit <- segmented(ext.fit, seg.Z = ~Q, npsi = 1)
+  ext.bp<-seg_ext.fit$psi[, 2] #extact break points
+
+  ext.segmented_model <- segmented(ext.fit, seg.Z = ~Q, psi = c(ext.bp[1][[1]]))
+
+
+  df<-df%>%
+    mutate(
+      active_slope_brk1=as.numeric(slope(int.segmented_model)$Q[1]),
+      active_slope_brk2=as.numeric(slope(int.segmented_model)$Q[2]),
+
+      passive_slope_brk1=as.numeric(slope(ext.segmented_model)$Q[1]),
+      passive_slope_brk2=as.numeric(slope(ext.segmented_model)$Q[2])
+    )%>%
+    summarize(
+      active_slope_brk1=mean(active_slope_brk1, na.rm=T),
+      active_slope_brk2=mean(active_slope_brk2, na.rm=T),
+      passive_slope_brk1=mean(passive_slope_brk1, na.rm=T),
+      passive_slope_brk2=mean(passive_slope_brk2, na.rm=T),
+    )
+
+  return(site)}
+interp_1brk.pnts_active <- function(site) {
+
+  internalfit<-lm(active~ Q, data=site)
+  seg_internalfit <- segmented(internalfit, seg.Z = ~Q, npsi = 1)
+  internal_bp<-seg_internalfit$psi[, 2] #extact break points
+
+  segmented_model <- segmented(internalfit, seg.Z = ~Q, psi = c(internal_bp[1][[1]]))
+  (internalslopes<-slope(segmented_model))
+  (internalintercepts<-intercept(segmented_model))
+
+  site<- site %>% mutate(brk.pnt.internal=case_when(Q<=internal_bp[1][[1]]~'1',Q>internal_bp[1][[1]]~'2'))
+
+  ext.fit<-lm(passive~ Q, data=site)
+  seg_ext.fit <- segmented(ext.fit, seg.Z = ~Q, npsi = 1)
+  ext.bp<-seg_ext.fit$psi[, 2] #extact break points
+
+  segmented_model <- segmented(ext.fit, seg.Z = ~Q, psi = c(ext.bp[1][[1]]))
+  (ext.slopes<-slope(segmented_model)) #extract slope for segments
+  (ext.intercepts<-intercept(segmented_model)) #extract intercepts for segments
+
+  site<- site %>% mutate(brk.pnt.ext.=case_when(Q<=ext.bp[1][[1]]~'1',Q>ext.bp[1][[1]]~'2'))
+  return(site)}
+
+active<-active %>% interp_1brk.pnts_active()%>% filter(!is.na(ID))
+
+extract_slopes <- function(site) {
+
+  internalfit<-lm(active~ Q, data=site)
+  seg_internalfit <- segmented(internalfit, seg.Z = ~Q, npsi = 1)
+  internal_bp<-seg_internalfit$psi[, 2] #extact break points
+
+  int.segmented_model <- segmented(internalfit, seg.Z = ~Q, psi = c(internal_bp[1][[1]]))
+
+
+  ext.fit<-lm(passive~ Q, data=site)
+  seg_ext.fit <- segmented(ext.fit, seg.Z = ~Q, npsi = 1)
+  ext.bp<-seg_ext.fit$psi[, 2] #extact break points
+
+  ext.segmented_model <- segmented(ext.fit, seg.Z = ~Q, psi = c(ext.bp[1][[1]]))
+
+
+  df<-df%>%
+    mutate(
+      active_slope_brk1=as.numeric(slope(int.segmented_model)$Q[1]),
+      active_slope_brk2=as.numeric(slope(int.segmented_model)$Q[2]),
+
+      passive_slope_brk1=as.numeric(slope(ext.segmented_model)$Q[1]),
+      passive_slope_brk2=as.numeric(slope(ext.segmented_model)$Q[2])
+    )%>%
+    summarize(
+      active_slope_brk1=mean(active_slope_brk1, na.rm=T),
+      active_slope_brk2=mean(active_slope_brk2, na.rm=T),
+      passive_slope_brk1=mean(passive_slope_brk1, na.rm=T),
+      passive_slope_brk2=mean(passive_slope_brk2, na.rm=T),
+    )
+
+  return(site)}
+
+split_list <- active %>%
+  group_by(ID) %>%
+  group_split()
+
+lm_extract <- lapply(split_list, function(site) {
+
+  internalfit<-lm(active~ Q, data=site)
+  seg_internalfit <- segmented(internalfit, seg.Z = ~Q, npsi = 1)
+  internal_bp<-seg_internalfit$psi[, 2] #extact break points
+
+  int.segmented_model <- segmented(internalfit, seg.Z = ~Q, psi = c(internal_bp[1][[1]]))
+
+
+  ext.fit<-lm(passive~ Q, data=site)
+  seg_ext.fit <- segmented(ext.fit, seg.Z = ~Q, npsi = 1)
+  ext.bp<-seg_ext.fit$psi[, 2] #extact break points
+
+  ext.segmented_model <- segmented(ext.fit, seg.Z = ~Q, psi = c(ext.bp[1][[1]]))
+
+
+  site<-site%>%
+    mutate(
+      active_slope_brk1=as.numeric(slope(int.segmented_model)$Q[1]),
+      active_slope_brk2=as.numeric(slope(int.segmented_model)$Q[2]),
+
+      passive_slope_brk1=as.numeric(slope(ext.segmented_model)$Q[1]),
+      passive_slope_brk2=as.numeric(slope(ext.segmented_model)$Q[2])
+    )%>%
+    summarize(
+      active_slope_brk1=mean(active_slope_brk1, na.rm=T),
+      active_slope_brk2=mean(active_slope_brk2, na.rm=T),
+      passive_slope_brk1=mean(passive_slope_brk1, na.rm=T),
+      passive_slope_brk2=mean(passive_slope_brk2, na.rm=T),
     )
 })
 
 
-slopes <- bind_rows(streams_edited, .id = "ID")
+slopes <- bind_rows(lm_extract, .id = "ID")
+
+
