@@ -123,7 +123,7 @@ active<-active%>%
   filter(!ID %in% c('14', '6a'))%>%filter(!is.na(ID))
 
 active$wetland_perc <- factor(active$wetland_perc,
-                                levels = sort(unique(active$wetland_perc), increasing = TRUE))
+                                levels = sort(unique(active$wetland_perc), decreasing = TRUE))
 
 labels_vec_wetperc <- setNames(
   paste0(active$ID, "\n", active$wetland_perc),
@@ -137,8 +137,16 @@ common_layers <- list(geom_violin(size=1),
                           ylab("Internal/External"),
                           theme(axis.title.x = element_blank(),
                                 axis.title.y= element_text(size=21, angle=90),
-                                plot.title = element_text(size = 21))
-                          )
+                                plot.title = element_text(size = 21)))
+
+active%>%group_by(ID)%>%filter(Q>2)%>%
+  mutate(prop=active/CO2_flux)%>%
+  summarise(
+    min_=min(prop, na.rm = T)*100,
+    max_=max(prop, na.rm = T)*100,
+    avg_=mean(prop, na.rm = T)*100,
+
+  )
 
 
 a<-
@@ -313,3 +321,35 @@ ggsave(filename = "05_Figures/External.v.Passive_Q.jpeg",
 ggsave(filename = "05_Figures/External.v.Passive_Q.split.jpeg",
        plot = combine_split,
        width = 12, height = 12, units = "in")
+
+
+#helpful for writting#######
+
+
+ggplot(
+  active.hist%>%filter(type=='external'),
+  aes(x = Q, y = rate, color = type, group = type)) +
+  geom_point(shape = 21) +
+  stat_poly_line(formula = y ~ x, se = FALSE) +
+  stat_poly_eq(
+    aes(
+      x = log10(Q),
+      y = log10(rate),
+      color = type,
+      group = type,
+      label = paste(..p.value.label.., sep = "~~~")),
+    formula = y ~ x, parse = TRUE,
+    size = 4,
+    label.x.npc = "right",
+    label.y.npc = 0.017,
+    vstep=0.07) +
+  ylab(expression('g'/m^2/'day')) +
+  facet_wrap(~ID, ncol = 3, scales = 'free') +
+  scale_colour_manual(name="", values = col,labels=c("External", "Internal"))+
+  common_theme +
+  ggtitle(expression(CO[2]~Flux-Q~Relationship)) +
+  scale_x_log10() + scale_y_log10() +
+  theme(strip.text = element_text(size = 15)) +
+  xlab("Discharge L/s") +
+  theme(axis.title.x = element_text(size = 21))
+

@@ -13,8 +13,9 @@ theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
 
 library(psycho)
 all_sampled_C <- read_csv("04_Output/stream_sampledC.csv")%>%
-  mutate(season=find_season(Date))%>% filter(!is.na(ID))%>%
-  filter(!is.na(POC))
+  mutate(season=find_season(Date))%>% filter(!is.na(ID))
+
+tern_data<-all_sampled_C%>%filter(!is.na(POC))
 
 POC<-all_sampled_C %>% select(Date,ID,Q,depth, POC)%>% rename(Conc=POC)%>%mutate(Species= 'POC')
 DIC<-all_sampled_C %>% select(Date,ID,Q,depth, DIC)%>% rename(Conc=DIC)%>%mutate(Species= 'DIC')
@@ -112,7 +113,7 @@ labels_vec <- setNames(
   DOC_wet$ID_wet)
 
 
-a<-ggplot(DOC_wet,
+aggplot(DOC_wet,
           aes(x = reorder(ID_wet, -as.numeric(wetland_perc)),
               y = DOC)) +
   geom_boxplot(size=1)+
@@ -128,3 +129,36 @@ a<-ggplot(DOC_wet,
 ggsave(filename = "05_Figures/DOC.across.sites.jpeg",
        plot = a,
        width = 8, height = 5, units = "in")
+#C-Q relationship##########
+
+
+library(lme4)
+spec_DOC<-all_sampled_C%>%select(ID, Date, Q, season, DOC)%>%
+  rename(conc=DOC)%>%mutate(type='DOC')
+
+summary(lmList(log10(conc) ~ log10(Q) | ID, data=spec_DOC))
+
+
+spec_DIC<-all_sampled_C%>%select(ID, Date, Q, season, DIC)%>%
+  rename(conc=DIC)%>%mutate(type='DIC')
+
+summary(lmList(log10(conc) ~ log10(Q) | ID, data=spec_DIC))
+
+
+spec_POC<-all_sampled_C%>%select(ID, Date, Q, season, POC)%>%
+  rename(conc=POC)%>%mutate(type='POC')
+
+summary(lmList(log10(conc) ~ log10(Q) | ID, data=spec_POC))
+
+
+Cspecs<-rbind(spec_DOC, spec_DIC, spec_POC)
+
+ggplot(Cspecs%>% filter(Q>2),aes(x=Q, y=conc, color=type)) +
+  geom_point()+
+  geom_smooth(method = 'lm', se=F)+
+  scale_y_log10()+scale_x_log10()+
+  ylab('mg/L')+xlab("Discharge (L/s)")+
+  facet_wrap(~ID, scales='free')+
+  theme(legend.position = "bottom")
+
+
