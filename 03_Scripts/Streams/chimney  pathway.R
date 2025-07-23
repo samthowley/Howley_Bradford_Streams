@@ -1,4 +1,4 @@
-#packages#####
+`#packages#####
 rm(list=ls())
 
 library(tidyverse)
@@ -32,7 +32,22 @@ uca <- data.frame(
 flow_regime<- read_csv("04_Output/flow_regime_daily.csv")%>%filter(Q>2)
 #GW Correction#####
 
-DO <- read_csv("02_Clean_data/DO_cleaned.csv")%>%arrange(ID, Date)%>%
+compiled_baro <- read_csv("01_Raw_data/PT/compiled_baro.csv")%>%
+  mutate(Date=as.Date(Date))%>%
+  group_by(region, Date)%>%
+  mutate(PT=mean(PTbaro, na.rm=T)*68.9476)%>%
+  distinct(region, Date, .keep_all=T)%>%
+  select(Date, region, PT)
+
+
+
+DO <- read_csv("02_Clean_data/DO_cleaned.csv") %>%
+  mutate(region= case_when(ID=="6"|ID=="6a"|ID=="3"|ID=="7"~ 'N',
+                           ID=="5"|ID=="5a"|ID=="15"|ID=="9"|
+                             ID=="14"|ID=="13"~ 'S'))
+
+DO_edit<-left_join(DO, compiled_baro)%>%
+  arrange(ID, Date)%>%
   mutate(light=calc_light(Date,  29.8, -82.6))%>%
   mutate(time=case_when(
     light>1000~'day',
@@ -41,15 +56,15 @@ DO <- read_csv("02_Clean_data/DO_cleaned.csv")%>%arrange(ID, Date)%>%
   group_by(ID,Date, time)%>%
   mutate(DO_night=mean(DO, na.rm = T))%>%ungroup()%>%
   group_by(Date, ID)%>%
-  mutate(DO=mean(DO, na.rm=T))%>%
+  mutate(DO=mean(DO, na.rm=T), DO_Saturation=calc_DO_sat(Temp_DO, PT))%>%
   distinct(Date, ID, .keep_all=T)%>%
-  select(-light, -time)
+  select(-light, -time, -PT)
 
 metabolism<-read_csv('04_Output/master_metabolism.csv')%>%
   mutate(NEP=(GPP+ER))%>%
   rename(Date=date)
 
-met_DO<-left_join(metabolism, DO, by=c('Date','ID'))
+met_DO<-left_join(metabolism, DO_edit, by=c('Date','ID'))
 met_DO<-left_join(met_DO, flow_regime)
 
 units<-met_DO %>%
@@ -83,6 +98,7 @@ gw_corrected<-left_join(units,uca)%>%
 #   facet_wrap(~ ID, scales='free')
 
 #write_csv(gw_corrected, "04_Output/gw_corrected_metabolism.csv")
+
 #Chimney Pathway#####
 
 KH<-gw_corrected %>%filter(depth>0)%>%
@@ -124,9 +140,9 @@ active<-flux%>%
     Basin=case_when(ID=='5'~'5',ID=='5a'~'5',ID=='15'~'15',
                          ID=='3'~'6',ID=='7'~'7',ID=='6'~'6',ID=='6a'~'6',
                          ID=='9'~'9', ID=='13'~'13'))%>%
-  select(Date, ID, GPP, K600, DO, depth, Q, NEP_corrected, ER_corrected,
+  select(Date, ID, GPP, K600, DO, DO_Saturation, depth, Q, NEP_corrected, ER_corrected,
          CO2_flux, CO2, active, passive, active.passive, Basin)%>%
-  filter(!ID=='6a')#%>%
+  filter(!ID=='6a', !is.na(ID))#%>%
 
 active <- active[complete.cases(active[ , c('CO2_flux')]), ]
 
@@ -191,7 +207,7 @@ streams_edited <- lapply(streams, function(df) {
 slopes_not.split<- bind_rows(streams_edited, .id = "ID")
 
 #Split Q
-cols <- c('active', 'passive', 'Q', 'ID', 'Q_ID')
+cols <- c('active', 'passive', 'Q', 'ID','DO' ,'Q_ID')
 unique_sites <- unique(active$Q_ID[!is.na(active$Q_ID)])
 
 streams <- setNames(
@@ -201,11 +217,14 @@ streams <- setNames(
       select(all_of(cols))
     return(df_subset)
   }),
-  unique_sites
-)
+  unique_sites)
+
+
 streams_edited <- lapply(streams, function(df) {
 
-  df <- df %>% filter(active > 0, passive > 0, Q > 0)
+  df <- df %>%
+    filter(active > 0, Q > 0, DO > 0) %>%
+    filter(!is.na(ID), !is.na(active), !is.na(Q), !is.na(DO))
 
 
   (active.Q<-summary(lm(log10(active) ~ log10(Q), data = df)))
@@ -213,23 +232,23 @@ streams_edited <- lapply(streams, function(df) {
   pvalue_slope.active <- active.Q$coefficients[2, 4]
 
 
-  # (passive.Q<-summary(lm(log10(passive) ~ log10(Q), data = df)))
-  # Slope.passive <- passive.Q$coefficients[2,1]
-  # pvalue_slope.passive <- passive.Q$coefficients[2, 4]
+  (passive.Q<-summary(lm(log10(DO) ~ log10(Q), data = df)))
+  Slope.passive <- passive.Q$coefficients[2,1]
+  pvalue_slope.passive <- passive.Q$coefficients[2, 4]
 
   df<-df%>%
     mutate(
       Slope.active=as.numeric(c(Slope.active)),
-      #Slope.passive=as.numeric(c(Slope.passive)),
+      Slope.passive=as.numeric(c(Slope.passive)),
 
       pvalue_slope.active=as.numeric(c(pvalue_slope.active)),
-      #pvalue_slope.passive=as.numeric(c(pvalue_slope.passive))
+      pvalue_slope.passive=as.numeric(c(pvalue_slope.passive))
     )%>%
     summarize(
       active_slope=mean(Slope.active, na.rm=T),
-      #passive_slope=mean(Slope.passive, na.rm=T),
+      DO_slope=mean(Slope.passive, na.rm=T),
       active_pvalue=mean(pvalue_slope.active, na.rm=T),
-      #passive_pvalue=mean(pvalue_slope.passive, na.rm=T),
+      DO_pvalue=mean(pvalue_slope.passive, na.rm=T),
 
     )
 })
@@ -238,7 +257,7 @@ slopes <- bind_rows(streams_edited, .id = "ID")%>%
   separate(ID, into = c("ID", "Q_med"), sep = "_")
 
 
-#hydro regime######
+`#hydro regime######
 #There's a better way to do this. once I figure out the slopes (maybe), I can estimate,
 #yearly emissions
 Q <- read_csv("02_Clean_data/discharge.csv")%>%

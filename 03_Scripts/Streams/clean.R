@@ -227,27 +227,44 @@ ggplot(master, aes(Date, pH)) + geom_point() + facet_wrap(~ ID, ncol=4)
 write_csv(master, "master.csv")
 
 #Figure##########
-master$ID <- factor(master$ID , levels=c('15','5','5a','3','6','13','7','9','6a')) #order of increasing wetland cover
 
-d<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=SpC)) +
+ordered_ids <- master %>%
+  filter(!ID %in% c('14', NA)) %>%
+  arrange(Q) %>%
+  pull(ID) %>%
+  unique()
+
+master <- master %>%
+  mutate(ID = factor(ID, levels = ordered_ids))
+
+
+pSpC<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=SpC)) +
   xlab('Stream ID')+
   geom_boxplot()+theme(axis.title.x =element_blank(),axis.text.x =element_blank())
 
-a<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=DO)) +
+pDO<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=DO)) +
   xlab('Stream ID')+ylab('DO mg/L')+
   geom_boxplot()+theme(axis.title.x =element_blank(),axis.text.x =element_blank())
 
-b<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=pH)) +
+ppH<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=pH)) +
   xlab('Stream ID')+ylab('pH')+
   geom_hline(yintercept = 7, color='red')+
   geom_boxplot()+theme(axis.title.x=element_blank(),axis.text.x =element_blank())
 
-c<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=CO2)) +
+pCO2<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=CO2)) +
+  xlab('Stream ID')+ylab(expression(CO[2]~ppm))+scale_y_log10()+
+  geom_boxplot()+theme(axis.title.x=element_blank())
+
+pQ<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=Q)) +
+  xlab('Stream ID')+ylab("Q")+scale_y_log10()+
+  geom_boxplot()+theme(axis.title.x=element_blank())
+
+pdepth<-ggplot(master %>% filter(!ID %in% c('14', NA)),aes(x=as.factor(ID), y=depth)) +
   xlab('Stream ID')+ylab(expression(CO[2]~ppm))+scale_y_log10()+
   geom_boxplot()+theme(axis.title.x=element_blank())
 
 
-plot_grid(a,b,d,c, ncol=1, align = 'v')
+plot_grid(pQ,pDO,pCO2, ncol=1, align = 'v')
 
 master %>%
   group_by(ID)%>%
@@ -288,5 +305,3 @@ master %>%
             DO=mean(DO, na.rm=T),
             CO2=mean(CO2, na.rm=T))
 
-#testing testing 123###
-DO <- read_csv("02_Clean_data/DO_cleaned.csv")%>% filter(ID=='5', Date=='2025-04-02')#%>%sum(DO=mean(DO, na.rm=T))
