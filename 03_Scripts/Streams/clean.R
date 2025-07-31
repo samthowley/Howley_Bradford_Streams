@@ -6,6 +6,7 @@ library(readxl)
 library(weathermetrics)
 library(measurements)
 library(cowplot)
+library(tools)
 
 #helping matthew
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
@@ -92,8 +93,16 @@ DO_all$DO[DO_all$DO>10]<-NA
 DO_all<-left_join(samplingperiod, DO_all)
 DO_all<- DO_all[!duplicated(DO_all[c('Date','ID')]),]
 DO_all<-DO_all %>% mutate(ID=as.character(ID))
+
 ggplot(DO_all, aes(Date, DO)) + geom_line() + facet_wrap(~ ID, ncol=4)
-range(DO_all$Date)
+
+discharge <- read_csv("02_Clean_data/discharge.csv")
+DO_check<-left_join(DO_all, discharge)
+
+a<-ggplot(DO_check %>% filter(ID=='5', Q>1, Date>'2025-04-01'), aes(Date, DO)) + geom_line()
+b<-ggplot(DO_check %>% filter(ID=='5',  Date>'2025-04-01'), aes(Date, Q)) + geom_line()
+
+plot_grid(a,b, ncol=1)
 
 write_csv(DO_all, "02_Clean_data/DO_cleaned.csv")
 
@@ -273,9 +282,6 @@ master %>%
             DO=mean(DO, na.rm=T),
             CO2=mean(CO2, na.rm=T))
 
-
-
-
 e<-ggplot(master %>% filter(!ID %in% c('14', NA)),
           aes(x=as.factor(ID), y=depth)) +
   xlab('Stream ID')+ylab('depth')+
@@ -305,3 +311,8 @@ master %>%
             DO=mean(DO, na.rm=T),
             CO2=mean(CO2, na.rm=T))
 
+ggplot(master %>% filter(!ID %in% c('14', NA), Q>0.1),
+       aes(x=Q, y=CO2)) +
+  scale_y_log10()+scale_x_log10()+
+  geom_point()+theme(axis.title.x=element_blank())+
+  facet_wrap(~ID)

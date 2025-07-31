@@ -39,12 +39,10 @@ compiled_baro <- read_csv("01_Raw_data/PT/compiled_baro.csv")%>%
   distinct(region, Date, .keep_all=T)%>%
   select(Date, region, PT)
 
-
-
 DO <- read_csv("02_Clean_data/DO_cleaned.csv") %>%
-  mutate(region= case_when(ID=="6"|ID=="6a"|ID=="3"|ID=="7"~ 'N',
-                           ID=="5"|ID=="5a"|ID=="15"|ID=="9"|
-                             ID=="14"|ID=="13"~ 'S'))
+  mutate(region=
+           case_when(ID=="6"|ID=="6a"|ID=="3"|ID=="7"~ 'N',
+                    ID=="5"|ID=="5a"|ID=="15"|ID=="9"|ID=="14"|ID=="13"~ 'S'))
 
 DO_edit<-left_join(DO, compiled_baro)%>%
   arrange(ID, Date)%>%
@@ -59,6 +57,7 @@ DO_edit<-left_join(DO, compiled_baro)%>%
   mutate(DO=mean(DO, na.rm=T), DO_Saturation=calc_DO_sat(Temp_DO, PT))%>%
   distinct(Date, ID, .keep_all=T)%>%
   select(-light, -time, -PT)
+
 
 metabolism<-read_csv('04_Output/master_metabolism.csv')%>%
   mutate(NEP=(GPP+ER))%>%
@@ -94,7 +93,7 @@ gw_corrected<-left_join(units,uca)%>%
 #   facet_wrap(~ ID, scales='free')
 #
 # ggplot(gw_corrected, aes(Date))+
-#   geom_line(aes(y=ER_corrected/ER))+
+#   geom_line(aes(y=width_m))+
 #   facet_wrap(~ ID, scales='free')
 
 #write_csv(gw_corrected, "04_Output/gw_corrected_metabolism.csv")

@@ -25,6 +25,7 @@ common_theme<-list( theme(
 wetland_cover <- read_csv("01_Raw_data/wetland_cover.csv")%>%
   select(Basin_Name, PERCENTAGE) %>% rename(Basin=Basin_Name, wetland_perc=PERCENTAGE)%>%
   mutate(wetland_perc=round(wetland_perc, 2))
+
 active<-full_join(active, wetland_cover)%>%
   mutate(ID_wetperc=paste0(ID, wetland_perc, sep="_"))%>%
   filter(!is.na(ID))
