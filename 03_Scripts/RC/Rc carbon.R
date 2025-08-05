@@ -124,45 +124,7 @@ split_list <- RC_edit %>%
   group_by(ID.Well) %>%
   group_split()
 
-names(split_list) <- RC_edit %>% pull(ID.Well) %>% unique()
-
-rmv_errors <- lapply(split_list, function(df) {
-
-  formulas <- list(
-    DOC_flux = DOC_flux ~ WT_elevations,
-    DIC_flux = DIC_flux ~ WT_elevations,
-    lateral_CO2 = lateral_CO2 ~ WT_elevations,
-    lateral_CH4 = lateral_CH4 ~ WT_elevations    # FIXED here
-  )
-
-  keep_rows <- rep(TRUE, nrow(df))
-
-  for (f in formulas) {
-    # Check if df has any non-NA rows for the variables in the formula:
-    vars <- all.vars(f)
-
-    # Subset df to rows with complete data for this formula's variables
-    complete_cases <- complete.cases(df[, vars])
-
-    if (sum(complete_cases) == 0) {
-      # No data to fit model, so skip this formula
-      next
-    }
-
-    model <- lm(f, data = df[complete_cases, ])
-    std_res <- rstandard(model)
-
-    # Align residuals to original df's indices for logical filtering
-    keep_logical <- rep(TRUE, nrow(df))  # default = TRUE for rows without data
-    keep_logical[which(complete_cases)] <- abs(std_res) <= 2
-
-    keep_rows <- keep_rows & keep_logical
-  }
-
-  df[keep_rows, ]
-})
-
-write_xlsx(split_list, path = "04_Output/RC_by_well.xlsx")
+#write_xlsx(split_list, path = "04_Output/RC_by_well.xlsx")
 
 #include streams#####
 

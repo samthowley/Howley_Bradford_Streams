@@ -235,7 +235,7 @@ ggplot(master, aes(Date, pH)) + geom_point() + facet_wrap(~ ID, ncol=4)
 
 write_csv(master, "master.csv")
 
-#Figure##########
+#Figures##########
 
 ordered_ids <- master %>%
   filter(!ID %in% c('14', NA)) %>%
@@ -311,8 +311,16 @@ master %>%
             DO=mean(DO, na.rm=T),
             CO2=mean(CO2, na.rm=T))
 
-ggplot(master %>% filter(!ID %in% c('14', NA), Q>0.1),
-       aes(x=Q, y=CO2)) +
-  scale_y_log10()+scale_x_log10()+
-  geom_point()+theme(axis.title.x=element_blank())+
-  facet_wrap(~ID)
+
+master_daily<-master %>% mutate(Date=as.Date(Date))%>%
+  group_by(ID, Date)%>%
+  mutate(DO=mean(DO, na.rm=T), CO2=mean(CO2, na.rm = T), Q=mean(Q, na.rm=T))%>%
+  distinct(Date, ID, .keep_all = T)
+
+ggplot(master_daily %>% filter(!ID %in% c('14', NA), Q>0.1),
+       aes(x=Q, y=CO2,color=ID)) +
+  #scale_y_log10()+scale_x_log10()+
+  geom_point()+theme(axis.title.x=element_blank())+ facet_wrap(~ID, scales='free')
+
+library(lme4)
+summary(lmList(CO2 ~ Q | ID, data=master_daily))

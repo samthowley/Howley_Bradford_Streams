@@ -11,11 +11,11 @@ library(ggtern)
 library(tibble)
 
 #need to include stream LB too
-theme_set(theme(axis.text.x = element_text(size = 32),
-                axis.text.y = element_text(size = 32),
-                axis.title.y = element_text(size = 35, angle = 90),
-                axis.title.x = element_text(size = 35),
-                plot.title = element_text(size = 35),
+theme_set(theme(axis.text.x = element_text(size = 20),
+                axis.text.y = element_text(size = 20),
+                axis.title.y = element_text(size = 20, angle = 90),
+                axis.title.x = element_text(size = 20),
+                plot.title = element_text(size = 20),
                 legend.key.size = unit(0.5, 'cm'),
                 legend.text=element_text(size = 8),
                 legend.title =element_text(size = 8),
@@ -25,47 +25,39 @@ theme_set(theme(axis.text.x = element_text(size = 32),
                 panel.background = element_rect(fill = 'white'),
                 axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "gray"),
                 axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "gray"),
-                strip.text = element_text(size = 32)))
+                strip.text = element_text(size = 20)))
 
 #Edit dims######
-depth<-read_csv('02_Clean_data/depth.csv')
-Q<-read_csv('02_Clean_data/discharge.csv')
 
-depth<-depth %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>% mutate(depth=mean(depth, na.rm = T)) %>%
-  select(Date, ID, depth)%>% filter(depth>0)
-depth <- depth[!duplicated(depth[c( 'Date','ID')]),]
-
-Q<-Q %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>%
-  mutate(Q=mean(Q, na.rm = T)) %>%
-  select(Date, ID, Q) %>% filter(Q>1)
-Q <- Q[!duplicated(Q[c('Date','ID')]),]
-
-dim<-left_join(depth, Q, by=c('ID', 'Date'))
-dim_edited<-dim %>%filter(ID %in% c('6','9','5'))
+flow_regime_daily <- read_csv("04_Output/flow_regime_daily.csv")%>%
+  filter(ID %in% c('6','9','5'))%>%
+  select(ID, Date, Q)
 
 fa <- read_excel("01_Raw_data/Long. Log.xlsx", sheet = "dims")%>%
   mutate(Site=as.factor(Site), ID=as.factor(ID))%>%
   separate(Site, into = c("ID", "Long"), sep = "\\.")%>%
   mutate(Long=if_else(is.na(Long), '0', Long))
 
-Q.fa<-left_join(dim_edited, fa, by='ID')%>%
-  mutate(Q.prop=Q*Q_fraction)%>%
-  select(-Q_fraction, -RASTERVALU)
+Q.fa<-left_join(flow_regime_daily, fa, by='ID')%>%
+  mutate(Q.prop=Q*Q_fraction_04.2025)%>%
+  select(Date, ID, distance, Q, Q.prop)
 
-#Optional: Water Carbon Samples############
-shimadzu_stream<- read_csv("04_Output/TDC_stream.csv")%>%
-  select(-depth, -Q, -pH, -CO2, -Temp_pH, -chapter)%>%
-  separate(Site, into = c("ID", "Long"), sep = "\\.")%>%
-  mutate(Long=if_else(is.na(Long), '0', Long))%>%
-  filter(ID %in% c('5', '6', '9', '3'))
+#Water Carbon Samples############
 
 shimadzu_samples<-read_csv("04_Output/TDC_long.csv")%>%
   mutate(ID=as.character(ID))%>%
+  filter(!Site %in% c('3.3', '6.4', '5.6', '9.5', '5.5', '9.Sam'))%>%
   separate(Site, into = c("ID", "Long"), sep = "\\.")%>%
   select(-depth, -Q, -pH, -CO2, -Temp_pH, -chapter)%>%
   mutate(Long=as.factor(Long), ID=as.factor(ID))
 
-shimadzu_samples_all<-rbind(shimadzu_stream,shimadzu_samples)
+
+shimadzu_stream<- read_csv("04_Output/TDC_stream.csv")%>%
+  select(-depth, -Q, -pH, -CO2, -Temp_pH, -chapter)%>%
+  mutate(Long='0')%>%
+  filter(ID %in% c('5', '6', '9', '3'))%>%
+  select(names(shimadzu_samples))
+
 
 field_log <- read_excel("01_Raw_data/Long. Log.xlsx",
                        sheet = "Long. Log", col_types = c("numeric",
@@ -73,41 +65,43 @@ field_log <- read_excel("01_Raw_data/Long. Log.xlsx",
                                                           "numeric", "numeric", "numeric",
                                                           "numeric", "skip", "skip"))%>%
   filter(!is.na(Site))%>%
+  filter(!Site %in% c('3.3', '6.4', '5.6', '9.5', '5.5', '9.Sam'))%>%
   rename(Date=Visited)%>%
   separate(Site, into = c("ID", "Long"), sep = "\\.")
+
+shimadzu_samples_all<-rbind(shimadzu_stream,shimadzu_samples)
 
 water_samples<-left_join(shimadzu_samples_all, field_log)%>%
   mutate(POC=abs(POC))
 
 
-#Optional:include gas samples####
+#include gas samples####
 long_gas <- read_csv("04_Output/Picarro_gas.csv")%>%
   filter(chapter=='long')%>%
+  filter(!ID %in% c('3.3', '6.4', '5.6', '9.5', '5.5', '9.Sam'))%>%
   separate(ID, into = c("ID", "Long"), sep = "\\.")%>%
   select(-chapter)%>%
   mutate(Long=as.factor(Long), ID=as.factor(ID))
 
 stream_gas <- read_csv("04_Output/Picarro_gas.csv")%>%
   filter(chapter=='stream')%>%
-  separate(ID, into = c("ID", "Long"), sep = "\\.")%>%
-  select(-chapter)%>%
-  mutate(Long=as.factor(Long), ID=as.factor(ID))%>%
-  filter(ID %in% c('5','6','9','3'))
+  filter(ID %in% c('5','6','9','3'))%>%
+  mutate(Long='0')%>%
+  mutate(Long=as.factor(Long), ID=as.factor(ID))%>%select(names(long_gas))
 
 gas_samples<-rbind(long_gas, stream_gas)
 
 all_samples<-full_join(water_samples, gas_samples)%>%
+  mutate(Long=as.factor(Long), ID=as.factor(ID))%>%
+  distinct(Date, ID, Long, .keep_all = T)%>%
+  mutate(Long=if_else(ID=='3' & Long=='4','3', Long),
+         Long=if_else(ID=='6' & Long=='1','4', Long),
+         Long=if_else(ID=='6' & Long=='2','5', Long),
+         Long=if_else(ID=='6' & Long=='3','6', Long),
+         ID=if_else(ID=='3','6', ID))%>%
   mutate(ID_Long = paste(ID, Long, sep = "_"))%>%
-  mutate(ID_Long=if_else(ID_Long=='3_0', '3_1', ID_Long),
-         ID_Long=if_else(ID_Long=='3_NA', '3_1', ID_Long),
-         ID_Long=if_else(ID_Long=='3_3', '3_4', ID_Long),
-         ID_Long=if_else(ID_Long=='5_NA', '5_0', ID_Long),
-         ID_Long=if_else(ID_Long=='6_NA', '6_0', ID_Long),
-         ID_Long=if_else(ID_Long=='9_NA', '9_0', ID_Long))%>%
-  filter(!ID_Long %in% c("9_Sam", "5_5", "9_5", "3_3", "6_4", "5_6", "6_0"))%>%
-  mutate(ID=if_else(ID_Long=='3_1', '6', ID),
-         ID=if_else(ID_Long=='3_2', '6', ID),
-         ID=if_else(ID_Long=='3_4', '6', ID))%>%select(-Temp_K)
+  mutate(ID_Long=if_else(ID_Long=='6_0','6_2', ID_Long))%>%
+  select(-Temp_K)
 
 c.q<-left_join(all_samples,Q.fa)
 
@@ -255,8 +249,30 @@ CH4_table <- bind_rows(CH4_relationships, .id = "ID")
 
 relationships<-left_join(DOC_table, DIC_table, by='ID')
 relationships<-left_join(relationships,CO2_table, by='ID')
-relationships<-left_join(relationships,CH4_table, by='ID')
+relationships<-left_join(relationships,CH4_table, by='ID')%>% separate(ID, into = c("ID", "Long"), sep = "_")
 
+stream_dims <- read_excel("01_Raw_data/Long. Log.xlsx", sheet = "dims") %>%
+  rename(UCA=RASTERVALU_04.2025)%>%
+  select(Site, ID, distance, UCA)%>%
+  separate(Site, into = c("ID", "Long"), sep = "\\.")%>%
+  mutate(Long=if_else(ID=='3' & Long=='4','3', Long),
+         Long=if_else(ID=='6' & Long=='1','4', Long),
+         Long=if_else(ID=='6' & Long=='2','5', Long),
+         Long=if_else(ID=='6' & Long=='3','6', Long),
+         Long=if_else(is.na(Long), '0', Long),
+         ID=if_else(ID=='3','6', ID))%>%
+  mutate(distance=if_else(is.na(distance), 0, distance))%>%
+  arrange(ID, distance)%>%
+  mutate(UCA=if_else(is.na(UCA), 0, UCA))%>%
+  group_by(ID)%>%
+  mutate(UCA_diff=abs(lag(UCA)-UCA),
+         dist_diff=abs(lag(distance)-distance),
+         hotspots=UCA_diff/dist_diff)
+
+relationships<-left_join(relationships, stream_dims, by=c('ID','Long'))
+
+ggplot(relationships, aes(x = distance, y = hotspots)) +
+  geom_point()+facet_wrap(~ID)
 
 #wetland influence######
 

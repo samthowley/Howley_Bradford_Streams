@@ -3,8 +3,8 @@
 
 depth<-read_csv('02_Clean_data/depth.csv')%>%
   mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>%
-  mutate(depth=mean(depth, na.rm = T)) %>%
-  select(Date, ID, depth)%>%distinct(Date, ID, .keep_all = T)
+  mutate(depth=mean(depth, na.rm = T), Water_press=mean(Water_press, na.rm = T)) %>%
+  select(Date, ID, depth, Water_press)%>%distinct(Date, ID, .keep_all = T)
 
 Q<-read_csv('02_Clean_data/discharge.csv')%>%
   mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>%

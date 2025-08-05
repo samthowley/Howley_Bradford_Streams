@@ -6,6 +6,8 @@ library(lubridate)
 library(weathermetrics)
 library(tools)
 library(cowplot)
+library(plotly)
+
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2024-05-06 00:00", tz="UTC"),
                                             to=as.POSIXct("2025-07-02 00:00", tz="UTC"),by="hour")))
 theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
@@ -75,9 +77,8 @@ for(i in file.names){
   CO2<-rbind(CO2, LB)}
 
 # depth<-read_csv('02_Clean_data/depth.csv')
-# CO2<-left_join(CO2,depth, by=c('Date','ID'))
+# CO2<-left_join(CO2,depth, by=c('Date','ID'))%>% filter(CO2>600)
 #clean######
-
 sites<-split(CO2,CO2$ID)
 s13<-sites[['13']]
 s15<-sites[['15']]# not working :()
@@ -89,84 +90,43 @@ s6a<-sites[['6a']]
 s7<-sites[['7']]
 s9<-sites[['9']]
 
-s5<-s5 %>%filter(CO2>2000 & CO2<15000)%>%
-  mutate(CO2 = if_else(Date >= "2024-03-01" & Date <= "2024-07-01" & CO2 > 8000, NA, CO2))
+s5<-s5 %>%
+  mutate(
+    CO2=if_else(Date> '2023-12-17' & Date<'2025-02-27', CO2*4.2, CO2))%>%
+  filter(CO2< 52000)%>%
+  mutate(CO2=CO2/4.2)%>%filter(CO2>1100)
 
-(a<-ggplot(s5, aes(Date, CO2))+geom_point()+ggtitle('Stream 5'))
-b<-ggplot(s5, aes(Date, depth))+geom_line()+ggtitle('Stream 5')
-plot_grid(a,b,ncol=1)
+# ggplotly(ggplot(test,
+#                 aes(Date, CO2, color=depth))+
+#            geom_point()+
+#   theme(legend.position = "bottom"))
 
-s5a<-s5a %>% filter(CO2>3500)%>%
-  mutate(CO2 = if_else(Date >= "2024-01-01" & Date <= "2024-03-01" & CO2 > 8000, NA, CO2))
-#ggplot(s5a, aes(Date, CO2))+geom_point()+geom_hline(yintercept = 3500)
+#test<-s5a %>%
 
-s15<-s15 %>% filter(CO2>1000 & CO2<8800)
-# (a<-ggplot(s15, aes(Date, CO2))+geom_point()+geom_hline(yintercept = 8700))
-# b<-ggplot(s15, aes(Date, depth))+geom_line()
-# plot_grid(a,b,ncol=1)
+s15<-s15 %>% filter(CO2>1000 & CO2< 19000)
 
-s7<-s7%>% filter(CO2>1000) %>%
-  mutate(CO2 = if_else(Date >= "2024-08-01" & Date <= "2024-10-01" & CO2 > 15000, NA, CO2))
-#(a<-ggplot(s7, aes(Date, CO2))+geom_point()+geom_hline(yintercept=1100))
-# b<-ggplot(s7, aes(Date, depth))+geom_line()
-# plot_grid(a,b,ncol=1)
+s7<-s7%>% filter(CO2>800)
 
-s3<-s3 %>%filter(CO2>2000)%>%
-  mutate(CO2 = if_else(Date <= "2024-09-01" & CO2 < 4600, NA, CO2))%>%
-  mutate(CO2 = if_else(Date >"2024-09-01" & CO2 < 3000, NA, CO2))
-#ggplot(test, aes(Date, CO2))+geom_point()+geom_hline(yintercept = 5500)
-# plot_grid(a,b,ncol=1)
+s3<-s3 %>%filter(CO2>1400, CO2<23000)%>%
+  mutate(CO2 = if_else(Date >"2024-08-23", CO2*4.2, CO2))
 
-s6<-s6 %>% filter(CO2>1000)%>%
-  mutate(CO2 = if_else(Date >= "2024-07-01", CO2*6, CO2))%>%
-  mutate(CO2 = if_else(Date >= "2024-01-01" & Date< '2024-04-01' & CO2>12000, NA, CO2))%>%
-  mutate(CO2 = if_else(Date >= "2024-04-01" & Date< '2024-07-01' & CO2>17500, NA, CO2))
-# range(test$Date)
-# (a<-ggplot(test, aes(Date, CO2))+geom_point()+geom_hline(yintercept=2000))
-# b<-ggplot(s6, aes(Date, depth))+geom_line()
-# plot_grid(a,b,ncol=1)
+s6<-s6 %>%
+  mutate(CO2 = if_else(Date >= "2024-08-01", CO2*6, CO2))%>%
+  filter(CO2>900, CO2<26000)
 
-s6a<-s6a %>% filter(CO2>1000& CO2<21000)
-# ggplot(s6a, aes(Date, CO2))+geom_point()+geom_hline(yintercept = 3000)
+s6a<-s6a %>% filter(CO2>3000& CO2<20000)
 
-s9<-s9 %>%  filter(CO2>1800)%>%
-  mutate(CO2 = if_else(Date >= "2024-07-01" & CO2<3700, NA, CO2))%>%
-  mutate(CO2 = if_else(Date <= "2023-07-30", NA, CO2))
-# ggplot(test, aes(Date, CO2))+geom_point()+geom_hline(yintercept = 3700)
-# b<-ggplot(s9, aes(Date, depth))+geom_line()
-# plot_grid(a,b,ncol=1)
+s9<-s9 %>%  filter(CO2>1300)
 
-s13<-s13 %>%  filter(CO2<15000 & CO2>1400)
-# ggplot(test, aes(Date, CO2))+geom_point()+geom_hline(yintercept = 1400)
-# b<-ggplot(s13, aes(Date, depth))+geom_line()
-# plot_grid(a,b,ncol=1)
+s13 <- s13 %>%
+  mutate(
+    CO2 =
+      if_else( Date > as.Date('2024-06-01') & Date < as.Date('2024-08-04'), NA_real_,CO2))%>%
+  filter(CO2<13400, CO2>1200)
 
 CO2<-rbind(s5,s5a,s15,s6a,s6,s7,s3,s13,s9)
 range(CO2$Date, na.rm=T)
 ggplot(CO2, aes(Date, CO2)) + geom_point(size=1) + facet_wrap(~ ID, ncol=4, scales='free')
 ggplot(CO2%>% filter(ID=='5'), aes(Date, CO2)) + geom_point(size=1)
 write_csv(CO2, "02_Clean_data/CO2_cleaned.csv")
-
-##############
-peek<-read_csv("02_Clean_data/CO2_cleaned.csv")
-depth<-read_csv("02_Clean_data/depth.csv")
-discharge<-read_csv("02_Clean_data/discharge.csv")
-discharge<-discharge%>% mutate(Q=0.0283168*Q)
-
-CO2<-left_join(peek, depth, by=c('Date', 'ID'))
-CO2<-left_join(CO2, discharge, by=c('Date', 'ID'))
-
-north<-CO2%>%filter(ID %in% c('5','5a','15','7'))
-south<-CO2%>%filter(ID %in% c('3','6','6a','9','13'))
-
-a<-ggplot(north, aes(Date, depth)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab("m")
-b<-ggplot(north, aes(Date, Q)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab(expression(m^3/sec))
-c<-ggplot(north, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab(expression(CO[2]~ppm))
-plot_grid(a,b,c, ncol=1)
-
-
-a<-ggplot(south, aes(Date, depth)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab("m")
-b<-ggplot(south, aes(Date, Q)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab(expression(m^3/sec))
-c<-ggplot(south, aes(Date, CO2)) + geom_line() + facet_wrap(~ ID, ncol=5, scales='free')+ylab(expression(CO[2]~ppm))
-plot_grid(a,b,c, ncol=1)
 
