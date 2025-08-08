@@ -8,18 +8,25 @@ var_conc_labels <- c('DOC mg/L', 'DIC mg/L', 'CO2 umol/L', 'CH4 umol/L')
 library(ggpmisc)
 common_layers<-list(
   geom_point(shape=1, size=2, stroke=2),
-  stat_poly_line(formula = y ~ x, se = FALSE),
   labs(y = "mg/L", x = expression('Discharge'~m^3~s^-1)),
   scale_y_log10(),
-  scale_y_log10(),
+  stat_poly_line(formula = y ~ x, se = FALSE),
+    stat_poly_eq(aes(x = log10(Q.prop), y = log10(DOC),
+                     label = paste(..p.value.label.., sep = "~~~")),
+                 formula = y ~ x, parse = TRUE,
+                 size = 4,label.x.npc = "right",label.y.npc = 0.017,hstep=0.2),
   theme(
       legend.title = element_text(size = 24),
       legend.text = element_text(size = 20),
       legend.key.size = unit(1.5, 'cm')),
   facet_wrap(~Long, scales='free'))
 
-ggplot(c.q %>% filter(ID=='9'), aes(x = Q.prop, y = DOC)) +
+ggplot(c.q, aes(x = Q.prop, y = DOC, ID=='5')) +
   common_layers
+
+
+
+
 ggplot(c.q %>% filter(ID=='5'), aes(x = Q.prop, y = DIC)) +
   common_layers
 ggplot(c.q %>% filter(ID=='5'), aes(x = Q.prop, y = CO2_umol_L)) +
