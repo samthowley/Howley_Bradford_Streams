@@ -10,7 +10,7 @@ library(tools)
 
 #helping matthew
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
-                                 to=as.POSIXct("2025-07-02 00:00", tz="UTC"),by="hour")))
+                                 to=as.POSIXct("2025-07-14 00:00", tz="UTC"),by="hour")))
 
 clean_DO <- function(fil) {
   DO <- read_csv(fil,skip= 1) # read csv
@@ -113,7 +113,7 @@ for(i in file.names){
   SpC<-clean_SpC(i)
   SpC_all<-rbind(SpC_all, SpC)}
 
-SpC_all$SpC[SpC_all$SpC>600]<-NA
+SpC_all$SpC[SpC_all$SpC>900]<-NA
 SpC_all$SpC[SpC_all$SpC<25]<-NA
 
 sites<-split(SpC_all,SpC_all$ID)
