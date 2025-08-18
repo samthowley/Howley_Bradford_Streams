@@ -127,18 +127,30 @@ active%>%
   select(ID, active.passive.mean, active.passive.max, active.passive.min, act_days,
          act_perc.min, act_perc.max)
 
-ggplot(active,
-  aes(x = Q, y = active.passive)) +
-  geom_point(shape = 21) +
-  common_theme+
-  geom_hline(yintercept = 1, linetype='dashed')+
-  scale_y_log10()+scale_x_log10()+
-  facet_wrap(~ID, scales='free')+
-  stat_poly_line(formula = y ~ x, se = FALSE) +
-  stat_poly_eq(aes(x = log10(Q), y = log10(active.passive),
-    group = ID,label = paste(..p.value.label.., sep = "~~~")),
-    formula = y ~ x, parse = TRUE,
-    size = 4,label.x.npc = "right",label.y.npc = 0.017,vstep=0.07)
+
+
+ggsave(filename = "05_Figures/int-ext~Q.jpeg",
+       plot =
+
+         ggplot(active,
+                aes(x = Q, y = active.passive)) +
+         geom_point(shape = 21) +
+         common_theme+
+         geom_hline(yintercept = 1, linetype='dashed')+
+         scale_y_log10()+scale_x_log10()+
+         facet_wrap(~ID, scales='free')+
+         ylab("Internal: External")+xlab(expression('Discharge'~m^3~s^-1))+
+         stat_poly_line(formula = y ~ x, se = FALSE) +
+         stat_poly_eq(aes(x = log10(Q), y = log10(active.passive),
+                          group = ID,label = paste(..p.value.label.., sep = "~~~")),
+                      formula = y ~ x, parse = TRUE,
+                      size = 4,label.x.npc = "right",label.y.npc = 0.017,vstep=0.07)+
+         theme(axis.title.x=element_text(size=17), axis.title.y=element_text(size=17))
+
+         ,
+       width = 8, height = 6, units = "in")
+
+
 
 
 #slopes##########
@@ -241,13 +253,20 @@ labels_vec_wetperc_hist <- setNames(
   paste0(chimney.hist$ID, "\n", chimney.hist$wetland_perc),
   chimney.hist$ID_wetperc)
 
-ggplot(chimney.hist,
-           aes(x = reorder(ID_wetperc, as.numeric(wetland_perc)),
-               y = flux, fill=type)) +
-  geom_boxplot(outliers = F)+
-    xlab("Wetland Cover %")+
-    scale_x_discrete(labels = labels_vec_wetperc)+
-    theme(axis.title.x = element_text(size = 18))
+ggsave(filename = "05_Figures/ER.GPP~wetland cover.jpeg",
+       plot =
+
+         ggplot(chimney.hist,
+                aes(x = reorder(ID_wetperc, as.numeric(wetland_perc)),
+                    y = flux, fill=type)) +
+         geom_boxplot(outliers = F)+
+         xlab("Wetland Cover %")+  ylab(expression('g'/m^2/'day'))+
+         ggtitle("Wetland Influence on the Internal-External Pendulum")+
+         scale_x_discrete(labels = labels_vec_wetperc)+
+         theme(axis.title.x = element_text(size = 18))
+         ,
+       width = 8, height = 6, units = "in")
+
 
 
 remove<-active%>%filter(!ID %in% c('7', '9'))

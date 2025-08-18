@@ -122,6 +122,8 @@ RC <- setNames(
   }),
   unique_sites)
 
+RC<-RC %>%mutate(lateral_CO2)
+
 DOC_relationships <- lapply(RC, function(df) {
   # Remove rows with NA or zero for DOC or Q.prop
   df <- df %>% filter(!is.na(DOC), !is.na(Q.prop), Q.prop > 0, DOC > 0)

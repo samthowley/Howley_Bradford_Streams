@@ -80,7 +80,7 @@ ggplot(
   facet_wrap(~ID, scales='free')
 
 
-ggsave(filename="05_Figures/WT.RC.jpeg",
+ggsave(filename="05_Figures/WTE.RC.jpeg",
        plot = ggplot(
          RC_df, aes(x = Distance_m, y = WT_elevations, group=Well, fill=well_types)) +
          ylab("Water Table Elevations from Stream Bed")+
@@ -88,8 +88,6 @@ ggsave(filename="05_Figures/WT.RC.jpeg",
        width =12,
        height = 5,
        units = "in")
-
-
 
 RC_df %>% group_by(ID, Well)%>%
   summarize(WTE_mean=mean(WT_elevations, na.rm=T))%>%ungroup()%>%
@@ -132,7 +130,7 @@ b<-ggplot(
 
 a<-ggplot(
   RC_df, aes(x = Distance_m, y = DIC, group = Well, fill=well_types)) +
-  ylab("DIC mg/L") + distance_theme
+  ylab("DIC mg/L") + distance_theme+distance_theme_top
 
 c<-ggplot(
   RC_df, aes(x = Distance_m, y = CO2_sat, group = Well, fill=well_types)) +
@@ -142,15 +140,11 @@ d<-ggplot(
   RC_df , aes(x = Distance_m, y = CH4_sat, group = Well, fill=well_types)) +
     ylab(expression(CH[4]~"Saturation"))+distance_theme
 
-gas<-plot_grid(c,d, ncol=1, rel_heights = c(1, 1.2))
-ggsave(filename="05_Figures/RC_elevation_conc_gas.jpeg",
-       plot = gas,
-       width =13,height = 6, units = "in")
+ggsave(filename="05_Figures/RC_elevation_conc.jpeg",
+       plot = plot_grid(b, a, c, d, ncol=1, rel_heights = c(1,1,1,1.3)),
+       width =13,height = 12, units = "in")
 
-solids<-plot_grid(b,a, ncol=1, rel_heights = c(1, 1.2))
-ggsave(filename="05_Figures/RC_elevation_conc_solids.jpeg",
-       plot = solids,
-       width =13,height = 6, units = "in")
+
 
 
 quantile((RC_df %>% filter(ID == '9'))$lateral_CO2, probs = c(0.25, 0.5, 0.75), na.rm = TRUE)
@@ -180,7 +174,6 @@ ggsave(filename="05_Figures/RC_elevation_flux.jpeg",
        width =16,
        height = 16,
        units = "in")
-
 #Hypothesis 2: RC fluxes will be greatest during periods of increased watershed inundation###########
 flux.WT_theme <- list(
   geom_point(size=3,  stroke=1.5),
@@ -207,7 +200,7 @@ a<-ggplot(RC_df %>%filter(well_types!="stream", ID=='5'),
   flux.WT_theme+facet_wrap(~ID)
 
 b<-ggplot(RC_df %>%filter(well_types!="stream", ID=='5', !Well %in% c('7','8')),
-       aes(x = WT_elevations, y = DOC_flux, color=qL, group=Well))+
+       aes(x = WT_elevations, y = lateral_CO2, color=qL, group=Well))+
   geom_smooth(method='lm', se=F, color='black')+
   flux.WT_theme+theme(legend.position ="none")+
   facet_wrap(~ID.well, scales='free', ncol=2)
@@ -216,36 +209,37 @@ ggsave(filename="05_Figures/Ch2_H2_Strm5.jpeg",
        plot = plot_grid(a,b, ncol=2),
        width =12,height = 6,units = "in")
 
+um2.s<-expression(q[L]~um^2/s)
 library(ggnewscale)
+common_layer<-list(
+  geom_point(aes(color = qL*(10^6))),
+    scale_color_gradient(low = "blue", high = "red",
+                         name = expression(q[L] ~ um^2/s)),
+    new_scale_color(),
+    geom_smooth(aes(color = Well, group = Well), method = "lm", se = FALSE, size = 1),
+    facet_wrap(~ID, scales='free'),
+    theme(legend.position = 'none'),
+    xlab('Watertable Elevation (m)'))
 
 a<-ggplot(RC_df %>% filter(well_types != "stream"),
-       aes(x = WT_elevations, y = lateral_CO2)) +
-  geom_point(aes(color = qL)) +
-  scale_color_gradient(low = "blue", high = "red") +
-  new_scale_color() +
-  geom_smooth(aes(color = Well, group = Well), method = "lm", se = FALSE, size = 1) +
-  facet_wrap(~ID, scales='free')+theme(legend.position = 'none')+
-  #ylab(expression('DOC'~('mg'~m^-2~day^-1)))+
-  ylab(expression(CO[2]~('g'~m^-2~day^-1)))+
-  xlab('Watertable Elevation (m)')
+       aes(x = WT_elevations, y =DOC_flux)) +
+  ylab(expression('DOC'~('mg'~m^-2~day^-1)))+
+  #ylab(expression(CO[2]~('g'~m^-2~day^-1)))+
+  common_layer
 
 b<-ggplot(RC_df %>% filter(well_types != "stream"),
-       aes(x = WT_elevations, y = lateral_CH4)) +
-  geom_point(aes(color = qL)) +
-  scale_color_gradient(low = "blue", high = "red") +
-  new_scale_color() +
-  geom_smooth(aes(color = Well, group = Well), method = "lm", se = FALSE, size = 1) +
-  facet_wrap(~ID, scales='free')+theme(legend.position = 'none')+
-  #ylab(expression('DIC'~('mg'~m^-2~day^-1)))+
-  ylab(expression(CH[4]~('g'~m^-2~day^-1)))+
-  xlab('Watertable Elevation (m)')
+       aes(x = WT_elevations, y = DIC_flux)) +
+  ylab(expression('DIC'~('mg'~m^-2~day^-1)))+
+  #ylab(expression(CH[4]~('g'~m^-2~day^-1)))+
+  common_layer+
+  theme(legend.position = 'bottom',
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 12),
+        legend.key.size = unit(0.7, "cm"))
 
-plot_grid(a,b, ncol=1)
-
-ggsave(filename="05_Figures/CO2+CH4~WTE.jpeg",
-       plot = plot_grid(a,b, ncol=1),
-       width =12,height = 6,units = "in")
-
+ggsave(filename="05_Figures/DOC+DIC~WTE.jpeg",
+       plot = plot_grid(a,b, ncol=1, rel_heights = c(1, 1.3)),
+       width =12,height = 7,units = "in")
 
 RC_slopes <- read_csv("04_Output/RC_slopes.csv")%>%
   mutate(ID=as.factor(ID), Well=as.factor(Well))
@@ -271,29 +265,43 @@ xtitle<-'Distance (m)'
 common_layers <- list(
   geom_point(size = 5),
   xlab(xtitle),
+  ylab("Slope (C flux~ WTE)"),
   facet_wrap(~ID, scales = 'free'),
-  labs(color = "Wells"),
+  labs(color = " "),
   theme( legend.position = 'bottom',
+         legend.text = element_text(size = 10),
+         legend.title = element_text(size = 12),
+         legend.key.size = unit(1, "cm"),
          strip.text = element_text(size = 12),
          axis.title.y = element_text(size=13, angle=90),
          axis.title.x = element_text(size=13),
          axis.text.x = element_text(size=12),
          axis.text.y = element_text(size=12)),
-  stat_poly_line(se = FALSE, color = 'black'),
+  stat_poly_line(se = FALSE),
   stat_poly_eq(
-    aes(label = paste(..p.value.label.., sep = "~~~~~")),
+    aes(label = paste(..p.value.label.., sep = "~~~~~"), color=type),
     formula = y ~ x,
-    parse = TRUE, color = 'black',
+    parse = TRUE,
     label.x.npc = "right", label.y.npc = "top", size =5),
   geom_hline(yintercept = 0, color='darkred', linetype='dashed'))
 
+
+
 ggsave(filename="05_Figures/Ch2_H2_regression.jpeg",
        plot =
-         ggplot(regression_edited %>%filter(Well!="stream", type=='DOC'),
-                     aes(x = Distance_m, y = slope))+
-         ylab("Slope (DOC~ WTE)")+
-         common_layers,
-       width =14,height = 4, units = "in")
+        plot_grid(
+
+          ggplot(regression_edited %>%filter(Well!="stream",  type %in% c("DOC", "DIC")),
+                 aes(x = Distance_m, y = slope, color=type))+
+            common_layers,
+
+          ggplot(regression_edited %>%filter(Well!="stream",  type %in% c("CO2", "CH4")),
+                 aes(x = Distance_m, y = slope, color=type))+
+            common_layers,
+          ncol=1
+
+        ),
+       width =11,height = 8, units = "in")
 
 
 #Hypothesis: 3 greater wetland coverage will exhibit higher RC carbon potential due ##########

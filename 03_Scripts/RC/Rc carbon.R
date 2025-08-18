@@ -56,7 +56,7 @@ RC_elevations <- read_excel("01_Raw_data/RC log.xlsx",sheet = "elevations")%>%
 
 RC_dims<-full_join(WTdepth, RC_distance, by=c('Site'))
 RC_dims<-full_join(RC_dims, RC_elevations, by=c('Site'))%>%
-  mutate(WT_elevations=surface_elevation_m+surface2WT)
+  mutate(WT_elevations=surface_elevation_m-surface2WT)
 
 well_types <- data.frame(
   Site = c('5GW0', '5GW1', '5GW2', '5GW3', '5GW4', '5GW5', '5GW6', '5GW7', '5GW8',
