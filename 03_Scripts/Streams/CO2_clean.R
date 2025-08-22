@@ -9,7 +9,7 @@ library(cowplot)
 library(plotly)
 
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2024-05-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2025-07-02 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2025-08-13 00:00", tz="UTC"),by="hour")))
 theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
                              axis.text.y = element_text(size = 17, angle=0),
                              axis.title =element_text(size = 17, angle=0),
@@ -106,6 +106,8 @@ s5<-s5 %>%
 s15<-s15 %>% filter(CO2>1000 & CO2< 19000)
 
 s7<-s7%>% filter(CO2>800)
+s5a<-s5a%>% filter(CO2>800)
+
 
 s3<-s3 %>%filter(CO2>1400, CO2<23000)%>%
   mutate(CO2 = if_else(Date >"2024-08-23", CO2*4.2, CO2))
@@ -124,9 +126,34 @@ s13 <- s13 %>%
       if_else( Date > as.Date('2024-06-01') & Date < as.Date('2024-08-04'), NA_real_,CO2))%>%
   filter(CO2<13400, CO2>1200)
 
-CO2<-rbind(s5,s5a,s15,s6a,s6,s7,s3,s13,s9)
-range(CO2$Date, na.rm=T)
-ggplot(CO2, aes(Date, CO2)) + geom_point(size=1) + facet_wrap(~ ID, ncol=4, scales='free')
-ggplot(CO2%>% filter(ID=='5'), aes(Date, CO2)) + geom_point(size=1)
-write_csv(CO2, "02_Clean_data/CO2_cleaned.csv")
+CO2<-rbind(s5,s5a,s15,s6a,s6,s7,s3,s13,s9)%>%mutate(method='sensor')
+
+#range(CO2$Date, na.rm=T)
+# ggplot(CO2, aes(Date, CO2)) + geom_point(size=1) + facet_wrap(~ ID, ncol=4, scales='free')
+# ggplot(CO2%>% filter(ID=='5'), aes(Date, CO2)) + geom_point(size=1)
+
+
+#include gas samples####
+
+gas <- read_csv("04_Output/Picarro_gas.csv")%>% filter(type=='CO2')%>%
+ rename(CO2=water.ppm)%>%
+ mutate(method="head-space")%>% select(names(CO2))%>%
+  filter(CO2>500)
+
+#%>%filter(chapter=='stream')
+CO2<-read_csv("02_Clean_data/CO2_cleaned.csv")
+CO2<-CO2 %>%mutate(Date=as.Date(Date))%>%rename(CO2_sensor=CO2)
+check_gas_samples<-left_join(gas, CO2, by=c('Date', 'ID'))%>%
+  mutate(difference=CO2_sensor-CO2)
+
+ggplot(check_gas_samples, aes(Q, difference, color=ID)) + geom_point()
+
+
+ggplot(check_gas_samples,
+       aes(x =ID ,y = difference)) +
+  geom_boxplot(outliers=F)+geom_hline(yintercept = 0)+
+  ggtitle("Gas Sample minus CO2 Sensor")
+
+
+
 

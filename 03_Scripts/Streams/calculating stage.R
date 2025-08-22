@@ -101,33 +101,40 @@ file.names <- list.files(path="01_Raw_data/baro", pattern=".csv", full.names=TRU
 baro_all<-data.frame()
 for(fil in file.names){
   PT <- read_csv(fil,col_types = cols(`#` = col_skip()),skip = 1)
-  PT<-PT[,c(1,2)]
+  PT<-PT[,c(1,2,3)]
   colnames(PT)[1] <- "Date"
   colnames(PT)[2] <- "PTbaro"
+  colnames(PT)[3] <- "Temp.air"
   PT$Date <- mdy_hms(PT$Date)
   PT$ID<-strsplit(basename(fil), '_')[[1]][1]
   baro_all<-rbind(baro_all,PT)}
 
-baro_all<-baro_all %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
-baro_all<-baro_all[,-1]
-samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2021-03-29 00:00", tz="UTC"),
-                                            to=as.POSIXct("2025-07-20 00:00", tz="UTC"),by="hour")))
-samplingperiod<- samplingperiod %>% mutate(hr=hour(Date),day=day(Date),mnth=month(Date),yr=year(Date))
-baro_all<-left_join(baro_all, samplingperiod, by=c('hr', 'day', 'mnth', 'yr'))
-
-baro5<-baro_all%>%filter(ID=='5')%>%rename('PTbaro_5'='PTbaro')
-baro6a<-baro_all%>%filter(ID=='6a')%>%rename('PTbaro_6a'='PTbaro')
+baro5<-baro_all%>%filter(ID=='5')%>%rename('PTbaro_5'='PTbaro',Temp.air.5=Temp.air)
+baro6a<-baro_all%>%filter(ID=='6a')%>%rename('PTbaro_6a'='PTbaro',Temp.air.6a=Temp.air)
 coalesce<-full_join(baro5,baro6a, by=c('Date'))
 
 coalesce$PTbaro_6a[coalesce$PTbaro_6a <14.4] <- NA
 coalesce$PTbaro_6a[coalesce$PTbaro_6a >16 ] <- NA
 coalesce$PTbaro_5[coalesce$PTbaro_5 >16 ] <- NA
 
-coalesce$PTbaro_5 <- ifelse(is.na(coalesce$PTbaro_5), coalesce$PTbaro_6a, coalesce$PTbaro_5)
-coalesce$PTbaro_6a <- ifelse(is.na(coalesce$PTbaro_6a), coalesce$PTbaro_5, coalesce$PTbaro_6a)
+coalesce<-coalesce%>%
+  mutate(
+    PTbaro_5=ifelse(is.na(PTbaro_5),PTbaro_6a, PTbaro_5),
+    PTbaro_6a = ifelse(is.na(PTbaro_6a), PTbaro_5, PTbaro_6a),
 
-baro_5<-coalesce %>%select(Date,PTbaro_5)%>% rename('PTbaro'='PTbaro_5')%>%mutate(region='S')
-baro_6a<-coalesce %>% select(Date,PTbaro_6a)%>%rename('PTbaro'='PTbaro_6a')%>%mutate(region='N')
+    Temp.air.5=ifelse(is.na(Temp.air.5),Temp.air.6a, Temp.air.5),
+    Temp.air.6a=ifelse(is.na(Temp.air.6a),Temp.air.5, Temp.air.6a),
+  )
+
+
+
+baro_5<-coalesce %>%select(Date,PTbaro_5, Temp.air.5, ID.x)%>%
+  rename('PTbaro'='PTbaro_5', Temp.air=Temp.air.5, ID=ID.x)%>%
+  mutate(region='S')
+baro_6a<-coalesce %>%select(Date,PTbaro_6a, Temp.air.6a, ID.x)%>%
+  rename('PTbaro'='PTbaro_6a', Temp.air=Temp.air.6a, ID=ID.x)%>%
+  mutate(region='N')
+
 compile_baro<-rbind(baro_5,baro_6a)
 
 ggplot(compile_baro, aes(Date, PTbaro)) +

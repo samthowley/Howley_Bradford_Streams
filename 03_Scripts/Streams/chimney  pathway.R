@@ -29,7 +29,7 @@ uca <- data.frame(
   ID = c('5', '6', '9'),
   UCA = c(2e-4, 1e-4, 1e-4))
 
-flow_regime<- read_csv("04_Output/flow_regime_daily.csv")%>%filter(Q>2)
+flow_regime<- read_csv("04_Output/flow_regime_daily.csv")
 #GW Correction#####
 
 compiled_baro <- read_csv("01_Raw_data/PT/compiled_baro.csv")%>%
@@ -87,20 +87,20 @@ gw_corrected<-left_join(units,uca)%>%
   mutate(NEP_corrected= NEP-GW_correction,
          ER_corrected= ER-ER_GW_correction)
 
-# ggplot(gw_corrected, aes(Date))+
-#   geom_line(aes(y=ER_GW_correction))+
-#   geom_line(aes(y=GW_correction),color='red')+
-#   facet_wrap(~ ID, scales='free')
-#
-# ggplot(gw_corrected, aes(Date))+
-#   geom_line(aes(y=width_m))+
-#   facet_wrap(~ ID, scales='free')
+ggplot(gw_corrected, aes(Date))+
+  geom_line(aes(y=ER_GW_correction))+
+  geom_line(aes(y=GW_correction),color='red')+
+  facet_wrap(~ ID, scales='free')
+
+ggplot(gw_corrected, aes(Date))+
+  geom_line(aes(y=width_m))+
+  facet_wrap(~ ID, scales='free')
 
 #write_csv(gw_corrected, "04_Output/gw_corrected_metabolism.csv")
 
 #Chimney Pathway#####
 
-KH<-gw_corrected %>%filter(depth>0)%>%
+KH<-gw_corrected %>%
   mutate(Temp_C=fahrenheit.to.celsius(Temp_DO)) %>%
   mutate(Temp_K=Temp_C+273.15)%>%mutate(
   KH=0.034*exp(2400*((1/Temp_K)-(1/298.15))))
@@ -131,7 +131,7 @@ flux<-left_join(CO2,KCO2, by=c('day','ID'))%>%
 
 active<-flux%>%
   mutate(
-    active=NEP_corrected*-44/32)%>% filter(active<CO2_flux)%>%
+    active=NEP_corrected*-44/32)%>% #filter(active<CO2_flux)%>%
   mutate(
     passive=CO2_flux-active)%>%
   mutate(
@@ -143,7 +143,6 @@ active<-flux%>%
          CO2_flux, CO2, active, passive, active.passive, Basin)%>%
   filter(!ID=='6a', !is.na(ID))#%>%
 
-active <- active[complete.cases(active[ , c('CO2_flux')]), ]
 
 # ggplot(active %>%filter(ID=='3'), aes(x=Q))+
 #   geom_point(aes(y=CO2_flux, color='total'))+

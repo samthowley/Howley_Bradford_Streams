@@ -10,7 +10,7 @@ library(tools)
 
 #helping matthew
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
-                                 to=as.POSIXct("2025-07-14 00:00", tz="UTC"),by="hour")))
+                                 to=as.POSIXct("2025-08-14 00:00", tz="UTC"),by="hour")))
 
 clean_DO <- function(fil) {
   DO <- read_csv(fil,skip= 1) # read csv
