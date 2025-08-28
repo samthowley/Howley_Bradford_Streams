@@ -79,36 +79,50 @@ C_RC<-C_RC %>% mutate(ID=as.character(ID)) %>%
   mutate(DOC_mg.m3=DOC/10^3,DIC_mg.m3=DIC/10^3)
 #Include gas sampling#####
 
-Picarro_gas <- read_csv("04_Output/Picarro_gas.csv")
-RC_gas<-Picarro_gas%>%filter(chapter=='RC')%>%
-  separate(ID, into = c("Stream", "Well"), sep = "GW")%>%select(-chapter, -Temp_K)%>%
+gas <- read_csv("04_Output/gas.samples.csv")
+CO2 <- subset(gas, type == "CO2")%>%rename(CO2.water_umol.L=water_umol.L, CO2.water.ppm=water.ppm)%>%
+  filter(chapter=='RC')%>%select(-type, -chapter)
+CH4 <- subset(gas, type == "CH4")%>%rename(CH4.water_umol.L=water_umol.L, CH4.water.ppm=water.ppm)%>%
+  filter(chapter=='RC')%>%select(-type, -chapter)
+N2O <- subset(gas, type == "N2O")%>%rename(N2O.water_umol.L=water_umol.L, N2O.water.ppm=water.ppm)%>%
+  filter(chapter=='RC')%>%select(-type, -chapter)
+
+C.gas<-full_join(CO2, CH4)
+
+C.gas.rename<-C.gas%>%
+  separate(Site, into = c("Stream", "Well"), sep = "GW")%>%
   arrange(Date,Stream,Well)
 
-sensor.co2<-RC_log %>%select(Date, Site, CO2_mv)%>%
-  separate(Site, into = c("Stream", "Well"), sep = "GW")%>%
-  filter(!is.na(CO2_mv))%>%mutate(CO2_mv=as.numeric(CO2_mv))
+# sensor.co2<-RC_log %>%select(Date, Site, CO2_mv)%>%
+#   separate(Site, into = c("Stream", "Well"), sep = "GW")%>%
+#   filter(!is.na(CO2_mv))%>%mutate(CO2_mv=as.numeric(CO2_mv))
+#
+# all_gas<-full_join(C.gas.rename, sensor.co2)
+# write_csv(all_gas, "check.csv")
+#
+# interp.co2<-all_gas %>% mutate(CO2_interp=(CO2_mv*0.1921)-1.6408)%>%
+#   mutate(CO2_umol_L=if_else(is.na(CO2_umol_L), CO2_interp, CO2_umol_L))%>%
+#   select(-CO2_mv, -CO2_interp)
 
-all_gas<-full_join(RC_gas, sensor.co2)
-#write_csv(all_gas, "check.csv")
+# RC_all<-full_join(C_RC, interp.co2, by=c('Stream', 'Well', 'Date'))%>%
+#   mutate(
+#     CO2_molL=CO2_umol_L/10^6,
+#     CH4_molL=CH4_umol_L/10^6)%>%
+#   distinct(Stream, Well, Date, .keep_all = T)
 
-interp.co2<-all_gas %>% mutate(CO2_interp=(CO2_mv*0.1921)-1.6408)%>%
-  mutate(CO2_umol_L=if_else(is.na(CO2_umol_L), CO2_interp, CO2_umol_L))%>%
-  select(-CO2_mv, -CO2_interp)
-
-RC_all<-full_join(C_RC, interp.co2, by=c('Stream', 'Well', 'Date'))%>%
-  mutate(
-    CO2_molL=CO2_umol_L/10^6,
-    CH4_molL=CH4_umol_L/10^6)%>%
-  distinct(Stream, Well, Date, .keep_all = T)
-
+RC.all<-full_join(C.gas.rename, C_RC)
 
 #interpolate lateral Fluxes####
-RC<-left_join(RC_all, qL)
+RC<-left_join(RC.all, qL)
 
 lateral_flux<-RC%>%
+  distinct(Stream, Well, Date, CO2.water_umol.L, .keep_all = T)%>%
   mutate(
-    lateral_CO2=(CO2_molL/(10^3))*12*86400*(qL/width),
-    lateral_CH4=(CH4_molL/(10^3))*12*86400*(qL/width))%>%
+    CO2_molL=CO2.water_umol.L/10^6,
+    CH4_molL=CH4.water_umol.L/10^6)%>%
+  mutate(
+    CO2_flux=(CO2_molL/(10^3))*12*86400*(qL/width),
+    CH4_flux=(CH4_molL/(10^3))*12*86400*(qL/width))%>%
   mutate(
     DOC_flux=((qL/width)*DOC_mg.m3)*86400,
     DIC_flux=((qL/width)*DIC_mg.m3)*86400)%>%
@@ -117,8 +131,9 @@ lateral_flux<-RC%>%
   select( -bf, -u, -depth)%>%
   mutate(ID.Well = paste(ID, Well, sep = "."))
 
-RC_edit<-lateral_flux %>% select(-Stream, -WT.ID, -DistanceID, -surface2WT, -N2O_sat,
-                                 -Well, -ID, -Q, -width, -N2O_umol_L, -reach)
+RC_edit<-lateral_flux %>% select(Well, Date, CO2.water_umol.L, CO2.water.ppm, CH4.water_umol.L,CH4.water.ppm,
+                                 DIC, DOC, Distance_m, WT_elevations, DOC_mg.m3, DIC_mg.m3, qL, CO2_molL, CH4_molL,
+                                 CO2_flux, CH4_flux, DOC_flux, DIC_flux, ID.Well)
 
 split_list <- RC_edit %>%
   group_by(ID.Well) %>%
@@ -128,8 +143,7 @@ split_list <- RC_edit %>%
 
 #include streams#####
 
-streamC<-read_csv('04_Output/stream_sampledC.csv')%>%
-  select(Date, ID, DIC, DOC, POC, CO2,CO2_umol_L, CH4_umol_L, CO2_sat,CH4_sat)
+streamC<-read_csv('04_Output/stream_sampledC.csv')
 
 streamC<-left_join(streamC, qL)
 RC_columns<-names(RC_edit)
@@ -137,11 +151,11 @@ RC_columns<-names(RC_edit)
 streamC_edited<-streamC%>%
   filter(ID %in% c("5","6","9"))%>%
   mutate(
-    CO2_molL=CO2_umol_L/10^6,
-    CH4_molL=CH4_umol_L/10^6)%>%
+    CO2_molL=CO2.water_umol.L/10^6,
+    CH4_molL=CH4.water_umol.L/10^6)%>%
   mutate(
-    lateral_CO2=CO2_molL*(10^3)*12*86400*(Q/A),
-    lateral_CH4=CH4_molL*(10^3)*12*86400*(Q/A))%>%
+    CO2_flux=CO2_molL*(10^3)*12*86400*(Q/A),
+    CH4_flux=CH4_molL*(10^3)*12*86400*(Q/A))%>%
   mutate(DOC_mg.m3=DOC/10^3,
            DIC_mg.m3=DIC/10^3,
     DOC_flux=DOC_mg.m3*((Q/10^3)/A)*86400,
@@ -176,7 +190,7 @@ RC_df <- lapply(sheet_names, function(sheet) {
 }) %>%
   bind_rows()
 
-cols <- c('DOC_flux','DIC_flux','lateral_CO2','lateral_CH4','qL','WT_elevations','ID.Well')
+cols <- c('DOC_flux','DIC_flux','CO2_flux','CH4_flux','qL','WT_elevations','ID.Well')
 unique_sites <- unique(RC_df$ID.Well[!is.na(RC_df$ID.Well)])
 
 RC <- setNames(
@@ -243,14 +257,14 @@ colnames(DIC_table)<-col_names
 
 CO2_relationships <- lapply(RC, function(df) {
   # Check for sufficient data for both regressions
-  valid_elev <- sum(complete.cases(df[, c("lateral_CO2", "WT_elevations")])) > 1
+  valid_elev <- sum(complete.cases(df[, c("CO2_flux", "WT_elevations")])) > 1
 
   # Initialize with NA
   CO2.elevation.p <- CO2.elevation.slope <- CO2.elevation.r2 <- NA
   CO2.qL.p <- CO2.qL.slope <- CO2.qL.r2 <- NA
 
   if (valid_elev) {
-    CO2.elevation <- lm(lateral_CO2 ~ WT_elevations, data = df)
+    CO2.elevation <- lm(CO2_flux ~ WT_elevations, data = df)
     CO2.elevation.cf <- summary(CO2.elevation)
     CO2.elevation.p <- CO2.elevation.cf$coefficients["WT_elevations", "Pr(>|t|)"]
     CO2.elevation.slope <- CO2.elevation.cf$coefficients["WT_elevations", "Estimate"]
@@ -269,14 +283,14 @@ colnames(CO2_table)<-col_names
 
 CH4_relationships <- lapply(RC, function(df) {
   # Check for sufficient data for both regressions
-  valid_elev <- sum(complete.cases(df[, c("lateral_CH4", "WT_elevations")])) > 1
+  valid_elev <- sum(complete.cases(df[, c("CH4_flux", "WT_elevations")])) > 1
 
   # Initialize with NA
   CH4.elevation.p <- CH4.elevation.slope <- CH4.elevation.r2 <- NA
   CH4.qL.p <- CH4.qL.slope <- CH4.qL.r2 <- NA
 
   if (valid_elev) {
-    CH4.elevation <- lm(lateral_CH4 ~ WT_elevations, data = df)
+    CH4.elevation <- lm(CH4_flux ~ WT_elevations, data = df)
     CH4.elevation.cf <- summary(CH4.elevation)
     CH4.elevation.p <- CH4.elevation.cf$coefficients["WT_elevations", "Pr(>|t|)"]
     CH4.elevation.slope <- CH4.elevation.cf$coefficients["WT_elevations", "Estimate"]

@@ -25,26 +25,15 @@ theme_set(theme(axis.text.x = element_text(size = 12),
                 axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "gray"),
                 axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "gray")))
 
+flow_regime_daily <- read_csv("04_Output/flow_regime_daily.csv")
+#include gas samples#######
 
-#Edit dims######
-depth<-read_csv('02_Clean_data/depth.csv')
-Q<-read_csv('02_Clean_data/discharge.csv')
-length<-read_csv('02_Clean_data/stream area.csv')
+strm_gas <- read_csv("04_Output/gas.samples.csv")
 
-depth<-depth %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>% mutate(depth=mean(depth, na.rm = T)) %>%
-  select(Date, ID, depth, Temp_PT)
-depth <- depth[!duplicated(depth[c( 'Date','ID')]),]
+CO2 <- subset(strm_gas, type == "CO2" & chapter=='stream')%>%rename(CO2.water_umol.L=water_umol.L, CO2.water.ppm=water.ppm)%>%select(-type, -chapter)
+CH4 <- subset(strm_gas, type == "CH4" & chapter=='stream')%>%rename(CH4.water_umol.L=water_umol.L, CH4.water.ppm=water.ppm)%>%select(-type, -chapter)
 
-Q<-Q %>% mutate(Date=as.Date(Date))%>% group_by(Date, ID) %>%
-  mutate(Q=mean(Q, na.rm = T)) %>%
-  select(Date, ID, Q)
-Q <- Q[!duplicated(Q[c('Date','ID')]),]
-
-dim<-full_join(Q, depth, by=c('ID', 'Date'))%>% filter(!ID=='14', Date> '2023-10-01')%>%
-  arrange(ID, Date, .keep=T)%>%
-  fill(Q, .direction = c('down'))%>%
-  group_by(ID)%>%
-  mutate(Q_norm = Q / median(Q, na.rm = TRUE))%>% ungroup()
+gas<-full_join(CO2, CH4)
 
 #sample C##########
 
@@ -63,18 +52,11 @@ totC<-combined %>%distinct(Date, ID, .keep_all = T)%>%
 totC<-totC %>% mutate(TotalC=DIC+DOC+POC)%>%
   mutate(DIC_perc=DIC/TotalC, DOC_perc=DOC/TotalC, POC_perc=POC/TotalC)
 
-#include gas samples#######
-
-Picarro_gas <- read_csv("04_Output/Picarro_gas.csv")
-strm_gas<-Picarro_gas%>%filter(chapter=='stream')%>%select(-Temp_K, -chapter)
-
-totC_gas<-full_join(totC,strm_gas)
-
+totC_gas<-full_join(totC,gas)
 
 #FDOM##############
 eem_stream <- read_csv("04_Output/eem_stream.csv")%>%select(-Rep, -chapter, -Site)
 
 all_sampled_C<-full_join(totC_gas,eem_stream)%>%select(-depth, -Q)
-all_sampled_C<-left_join(all_sampled_C, dim)
 
 write_csv(all_sampled_C, "04_Output/stream_sampledC.csv")
