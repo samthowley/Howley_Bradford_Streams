@@ -88,8 +88,8 @@ gw_corrected<-left_join(units,uca)%>%
          ER_corrected= ER-ER_GW_correction)
 
 ggplot(gw_corrected, aes(Date))+
-  geom_line(aes(y=ER_GW_correction))+
-  geom_line(aes(y=GW_correction),color='red')+
+  geom_line(aes(y=NEP))+
+  geom_line(aes(y=NEP_corrected),color='red')+
   facet_wrap(~ ID, scales='free')
 
 ggplot(gw_corrected, aes(Date))+
