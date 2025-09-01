@@ -9,7 +9,7 @@ library(cowplot)
 library(plotly)
 
 samplingperiod <- data.frame(Date = rep(seq(from=as.POSIXct("2024-05-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2025-08-13 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2025-08-30 00:00", tz="UTC"),by="hour")))
 theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
                              axis.text.y = element_text(size = 17, angle=0),
                              axis.title =element_text(size = 17, angle=0),
@@ -96,13 +96,6 @@ s5<-s5 %>%
   filter(CO2< 52000)%>%
   mutate(CO2=CO2/4.2)%>%filter(CO2>1100)
 
-# ggplotly(ggplot(test,
-#                 aes(Date, CO2, color=depth))+
-#            geom_point()+
-#   theme(legend.position = "bottom"))
-
-#test<-s5a %>%
-
 s15<-s15 %>% filter(CO2>1000 & CO2< 19000)
 
 s7<-s7%>% filter(CO2>800)
@@ -120,11 +113,15 @@ s6a<-s6a %>% filter(CO2>3000& CO2<20000)
 
 s9<-s9 %>%  filter(CO2>1300)
 
+ggplot(s13,aes(Date, CO2))+
+  geom_point()+
+  theme(legend.position = "bottom")
+
 s13 <- s13 %>%
-  mutate(
-    CO2 =
-      if_else( Date > as.Date('2024-06-01') & Date < as.Date('2024-08-04'), NA_real_,CO2))%>%
-  filter(CO2<13400, CO2>1200)
+  mutate(CO2=if_else(Date>'2025-08-18', CO2*6, CO2),
+         CO2 =
+      if_else( Date > as.Date('2024-06-01') & Date < as.Date('2024-08-04'), NA_real_, CO2))%>%
+  filter(CO2>1000)
 
 CO2<-rbind(s5,s5a,s15,s6a,s6,s7,s3,s13,s9)%>%mutate(method='sensor')
 
