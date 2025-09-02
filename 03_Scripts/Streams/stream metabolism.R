@@ -15,7 +15,7 @@ library(lme4)
 
 #constants######
 samplingperiod <- data.frame(solar.time = rep(seq(from=as.POSIXct("2023-10-06 00:00", tz="UTC"),
-                                            to=as.POSIXct("2025-08-17 00:00", tz="UTC"),by="hour")))
+                                            to=as.POSIXct("2025-08-30 00:00", tz="UTC"),by="hour")))
 
 #data####
 file.names <- list.files(path="02_Clean_data", pattern=".csv", full.names=TRUE)
