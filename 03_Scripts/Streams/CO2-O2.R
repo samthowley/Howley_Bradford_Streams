@@ -7,6 +7,7 @@ library(tools)
 library(cowplot)
 library(ggpmisc)
 library('StreamMetabolism')
+library(hydroTSM)
 
 mean_daily <- function(file, value_col) {
   read_csv(file) %>%
@@ -23,7 +24,7 @@ Q<- mean_daily("04_Output/flow_regime_daily.csv", "Q")
 depth<- mean_daily("04_Output/flow_regime_daily.csv", "depth")
 
 
-df_list <- list(CO2, temperature, DO, Q, depth, metabolism)
+df_list <- list(CO2, temp, DO, Q, depth, metabolism)
 combined_df <- reduce(df_list, full_join, by=c('Date', 'ID'))
 
 

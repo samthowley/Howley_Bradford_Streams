@@ -29,7 +29,7 @@ uca <- data.frame(
   ID = c('5', '6', '9'),
   UCA = c(2e-4, 1e-4, 1e-4))
 
-flow_regime<- read_csv("04_Output/flow_regime_daily.csv")
+flow_regime<- read_csv("04_Output/flow_regime_daily.csv")%>%select(-K600)
 #GW Correction#####
 
 compiled_baro <- read_csv("01_Raw_data/PT/compiled_baro.csv")%>%
@@ -64,9 +64,9 @@ metabolism<-read_csv('04_Output/master_metabolism.csv')%>%
   rename(Date=date)
 
 met_DO<-left_join(metabolism, DO_edit, by=c('Date','ID'))
-met_DO<-left_join(met_DO, flow_regime)
+met_DO.flow<-left_join(met_DO, flow_regime, by=c('Date','ID'))
 
-units<-met_DO %>%
+units<-met_DO.flow %>%
   mutate(
     Q_m3.day=Q*86.4,
     baseflow_m3.day=bf*86.4,
@@ -144,7 +144,7 @@ active<-flux%>%
   filter(!ID=='6a', !is.na(ID))#%>%
 
 
-# ggplot(active %>%filter(ID=='3'), aes(x=Q))+
+# ggplot(active, aes(x=Q))+
 #   geom_point(aes(y=CO2_flux, color='total'))+
 #   geom_point(aes(y=active, color='active'))+
 #   facet_wrap(~ID)
@@ -155,7 +155,8 @@ write_csv(active, "04_Output/external-internal.csv")
 active<-active%>% group_by(ID) %>%
   mutate(Q_med=  case_when(Q>= median(Q, na.rm = T)~ "sup",
                            Q<=median(Q, na.rm = T)~"inf"))%>%
-  mutate(Q_ID= paste0(ID, sep="_", Q_med))
+  mutate(Q_ID= paste0(ID, sep="_", Q_med))%>%
+  filter(!is.na(Q))
 
 #Pull slopes#####
 #Split Q
@@ -170,7 +171,6 @@ streams <- setNames(
     return(df_subset)
   }),
   unique_sites)
-
 
 streams_edited <- lapply(streams, function(df) {
 
