@@ -9,26 +9,22 @@ library(ggpmisc)
 library('StreamMetabolism')
 library(hydroTSM)
 
-mean_daily <- function(file, value_col) {
-  read_csv(file) %>%
-    mutate(Date = as.Date(Date)) %>%
-    group_by(Date, ID) %>%
-    summarise("{value_col}" := mean(.data[[value_col]], na.rm = TRUE), .groups = "drop")
-}
+Q<- read_csv("02_Clean_data/discharge.csv")%>%filter(Q>1)
+depth<- read_csv("02_Clean_data/depth.csv")
+temperature <- read_csv("02_Clean_data/temperature.csv")
+DO <- read_csv("02_Clean_data/DO_cleaned.csv")
+CO2<-read_csv("02_Clean_data/CO2_cleaned.csv")
 
-CO2 <- mean_daily("02_Clean_data/CO2_cleaned.csv", "CO2")
-DO <- mean_daily("02_Clean_data/DO_cleaned.csv", "DO")
-temp <- mean_daily("02_Clean_data/temperature.csv", "Temp_PT")
-metabolism<-read_csv('04_Output/master_metabolism.csv')%>% rename(Date="date" )
-Q<- mean_daily("04_Output/flow_regime_daily.csv", "Q")
-depth<- mean_daily("04_Output/flow_regime_daily.csv", "depth")
+df_list <- list(CO2, DO, Q, depth)
+combined_df <- reduce(df_list, full_join, by=c('Date', 'ID'))%>%
+  mutate(date=as.Date(Date))
 
+master_metabolism <- read_csv("04_Output/master_metabolism.csv")
 
-df_list <- list(CO2, temp, DO, Q, depth, metabolism)
-combined_df <- reduce(df_list, full_join, by=c('Date', 'ID'))
+combined<-left_join(combined_df, master_metabolism, by=c('date', 'ID'))%>%
+  arrange(ID, Date)%>%filter(!is.na(CO2), !is.na(DO))
 
-
-KH<-combined_df %>%
+KH<-combined%>%
   mutate(ssn=time2season(Date, out.fmt="seasons"),
                          Temp_C = fahrenheit.to.celsius(Temp_PT)) %>%
            mutate(Temp_K=Temp_C+273.15)%>%

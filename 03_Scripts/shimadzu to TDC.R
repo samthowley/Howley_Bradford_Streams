@@ -173,6 +173,7 @@ stream<-forstream %>% mutate(chapter=case_when(Site=='3'~'stream',Site=='5'~'str
 write_csv(RC, "04_Output/TDC_RC.csv")
 write_csv(stream, "04_Output/TDC_stream.csv")
 write_csv(long, "04_Output/TDC_long.csv")
+write_csv(wetland,"wetland_shimadzu.csv")
 
 #################################
 #Figures#########################

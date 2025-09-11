@@ -36,8 +36,7 @@ active <- read_csv("04_Output/external-internal.csv")%>%
     Q_med=  case_when(Q>= median(Q, na.rm = T)~ "sup",
                       Q<=median(Q, na.rm = T)~"inf"),
     Q_ID= paste0(ID, sep="_", Q_med)
-    )#%>%
-  filter(active.passive>0.015 & active.passive<150)
+    )
 #Include wetlands####
 
 wetland_cover <- read_csv("01_Raw_data/wetland_cover.csv")%>%
