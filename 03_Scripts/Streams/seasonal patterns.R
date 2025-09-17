@@ -22,6 +22,16 @@ theme_set(theme(    strip.text = element_text(size = 12),
                     axis.line.x = element_line(size = 0.5, linetype = "solid", colour = "gray"),
                     axis.line.y = element_line(size = 0.5, linetype = "solid", colour = "gray")))
 
+
+legend_size<-theme(
+  legend.key.size = unit(1.5, "cm"),
+  legend.key.height = unit(1, "cm"),
+  legend.key.width = unit(1, "cm"),
+  legend.text = element_text(size = 14),
+  legend.title = element_text(size = 16)
+)
+
+
 CH4<- read_csv("04_Output/gas.samples.csv")%>%
   filter(type=='CH4', chapter=='stream')%>%
   rename(CH4.umol.L=water_umol.L, ID=Site)%>%
@@ -53,7 +63,7 @@ daily_df <- reduce(df_list, full_join, by=c('Date', 'ID'))%>%
     KH=0.034*2.178^(exp),
     CO2_atm=CO2/10^6,
     CO2.mol.L=(CO2_atm*KH),
-    DO.mol.L=DO/32000
+    O2.mol.L=DO/32000
     )%>%select(-Temp_K,-exp,-KH,-CO2_atm)
 
 
@@ -73,10 +83,13 @@ hourly_df <- reduce(df_list, full_join, by=c('Date', 'ID'))%>%
     KH=0.034*2.178^(exp),
     CO2_atm=CO2/10^6,
     CO2.mol.L=(CO2_atm*KH),
-    DO.mol.L=DO/32000,
+    O2.mol.L=DO/32000,
     ssn=time2season(Date, out.fmt="seasons")
   )%>%select(-Temp_K,-exp,-KH,-CO2_atm)
 
+
+hourly_df<-hourly_df%>%filter(!is.na(Q), Q>2)
+daily_df<-daily_df%>%filter(!is.na(Q), Q>2)
 
 Q.label<-("Discharge (L/sec)")
 CO2ppm.label<-expression(CO[2]~ppm)
@@ -97,44 +110,52 @@ corrplot(M, method = "circle", type = "lower", order = "AOE", diag = FALSE,
          addCoef.col = "black", number.cex = 0.8)
 
 #Temperature#######
-common.layers.temp.trends<-list(
-  geom_point(),
-  stat_poly_line(formula = y ~ x, se = FALSE),
-  stat_poly_eq(aes(x = Temp_PT, y = CO2.mol.L,
-                   label = paste(..p.value.label.., sep = "~~~")),
+
+O2<-daily_df%>%select(-CO2.mol.L, -CH4.umol.L, -CO2, -DO, -DO.sat)%>%
+  rename(mol.L=O2.mol.L)%>%mutate(gas='O2')
+CO2<-daily_df%>%select(-O2.mol.L, -CH4.umol.L, -CO2, -DO, -DO.sat)%>%
+  rename(mol.L=CO2.mol.L)%>%mutate(gas='CO2')
+O2.CO2<-rbind(O2, CO2)
+
+ggplot(data = O2.CO2, aes(x = Temp_PT, y=mol.L, color=gas)) +
+  geom_point() +
+  stat_poly_line(formula = y ~ x, se = FALSE)+
+  stat_poly_eq(aes(x = Temp_PT, y = mol.L,group=gas,
+                 label = paste(..p.value.label.., ..eq.label.., sep = "~~~")),
+             formula = y ~ x, parse = TRUE,
+             size = 4.5,vstep=0.052)+
+  scale_color_manual(values=c('blue', 'darkorange'),
+                     labels = c(expression(CO[2]), expression(O[2])),
+                     name=" ")+
+  ylab(expression(μmol/L))+xlab("Temperature (F)")+
+  stat_poly_line(formula = y ~ x, se = FALSE)+
+  stat_poly_eq(aes(x = Temp_PT, y = mol.L,group=gas,
+                   label = paste(..p.value.label.., ..eq.label.., sep = "~~~")),
                formula = y ~ x, parse = TRUE,
-                 size = 4),
-  facet_wrap(~ID, scales='free'),
-  theme(
-    axis.title.y = element_text(size = 17, angle = 90),
-    axis.title.x = element_text(size = 17)
-  )
-)
+               size = 4.5,vstep=0.052)+
+  facet_wrap(~ID, scales='free')+legend_size
 
-ggplot(data = daily_df, aes(x = Temp_PT, y = CO2.mol.L*10^6)) +
-  geom_point(data = hourly_df, aes(x = Temp_PT, y = CO2.mol.L*10^6), color = 'gray') +
-  common.layers.temp.trends+
-  ylab(CO2umol.label)+xlab("Temperature (F)")
-
-ggplot(data = daily_df, aes(x = Temp_PT, y = DO.mol.L*10^6)) +
-  geom_point(data = hourly_df, aes(x = Temp_PT, y = DO.mol.L), color = 'gray') +
-  common.layers.temp.trends+
-  ylab(O2umol.label)+xlab("Temperature (F)")
 
 ggplot(data = daily_df%>%filter(CH4.umol.L>0.1), aes(x = Temp_PT, y = CH4.umol.L)) +
-  common.layers.temp.trends+
-  ylab(CH4umol.label)+xlab("Temperature (F)")
+  geom_point(size=2)+
+  stat_poly_line(formula = y ~ x, se = FALSE)+
+  stat_poly_eq(aes(x = Temp_PT, y = CH4.umol.L,
+                   label = paste(..p.value.label.., ..eq.label.., sep = "~~~")),
+               formula = y ~ x, parse = TRUE,
+               size = 4.5,vstep=0.052)+
+
+  ylab(CH4umol.label)+xlab("Temperature (F)")+
+  facet_wrap(~ID, scales='free')
 
 #discharge#############
 
 daily_df<-daily_df%>% group_by(ID) %>%
-  filter(!is.na(Q))%>%
   mutate(Q_med=  case_when(Q>= median(Q, na.rm = T)~ "sup",
                            Q<=median(Q, na.rm = T)~"inf"))%>%
   mutate(Q_ID= paste0(ID, sep="_", Q_med))
 
 
-cols <- c('DO.mol.L', 'CO2.mol.L', 'Q', 'ID','Q_ID')
+cols <- c('O2.mol.L', 'CO2.mol.L', 'Q', 'ID','Q_ID')
 unique_sites <- unique(daily_df$Q_ID[!is.na(daily_df$Q_ID)])
 
 streams <- setNames(
@@ -149,11 +170,11 @@ streams <- setNames(
 streams_edited <- lapply(streams, function(df) {
 
   df <- df %>%
-    filter(Q > 0, DO.mol.L > 0, CO2.mol.L>0) %>%
-    filter(!is.na(Q_ID),!is.na(Q), !is.na(DO.mol.L), !is.na(CO2.mol.L))
+    filter(Q > 0, O2.mol.L > 0, CO2.mol.L>0) %>%
+    filter(!is.na(Q_ID),!is.na(Q), !is.na(O2.mol.L), !is.na(CO2.mol.L))
 
 
-  (DO.Q<-summary(lm(log10(DO.mol.L) ~ log10(Q), data = df)))
+  (DO.Q<-summary(lm(log10(O2.mol.L) ~ log10(Q), data = df)))
   Slope.DO <- DO.Q$coefficients[2,1]
   pvalue.DO <- DO.Q$coefficients[2, 4]
 
@@ -179,9 +200,24 @@ streams_edited <- lapply(streams, function(df) {
     )
 })
 
-slopes <- bind_rows(streams_edited, .id = "ID")%>%
+Q.slopes <- bind_rows(streams_edited, .id = "ID")%>%
   separate(ID, into = c("Q_ID", "Q_med"), sep = "_")
 
+Q.inf<-Q.slopes %>% filter(Q_med=='inf')%>%
+  rename(
+    DO.inf.x=Slope.DO,
+    DO.inf.p= pvalue.DO,
+    CO2.inf.x=Slope.CO2,
+    CO2.inf.p= pvalue.CO2,
+    )
+Q.sup<-Q.slopes %>% filter(Q_med=='sup')%>%
+  rename(
+    DO.sup.x=Slope.DO,
+    DO.sup.p= pvalue.DO,
+    CO2.sup.x=Slope.CO2,
+    CO2.sup.p= pvalue.CO2,
+  )
+Q.slope.tbl<-left_join(Q.inf, Q.sup, by=c('Q_ID'))
 
 common.layers.Q.trends<-list(
   geom_point(),
@@ -189,7 +225,7 @@ common.layers.Q.trends<-list(
   stat_poly_eq(aes(group=Q_med,
     label = paste(..p.value.label.., sep = "~~~")),
                formula = y ~ x, parse = TRUE,
-               size = 4),
+               size = 4.5, vjust=15, label.x = 'right'),
   facet_wrap(~ID, scales='free'),
   theme(
     axis.title.y = element_text(size = 17, angle = 90),
@@ -197,13 +233,43 @@ common.layers.Q.trends<-list(
   scale_x_log10(), scale_y_log10()
 )
 
-ggplot(data = daily_df, aes(x = Q, y = CO2.mol.L*10^6, group=Q_med)) +
-  common.layers.Q.trends+
+
+
+Q.slope.tbl%>%select(Q_ID, DO.inf.x, DO.sup.x, DO.inf.p, DO.sup.p)
+
+ggplot(data = daily_df, aes(x = Q, y = O2.mol.L*10^6, group=Q_med, color=Q_med)) +
+  scale_color_manual(values=c('blue','darkblue'),
+                     labels = c(expression('<'~Q[median]), expression('>'~Q[median])),
+                     name=" ")+
+  common.layers.Q.trends+legend_size+
+  ylab(O2umol.label)+xlab(Q.label)
+
+
+
+
+
+Q.slope.tbl%>%select(Q_ID, CO2.inf.x, CO2.inf.p, CO2.sup.x,  CO2.sup.p)
+
+ggplot(data = daily_df%>%filter(ID %in% c('5','6', '9')), aes(x = Q, y = CO2.mol.L*10^6, group=Q_med, color=Q_med)) +
+  scale_color_manual(values=c('darkorange','darkred'),
+                     labels = c(expression('<'~Q[median]), expression('>'~Q[median])),
+                     name=" ")+
+  common.layers.Q.trends+legend_size+
   ylab(CO2umol.label)+xlab(Q.label)
 
-ggplot(data = daily_df, aes(x = Q, y = DO.mol.L*10^6, group=Q_med)) +
-  common.layers.Q.trends+
-  ylab(O2umol.label)+xlab(Q.label)
+
+ggplot(data = daily_df, aes(x = Q, y = CO2.mol.L*10^6)) + geom_point()+
+  stat_poly_line(formula = y ~ x, se = FALSE)+
+  stat_poly_eq(aes(
+                 label = paste(..p.value.label.., sep = "~~~")),
+             formula = y ~ x, parse = TRUE,
+             size = 4.5, vjust=15, label.x = 'right')+
+  scale_y_log10()+scale_x_log10()+
+  ylab(CO2umol.label)+xlab(Q.label)+facet_wrap(~ID, scales='free')
+
+
+
+
 
 ggplot(data = daily_df%>%filter(CH4.umol.L>0.1), aes(x = Q, y = CH4.umol.L)) +
   geom_point()+
@@ -220,9 +286,9 @@ ggplot(data = daily_df%>%filter(CH4.umol.L>0.1), aes(x = Q, y = CH4.umol.L)) +
 
 
 #O2:CO2 relationship###########
-vachon<-hourly_df%>%mutate(day=as.Date(Date))%>%filter(!is.na(DO.mol.L), !is.na(CO2.mol.L))
+vachon<-hourly_df%>%mutate(day=as.Date(Date))%>%filter(!is.na(O2.mol.L), !is.na(CO2.mol.L))
 
-ggplot(vachon, aes(x=CO2.mol.L*10^6, y=DO.mol.L*10^6, color=ssn, group=day)) +
+ggplot(vachon, aes(x=CO2.mol.L*10^6, y=O2.mol.L*10^6, color=ssn, group=day)) +
   geom_point(color='gray')+
   geom_abline(slope = -1, intercept = 0, color = "black", linetype = "dashed")+
   geom_smooth(method='lm', se=F)+
@@ -233,7 +299,7 @@ ggplot(vachon, aes(x=CO2.mol.L*10^6, y=DO.mol.L*10^6, color=ssn, group=day)) +
 mol.flux_lm <- function(df) {
   if(nrow(df) < 10) return(NULL)  # skip if not enough data for a regression
 
-  flux.lm <- lm(CO2.mol.L ~ DO.mol.L, data = df)
+  flux.lm <- lm(CO2.mol.L ~ O2.mol.L, data = df)
   cf <- coef(flux.lm)
 
   tibble(
@@ -266,24 +332,13 @@ ggplot(fluxes, aes(x=CO2_flux, y=O2_flux, color=ssn, group=date)) +
   facet_wrap(~ID)
 
 #Bank######
-o2.temp<-daily_df%>%select(ID, Temp_PT, DO.mol.L)%>%rename(conc=DO.mol.L)%>%mutate(cat='o2')
-co2.temp<-daily_df%>%select(ID, Temp_PT, CO2.mol.L)%>%rename(conc=CO2.mol.L)%>%mutate(cat='co2')%>%
-  mutate(conc=conc*10^3) #mmol
-ch4.temp<-daily_df%>%select(ID, Temp_PT, CH4.umol.L)%>%rename(conc=CH4.umol.L)%>%mutate(cat='ch4')
-temp.trends<-rbind(co2.temp, o2.temp, ch4.temp)%>%filter(conc>0)
+ggplot(data = daily_df, aes(x = Temp_PT, y = CO2.mol.L*10^6)) +
+  geom_point(data = hourly_df, aes(x = Temp_PT, y = CO2.mol.L*10^6), color = 'gray') +
+  common.layers.temp.trends+
+  ylab(CO2umol.label)+xlab("Temperature (F)")
 
-
-ggplot(data = temp.trends, aes(x = Temp_PT, y = conc, color=cat, group=cat)) +
-  geom_point()+
-  stat_poly_line(formula = y ~ x, se = FALSE) +
-  stat_poly_eq(aes(x = Temp_PT, y = conc, group = cat,
-                   label = paste(..p.value.label.., sep = "~~~")),
-               formula = y ~ x, parse = TRUE,
-               size = 4,
-               vstep=0.1, hjust = 0
-  )+
-  ylab("Metabolic Gas Concentrations")+xlab("Temperature (F)")+
-  scale_color_discrete(labels = c(CH4umol.label, CO2mmol.label, O2mol.label))+
-  theme(legend.position = "bottom")+
-  facet_wrap(~ID, scales='free')
+ggplot(data = daily_df, aes(x = Temp_PT, y = O2.mol.L*10^6, color=Q)) +
+  geom_point(data = hourly_df, aes(x = Temp_PT, y = O2.mol.L*10^6), color='gray') +
+  common.layers.temp.trends+
+  ylab(O2umol.label)+xlab("Temperature (F)")
 
