@@ -79,7 +79,3 @@ b<-ggplot(mass.balance, aes(x=Date, y=total.inputs/CO2_flux))+
   ggtitle("RC Proportion of fCO2")
 plot_grid(a,b, ncol=1)
 
-
-#check###########
-names(lateral.mass.co2.flux)
-test<-lateral.mass.co2.flux%>%mutate(lateral.co2.ppm=(water_umol.L/10^6)*0.0034
