@@ -67,13 +67,13 @@ daily_df <- reduce(df_list, full_join, by=c('Date', 'ID'))%>%
     )%>%select(-Temp_K,-exp,-KH,-CO2_atm)
 
 
-Q<- read_csv("02_Clean_data/discharge.csv")%>%filter(Q>1)
+Q.hr<- read_csv("02_Clean_data/discharge.csv")%>%filter(Q>1)
 depth<- read_csv("02_Clean_data/depth.csv")
 temperature <- read_csv("02_Clean_data/temperature.csv")
 DO <- read_csv("02_Clean_data/DO_cleaned.csv")
 CO2<-read_csv("02_Clean_data/CO2_cleaned.csv")
 
-df_list <- list(CO2, DO, Q, depth,CH4)
+df_list <- list(CO2, DO, Q.hr, depth,CH4)
 hourly_df <- reduce(df_list, full_join, by=c('Date', 'ID'))%>%
   mutate(hourly="hourly cloud")%>%filter(!ID %in% c('14', NA_real_))%>%
   mutate(
@@ -115,9 +115,9 @@ O2<-daily_df%>%select(-CO2.mol.L, -CH4.umol.L, -CO2, -DO, -DO.sat)%>%
   rename(mol.L=O2.mol.L)%>%mutate(gas='O2')
 CO2<-daily_df%>%select(-O2.mol.L, -CH4.umol.L, -CO2, -DO, -DO.sat)%>%
   rename(mol.L=CO2.mol.L)%>%mutate(gas='CO2')
-O2.CO2<-rbind(O2, CO2)
+O2.CO2.mol<-rbind(O2, CO2)
 
-ggplot(data = O2.CO2, aes(x = Temp_PT, y=mol.L, color=gas)) +
+ggplot(data = O2.CO2.mol, aes(x = Temp_PT, y=mol.L, color=gas)) +
   geom_point() +
   stat_poly_line(formula = y ~ x, se = FALSE)+
   stat_poly_eq(aes(x = Temp_PT, y = mol.L,group=gas,
@@ -223,17 +223,15 @@ common.layers.Q.trends<-list(
   geom_point(),
   stat_poly_line(formula = y ~ x, se = FALSE),
   stat_poly_eq(aes(group=Q_med,
-    label = paste(..p.value.label.., sep = "~~~")),
+    label = paste(..p.value.label.., ..eq.label.., sep = "~~~")),
                formula = y ~ x, parse = TRUE,
-               size = 4.5, vjust=15, label.x = 'right'),
+               size = 4.5, vjust=14.5, label.x = 'right'),
   facet_wrap(~ID, scales='free'),
   theme(
     axis.title.y = element_text(size = 17, angle = 90),
     axis.title.x = element_text(size = 17) ),
   scale_x_log10(), scale_y_log10()
 )
-
-
 
 Q.slope.tbl%>%select(Q_ID, DO.inf.x, DO.sup.x, DO.inf.p, DO.sup.p)
 
@@ -289,15 +287,10 @@ ggplot(data = daily_df%>%filter(CH4.umol.L>0.1), aes(x = Q, y = CH4.umol.L)) +
 
 
 O2.CO2 <- read_csv("04_Output/O2.CO2.fluxes.csv")%>%
-  filter(complete.cases(CO2_flux, O2_flux))
-
-
-ggplot(O2.CO2, aes(x=CO2_flux, y=O2_flux, color=ssn, group=ssn)) +
-  geom_point()+
-  geom_abline(slope = -1, intercept = 0, color = "black", linetype = "dashed")+
-  geom_smooth(method='lm', se=F)+
-  ylab(O2umol.label)+xlab(CO2umol.label)+
-  facet_wrap(~ID, scales='free')
+  filter(complete.cases(CO2_flux, O2_flux))%>%
+  left_join(hourly_df)%>%
+  filter(Q>2)%>%
+  distinct(ID, Date, .keep_all = T)
 
 mol.flux_lm <- function(df) {
   if(nrow(df) < 10) return(NULL)  # skip if not enough data for a regression
@@ -307,41 +300,62 @@ mol.flux_lm <- function(df) {
 
   tibble(
     ID = df$ID[1],
-    date = df$date[1],
+    Date = df$Date[1],
     flux_slope = cf[2],
     flux_intercept = cf[1]
   )
 }
 
 mol.ellipse.lm <- O2.CO2 %>%
-  group_by(ID, date) %>%
+  mutate(Date=as.Date(Date))%>%
+  group_by(ID, Date) %>%
   group_split() %>%
   map_dfr(mol.flux_lm)%>%
-  mutate(ssn=time2season(date, out.fmt="seasons"))
+  left_join(daily_df, by=c('Date', 'ID'))
+
+#how many days are below slope=-1
+mol.ellipse.lm %>%
+  mutate(
+    slope.id = case_when(
+      flux_slope < -1 ~ "inf",
+      TRUE ~ "sup"
+    )) %>%
+  group_by(ID) %>%
+  summarise(
+    day.inf = sum(slope.id == "inf"),
+    day.sup = sum(slope.id == "sup"),
+    prop.inf = (day.inf / n())*100,
+    prop.sup= (day.sup / n())*100
+  )
+
+
+mol.ellipse.lm$ssn <- factor(mol.ellipse.lm$ssn, levels = c("summer", "spring","autumn", "winter"))
+
+mean_df <- mol.ellipse.lm %>%
+  group_by(ID, ssn) %>%
+  summarise(mean.slope = mean(flux_slope, na.rm = TRUE))
 
 ggplot(mol.ellipse.lm, aes(x=ssn, y=flux_slope, fill=ssn)) +
   geom_boxplot(outliers = F)+
-  #ylab(expression(O[2]:CO[2]))+xlab(" ")+
-  facet_wrap(~ID, scales='free')
+  geom_point(data = mean_df, aes(x = ssn, y = mean.slope), color = "red", size = 3)+
+  geom_hline(yintercept = -1, color='red')+
+  ylab("Daily Ellipse Slope")+facet_wrap(~ID, scales='free')
 
-fluxes <- read_csv("04_Output/fluxes.csv")
+#means by season
+mol.ellipse.lm %>%
+  group_by(ID, ssn) %>%
+  summarise(mean.slope = mean(flux_slope, na.rm = TRUE)) %>%
+  pivot_wider(
+    names_from = ssn,
+    values_from = mean.slope
+  )%>%
+  select(ID, summer, spring, autumn, winter)
 
-ggplot(fluxes, aes(x=CO2_flux, y=O2_flux, color=ssn, group=date)) +
-  geom_point(color='gray')+
-  geom_abline(slope = -1, intercept = 0, color = "black", linetype = "dashed")+
-  geom_smooth(method='lm', se=F)+
-  #ylab(O2umol.label)+xlab(CO2umol.label)+
-  #xlim(-50, 1000)+
-  facet_wrap(~ID)
+
+
+ggplot(mol.ellipse.lm, aes(x=ssn, y=flux_intercept, fill=ssn)) +
+  geom_boxplot(outliers = F)+
+  ylab("Daily Ellipse Offset")+facet_wrap(~ID, scales='free')
+
 
 #Bank######
-ggplot(data = daily_df, aes(x = Temp_PT, y = CO2.mol.L*10^6)) +
-  geom_point(data = hourly_df, aes(x = Temp_PT, y = CO2.mol.L*10^6), color = 'gray') +
-  common.layers.temp.trends+
-  ylab(CO2umol.label)+xlab("Temperature (F)")
-
-ggplot(data = daily_df, aes(x = Temp_PT, y = O2.mol.L*10^6, color=Q)) +
-  geom_point(data = hourly_df, aes(x = Temp_PT, y = O2.mol.L*10^6), color='gray') +
-  common.layers.temp.trends+
-  ylab(O2umol.label)+xlab("Temperature (F)")
-

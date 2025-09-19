@@ -13,7 +13,9 @@ library(hydroTSM)
 #results from the pathway analysis########
 ext.int <- read_csv("04_Output/external-internal.csv")%>%
   select(Date, ID, CO2_flux, internal)%>%
-  filter(ID %in% c('5', '6', '9'))
+  filter(ID %in% c('5', '6', '9'))%>%
+  mutate(fCO2=-1*CO2_flux)%>%
+  select(-CO2_flux)
 
 
 #latercal CO2#######
@@ -59,23 +61,30 @@ RIP<-lateral.mass.co2.flux%>%
 gas.samples<-full_join(TER, RIP)
 #combine#####
 mass.balance.list <- list(gas.samples, ext.int)
-mass.balance <- reduce(mass.balance.list, left_join, by=c('Date', 'ID'))%>%
-  mutate(RC=RIP+internal)
-
+mass.balance <- reduce(mass.balance.list, left_join, by=c('Date', 'ID'))
 write_csv(mass.balance, "mass.balance.csv")
 
-ggplot(mass.balance, aes(x=Date))+
-  geom_point(aes(y=CO2_flux, color='fCO2'))+
-  geom_point(aes(y=internal, color='internal'))+
-  geom_point(aes(y=RIP, color='RIP'),shape=1)+
-  geom_point(aes(y=TER, color='TER'),shape=1)+
-  ylab("g/m^2/day")+scale_y_log10()+
-  ggtitle('Fluxes')+
+
+
+mb.long <- pivot_longer(mass.balance,
+                        cols = c(RIP, fCO2, internal, TER),
+                        names_to = "Category",
+                        values_to = "Flux")
+
+
+ggplot(mb.long, aes(x = Date, y = Flux, fill = Category)) +
+  geom_bar(stat = "identity") +
+  ylab(expression(CO[2]~g/m^2/day))+
   facet_wrap(~ID)
 
-b<-ggplot(mass.balance, aes(x=Date, y=total.inputs/CO2_flux))+
-  geom_point()+
-  scale_y_log10()+ylab("g/m^2/day")+
-  ggtitle("RC Proportion of fCO2")
-plot_grid(a,b, ncol=1)
+plot_grid(
+  ggplot(mb.long, aes(x = ID, y = Flux, fill = Category)) +
+    geom_bar(stat = "identity") +
+    ylab(expression(CO[2]~g/m^2/day)),
+
+  ggplot(mb.long, aes(x = Date, y = Flux, fill = Category)) +
+            geom_bar(stat = "identity") +
+            ylab(expression(CO[2]~g/m^2/day))+facet_wrap(~ID),
+
+          ncol=2)
 

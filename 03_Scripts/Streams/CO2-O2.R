@@ -48,7 +48,8 @@ flux<-ks%>%
     CO2_flux=KCO2_m.d*(CO2-400)*KH*(1/10^6)*44.01*10^3,
     O2_flux=KO2_m.d*(DO-DO.sat),
     o2.co2=O2_flux/CO2_flux) %>%
-  filter(ID != '14')
+  filter(ID != '14')%>%
+  select(Date, ID, CO2_flux, O2_flux, o2.co2)
 
 write_csv(flux, "04_Output/O2.CO2.fluxes.csv")
 
