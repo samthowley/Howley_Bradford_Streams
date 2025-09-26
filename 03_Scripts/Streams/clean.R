@@ -229,7 +229,25 @@ temperature<-master %>% select(Date, ID, Temp_PT)
 write_csv(temperature, "02_Clean_data/temperature.csv")
 
 master<-master[,c("Date","depth","ID","Q","CO2","DO","pH","SpC","Temp_PT","Water_press")]
-master<-rename(master, 'Temp'="Temp_PT")
+master<-rename(master, 'Temp'="Temp_PT")%>%
+  distinct(Date, ID, .keep_all = T)%>%
+  filter(!is.na(ID))
 
 write_csv(master, "master.csv")
+
+plot_grid(
+
+  ggplot(master%>%filter(Date>'2023-08-02', CO2< 30000, ID %in% c('5','6')), aes(Date, CO2, color=ID))+
+    geom_point()+ggtitle(expression(CO[2]))+ylab('ppm'),
+
+  ggplot(master%>%filter(Date>'2023-08-10',ID %in% c('5','6')), aes(Date, DO, color=ID))+
+    geom_point()+ggtitle(expression(O[2]))+ylab('mg/L'),
+
+  ncol=2
+
+
+
+)
+
+
 

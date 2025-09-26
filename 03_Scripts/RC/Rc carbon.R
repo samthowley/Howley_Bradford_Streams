@@ -92,4 +92,4 @@ relationships<-left_join(relationships, wetland_cover)%>%
   mutate(ID_wetperc=paste0(ID, wetland_perc, sep="_"))%>%
   filter(!is.na(ID))
 
-write_csv(relationships, "04_Output/RC_slopes.csv")
+write_csv(relationships, "04_Output/stream.gas.sample.flux.csv")

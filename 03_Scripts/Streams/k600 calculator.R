@@ -149,14 +149,14 @@ write_csv(gas, "01_Raw_data/GD/raw/GasDome_04162025.csv")
 
 #Visualize K600##########
 
-file_path <- "04_Output/rC_k600.xlsx"  # Replace with your file path
+file_path <- "04_Output/stream/rC_k600.xlsx"  # Replace with your file path
 sheet_names <- excel_sheets(file_path)
 
 all_sheets <- lapply(sheet_names, read_excel, path = file_path)
 combined_data <- bind_rows(all_sheets, .id = "sheet_name")
 
 
-ggplot(combined_data, aes(x = depth, y = k600_dh)) +
+ggplot(combined_data, aes(x = logQ, y = log_K600)) +
   geom_point(size = 2, color = "black") +
   geom_smooth(method = "lm", se = FALSE, color = "blue") +
   facet_wrap(~ ID, ncol = 5, scales = 'free') +

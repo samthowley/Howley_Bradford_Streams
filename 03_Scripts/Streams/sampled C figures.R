@@ -12,8 +12,11 @@ theme_set(theme(axis.text.x = element_text(size = 12, angle=0),
 
 
 library(psycho)
-all_sampled_C <- read_csv("04_Output/stream_sampledC.csv")%>%
-  mutate(season=find_season(Date))%>% filter(!is.na(ID))
+all_sampled_C <- read_csv("04_Output/sampled.solid.carbon.csv")%>%
+  filter(chapter=='stream')%>%
+  filter(!is.na(ID))%>%
+  left_join(read_csv("04_Output/flow_regime_daily.csv"))
+
 
 tern_data<-all_sampled_C%>%filter(!is.na(POC))
 
@@ -54,7 +57,7 @@ common_layers <- list(  scale_color_gradient(
 )
 
 tern6<-ggtern(
-  data = all_sampled_C %>% filter(ID=='6'),aes(DOC, DIC*10, POC*10, colour = Q)) +
+  data = all_sampled_C %>% filter(ID=='6'),aes(DOC, DIC, POC, colour = Q)) +
   common_layers+
   labs(
     x = "DOC
@@ -70,7 +73,7 @@ tern6<-ggtern(
 
 
 tern<-ggtern(
-  data = all_sampled_C %>% filter(!ID=='6'),aes(DOC, DIC*10, POC*10, colour = Q)) +
+  data = all_sampled_C %>% filter(!ID=='6'),aes(DOC, DIC, POC, colour = Q)) +
   common_layers+
   theme(
     tern.axis.title.T = element_blank(),
@@ -119,7 +122,7 @@ ggplot(DOC_wet,
   geom_boxplot(size=1)+
   geom_jitter(color='blue')+
   theme(axis.title.x = element_blank(),
-        axis.title.y= element_text(size=21),
+        axis.title.y= element_text(size=21, angle=90),
         plot.title = element_text(size = 21))+
   scale_x_discrete(labels = labels_vec)+
   ylab("DOC mg/L")+
@@ -131,19 +134,19 @@ ggsave(filename = "05_Figures/DOC.across.sites.jpeg",
        width = 8, height = 5, units = "in")
 #C-Q relationship##########
 library(lme4)
-spec_DOC<-all_sampled_C%>%select(ID, Date, Q, season, DOC)%>%
+spec_DOC<-all_sampled_C%>%select(ID, Date, Q, DOC)%>%
   rename(conc=DOC)%>%mutate(type='DOC')
 
 summary(lmList(log10(conc) ~ log10(Q) | ID, data=spec_DOC))
 
 
-spec_DIC<-all_sampled_C%>%select(ID, Date, Q, season, DIC)%>%
+spec_DIC<-all_sampled_C%>%select(ID, Date, Q, DIC)%>%
   rename(conc=DIC)%>%mutate(type='DIC')
 
 summary(lmList(log10(conc) ~ log10(Q) | ID, data=spec_DIC))
 
 
-spec_POC<-all_sampled_C%>%select(ID, Date, Q, season, POC)%>%
+spec_POC<-all_sampled_C%>%select(ID, Date, Q, POC)%>%
   rename(conc=POC)%>%mutate(type='POC')
 
 summary(lmList(log10(conc) ~ log10(Q) | ID, data=spec_POC))
@@ -152,12 +155,13 @@ summary(lmList(log10(conc) ~ log10(Q) | ID, data=spec_POC))
 Cspecs<-rbind(spec_DOC, spec_DIC, spec_POC)
 
 ggsave(filename = "05_Figures/C_scatter_plots.jpeg",
-       plot = ggplot(Cspecs%>% filter(Q>2),aes(x=Q, y=conc, color=type)) +
+       plot =
+         ggplot(Cspecs%>% filter(Q>2),aes(x=Q, y=conc, color=type)) +
          geom_point()+
          geom_smooth(method = 'lm', se=F)+
          scale_y_log10()+scale_x_log10()+
          ylab('mg/L')+xlab("Discharge (L/s)")+
          facet_wrap(~ID, scales='free')+
-         theme(legend.position = "bottom")+common_theme,
+         theme(legend.position = "bottom"),
        width = 8, height = 6, units = "in")
 

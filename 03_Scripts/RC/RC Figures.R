@@ -34,32 +34,7 @@ streamC<-read_csv('04_Output/stream_sampledC.csv')%>%
 streamC<-left_join(streamC, qL)
 RC_columns<-names(RC)
 
-streamC_edited<-streamC%>%
-  filter(ID %in% c("5","6","9"))%>%
-  mutate(
-    CO2_molL=CO2_umol_L/10^6,
-    CH4_molL=CH4_umol_L/10^6)%>%
-  mutate(
-    lateral_CO2=CO2_molL*(10^3)*12*86400*(Q/A),
-    lateral_CH4=CH4_molL*(10^3)*12*86400*(Q/A))%>%
-  mutate(DOC_mg.m3=DOC/10^3,
-         DIC_mg.m3=DIC/10^3,
-         DOC_flux=DOC_mg.m3*((Q/10^3)/A)*86400,
-         DIC_flux=DIC_mg.m3*((Q/10^3)/A)*86400)%>%
-  mutate(
-    `Distance (ft)`= -0.5,
-    `Distance_m`= -0.5,
-    WTdepth_m=0,
-    Well=0,
-    DistanceID='stream',
-    surface2WT=0,
-    surface_elevation_m=0,
-    WT.ID=1,
-    WT_elevations=depth,
-    well_types='stream',
-    ID.Well = paste(ID, Well, sep = ".")
-  )%>%filter(!is.na(DOC))%>%
-  select(all_of(RC_columns))
+
 
 RC_df<-rbind(streamC_edited,RC)%>%
   separate(ID.Well, into = c("ID", "Well"), sep = "\\.", extra = "merge")

@@ -1,10 +1,5 @@
 library(tidyverse)
 library(hydroTSM)
-library(patchwork)
-library(gganimate)
-library(gifski)
-library(png)
-library(lubridate)
 library(corrplot)
 library('StreamMetabolism')
 library(weathermetrics)
@@ -123,17 +118,12 @@ ggplot(data = O2.CO2.mol, aes(x = Temp_PT, y=mol.L, color=gas)) +
   stat_poly_eq(aes(x = Temp_PT, y = mol.L,group=gas,
                  label = paste(..p.value.label.., ..eq.label.., sep = "~~~")),
              formula = y ~ x, parse = TRUE,
-             size = 4.5,vstep=0.052)+
+             size = 4.5,vstep=0.09, label.y='top')+
   scale_color_manual(values=c('blue', 'darkorange'),
                      labels = c(expression(CO[2]), expression(O[2])),
                      name=" ")+
   ylab(expression(μmol/L))+xlab("Temperature (F)")+
-  stat_poly_line(formula = y ~ x, se = FALSE)+
-  stat_poly_eq(aes(x = Temp_PT, y = mol.L,group=gas,
-                   label = paste(..p.value.label.., ..eq.label.., sep = "~~~")),
-               formula = y ~ x, parse = TRUE,
-               size = 4.5,vstep=0.052)+
-  facet_wrap(~ID, scales='free')+legend_size
+  facet_wrap(~ID, scales='free', ncol=2)+legend_size
 
 
 ggplot(data = daily_df%>%filter(CH4.umol.L>0.1), aes(x = Temp_PT, y = CH4.umol.L)) +

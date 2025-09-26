@@ -9,21 +9,34 @@ library(ggpmisc)
 library('StreamMetabolism')
 library(hydroTSM)
 
+#fCO2####
 
-#results from the pathway analysis########
-ext.int <- read_csv("04_Output/external-internal.csv")%>%
-  select(Date, ID, CO2_flux, internal)%>%
-  filter(ID %in% c('5', '6', '9'))%>%
-  mutate(fCO2=-1*CO2_flux)%>%
-  select(-CO2_flux)
+external_internal <- read_csv("04_Output/stream/external-internal.csv")%>%
+  select(Date, ID, CO2_flux)%>%
+  rename(fCO2=CO2_flux)
 
+stream_gas_sample_flux <- read_csv("04_Output/stream/stream.gas.sample.flux.csv")%>%
+  rename(fCO2=CO2_g.m2.day)
+
+fco2<-rbind(external_internal, stream_gas_sample_flux)%>%
+  mutate(fCO2=fCO2*-1)
+
+#metabolism########
+
+NEP <- read_csv("04_Output/stream/gw_corrected_metabolism.csv")%>%
+  select(Date, ID, GPP, ER)%>%
+  mutate(
+    ER=ER*-1,
+    GPP=GPP*-1
+  )
 
 #latercal CO2#######
 
-flow.regime<-read_csv("04_Output/flow_regime_daily.csv")%>% select(ID, Date, width, qL_m2.sec)
-
-gas_samples <- read_csv("04_Output/gas.samples.csv")%>%
-  filter(chapter=="RC", type=='CO2')%>%
+RC_gas_sample_flux <- read_csv("04_Output/RC/RC.gas.sample.flux.csv")%>%
+  group_by(Site, Date)%>%
+  summarise(
+    CO2_flux=mean(CO2_flux, na.rm=T)
+  )%>%
   mutate(
     location=
       case_when(
@@ -33,58 +46,57 @@ gas_samples <- read_csv("04_Output/gas.samples.csv")%>%
         .default = "RIP"
       )
   )%>%
-  separate(Site, into = c("ID", "Well"), sep = "GW")%>%
-  select(Date, ID, Well, water_umol.L, location)%>%
-  mutate(CO2.g.L= (((water_umol.L/10^6)*44)))
+  separate(Site, into = c("ID", "Well"), sep = "GW")
 
-lateral.mass.co2.flux<-left_join(gas_samples, flow.regime)%>%
-  mutate(
-    lateral.co2.flux=qL_m2.sec*86400*CO2.g.L*10^3*(1/width) )%>%
-  filter(!is.na(lateral.co2.flux), lateral.co2.flux>0)%>%
-  group_by(ID, Date, location)%>%
-  mutate(
-    lateral.co2.flux.mean=mean(lateral.co2.flux, na.rm=T)
-  )%>%ungroup()%>%
-  distinct(ID, Date, location, .keep_all = T)
 
-TER<-lateral.mass.co2.flux%>%
+TER<-RC_gas_sample_flux%>%
   filter(location=='TER')%>%
-  rename(TER=lateral.co2.flux.mean)%>%
+  rename(TER=CO2_flux)%>%
   select(Date, ID, TER)
 
 
-RIP<-lateral.mass.co2.flux%>%
+RIP<-RC_gas_sample_flux%>%
   filter(location=='RIP')%>%
-  rename(RIP=lateral.co2.flux.mean)%>%
+  rename(RIP=CO2_flux)%>%
   select(Date, ID, RIP)
 
 gas.samples<-full_join(TER, RIP)
+
 #combine#####
-mass.balance.list <- list(gas.samples, ext.int)
-mass.balance <- reduce(mass.balance.list, left_join, by=c('Date', 'ID'))
-write_csv(mass.balance, "mass.balance.csv")
 
-
+mass.balance.list <- list(RIP, TER, fco2, NEP)
+mass.balance <- reduce(mass.balance.list, left_join, by=c('Date', 'ID'))%>%
+  filter(complete.cases(fCO2))
 
 mb.long <- pivot_longer(mass.balance,
-                        cols = c(RIP, fCO2, internal, TER),
-                        names_to = "Category",
-                        values_to = "Flux")
+                        cols = c(RIP, fCO2, GPP, ER, TER),
+                        names_to = "Cat",
+                        values_to = "Flux")%>%
+  group_by(ID, Date)%>%
+  mutate(total=sum(Flux, na.rm=T))
+
+check<-mb.long%>%filter(ID=='5', Date=='2025-01-10')
 
 
-ggplot(mb.long, aes(x = Date, y = Flux, fill = Category)) +
-  geom_bar(stat = "identity") +
+ggplot(mb.long, aes(x = Date, y = Flux, color = Cat)) +
+  geom_point()+
+  geom_point(aes(y=total), color='red') +
   ylab(expression(CO[2]~g/m^2/day))+
   facet_wrap(~ID)
 
 plot_grid(
-  ggplot(mb.long, aes(x = ID, y = Flux, fill = Category)) +
+  ggplot(mb.long, aes(x = ID, y = Flux, fill = Cat)) +
     geom_bar(stat = "identity") +
     ylab(expression(CO[2]~g/m^2/day)),
 
-  ggplot(mb.long, aes(x = Date, y = Flux, fill = Category)) +
+  ggplot(mb.long, aes(x = Date, y = Flux, fill = Cat)) +
             geom_bar(stat = "identity") +
             ylab(expression(CO[2]~g/m^2/day))+facet_wrap(~ID),
 
-          ncol=2)
+          ncol=1)
+
+
+
+
+#write_csv(mass.balance, "mass.balance.csv")
 

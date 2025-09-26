@@ -10,5 +10,6 @@ dissolved.c<-left_join(RC_flow_regime, TDC_RC)%>%
   mutate(
     DOC_g.m2.day=DOC*qL_m2.sec*(1/stream.w)*86400,
     DIC_g.m2.day=DIC*qL_m2.sec*(1/stream.w)*86400
-
   )
+
+write_csv(dissolved.c, "04_Output/RC.water.sample.flux.csv")
